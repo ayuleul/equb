@@ -58,6 +58,17 @@
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
 
+## Contribution rules
+- Contribution proof object key format is locked to:
+  - `groups/<groupId>/cycles/<cycleId>/users/<userId>/<uuid>_<sanitizedFileName>`
+- Proof file keys must match the submitting member's `groupId/cycleId/userId` scope.
+- Contribution state transitions:
+  - submit/resubmit: `PENDING|REJECTED|SUBMITTED -> SUBMITTED`
+  - confirm: `SUBMITTED -> CONFIRMED`
+  - reject: `SUBMITTED -> REJECTED`
+  - `CONFIRMED` contributions are immutable (no resubmit/update).
+- Privacy rule: contribution list responses expose member phone numbers only to ACTIVE admins; non-admin members receive `phone = null`.
+
 ## Folder conventions
 - `apps/api` is the canonical backend implementation path. If a legacy `server/` scaffold exists, treat it as deprecated bootstrap code and do not add new phase work there.
 - `apps/api/src/modules/<module>/`

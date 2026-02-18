@@ -25,15 +25,31 @@ export class GroupAdminGuard implements CanActivate {
       .switchToHttp()
       .getRequest<RequestWithUserAndParams>();
 
-    const groupId = request.params?.id;
+    const idParam = request.params?.id;
     const userId = request.user?.id;
 
-    if (!groupId) {
-      throw new BadRequestException('Group id is required');
+    if (!idParam) {
+      throw new BadRequestException('Resource id is required');
     }
 
     if (!userId) {
       throw new ForbiddenException('Authentication required');
+    }
+
+    let groupId = idParam;
+    const isContributionRoute = request.path.includes('/contributions/');
+
+    if (isContributionRoute) {
+      const contribution = await this.prisma.contribution.findUnique({
+        where: { id: idParam },
+        select: { groupId: true },
+      });
+
+      if (!contribution) {
+        throw new ForbiddenException('Contribution not found');
+      }
+
+      groupId = contribution.groupId;
     }
 
     const membership = await this.prisma.equbMember.findUnique({
