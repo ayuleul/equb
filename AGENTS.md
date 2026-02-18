@@ -10,6 +10,10 @@
 - Lint: `pnpm -C apps/api lint`
 - Typecheck: `pnpm -C apps/api typecheck`
 - DB: `pnpm -C apps/api prisma migrate dev`
+- Mobile install: `flutter pub get` (in `apps/mobile`)
+- Mobile run: `flutter run --dart-define=API_BASE_URL=<url>` (in `apps/mobile`)
+- Mobile test: `flutter test` (in `apps/mobile`)
+- Mobile analyze: `flutter analyze` (in `apps/mobile`)
 
 ## Tech decisions (locked)
 - NestJS + TypeScript
@@ -116,6 +120,12 @@
   - `dto/`
   - `entities/` (optional)
 - Shared guards/decorators in `apps/api/src/common/`
+- `apps/mobile` is the canonical Flutter client path.
+- `apps/mobile/lib/src/` structure:
+  - `core/` for config, networking, storage, logging
+  - `routing/` for GoRouter setup
+  - `features/<feature>/` for UI + data per domain
+  - `shared/widgets/` for reusable UI components
 
 ## Phase delivery rule
 - Implement phases strictly in order (1 → 6).
@@ -159,3 +169,11 @@
   - FCM_CLIENT_EMAIL
   - FCM_PRIVATE_KEY
   - SENTRY_DSN
+- Mobile env example: `apps/mobile/.env.example` must include `API_BASE_URL`.
+
+## Mobile rules
+- Env strategy is locked to compile-time Dart defines:
+  - Use `String.fromEnvironment('API_BASE_URL')`
+  - Run with `--dart-define=API_BASE_URL=<url>`
+- Never hardcode API URLs or secrets in Flutter source.
+- Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.
