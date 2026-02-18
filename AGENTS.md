@@ -50,6 +50,14 @@
   - `LEFT` -> can rejoin with invite and become `ACTIVE`
   - `REMOVED` -> cannot self-rejoin via invite code
 
+## Cycle rules
+- Payout order for ACTIVE members must be unique and contiguous (`1..N`) before cycle generation.
+- Only one `OPEN` cycle is allowed per group at any time.
+- When generating multiple cycles in one request, earlier generated cycles are marked `CLOSED` and only the last generated cycle is `OPEN`.
+- Due-date progression rules:
+  - `WEEKLY`: add exactly 7 days
+  - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
+
 ## Folder conventions
 - `apps/api` is the canonical backend implementation path. If a legacy `server/` scaffold exists, treat it as deprecated bootstrap code and do not add new phase work there.
 - `apps/api/src/modules/<module>/`

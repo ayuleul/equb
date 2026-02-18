@@ -6,18 +6,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GroupStatus, MemberRole, MemberStatus, Prisma } from '@prisma/client';
+import {
+  CycleStatus,
+  GroupStatus,
+  MemberRole,
+  MemberStatus,
+  Prisma,
+} from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
-import { AuthenticatedUser } from '../../common/types/authenticated-user.type';
+import { DateService } from '../../common/date/date.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
+import { GenerateCyclesDto } from './dto/generate-cycles.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
+import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
+  GroupCycleResponseDto,
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
@@ -31,6 +41,7 @@ export class GroupsService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
+    private readonly dateService: DateService,
   ) {}
 
   async createGroup(
@@ -84,6 +95,8 @@ export class GroupsService {
       status: group.status,
       createdByUserId: group.createdByUserId,
       createdAt: group.createdAt,
+      strictPayout: group.strictPayout,
+      timezone: group.timezone,
       membership: {
         role: MemberRole.ADMIN,
         status: MemberStatus.ACTIVE,
@@ -154,6 +167,8 @@ export class GroupsService {
       status: group.status,
       createdByUserId: group.createdByUserId,
       createdAt: group.createdAt,
+      strictPayout: group.strictPayout,
+      timezone: group.timezone,
       membership: {
         role: membership.role,
         status: membership.status,
@@ -531,13 +546,13 @@ export class GroupsService {
       throw new BadRequestException('Only active members can change status');
     }
 
-    if (dto.status === MemberStatus.LEFT) {
+    if (dto.status === 'LEFT') {
       if (currentUser.id !== targetUserId) {
         throw new ForbiddenException('Members can only leave for themselves');
       }
     }
 
-    if (dto.status === MemberStatus.REMOVED) {
+    if (dto.status === 'REMOVED') {
       if (currentUser.id === targetUserId) {
         throw new BadRequestException('Use LEFT status to leave group');
       }
@@ -594,6 +609,381 @@ export class GroupsService {
     };
   }
 
+  async updatePayoutOrder(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    payload: PayoutOrderItemDto[],
+  ): Promise<GroupMemberResponseDto[]> {
+    if (payload.length === 0) {
+      throw new BadRequestException('Payout order payload cannot be empty');
+    }
+
+    const activeMembers = await this.prisma.equbMember.findMany({
+      where: {
+        groupId,
+        status: MemberStatus.ACTIVE,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    if (activeMembers.length === 0) {
+      throw new BadRequestException('No active members found for this group');
+    }
+
+    if (payload.length !== activeMembers.length) {
+      throw new BadRequestException(
+        'Payout order must include every active member exactly once',
+      );
+    }
+
+    const activeUserIds = new Set(activeMembers.map((member) => member.userId));
+    const payloadUserIds = payload.map((item) => item.userId);
+
+    if (new Set(payloadUserIds).size !== payloadUserIds.length) {
+      throw new BadRequestException('Duplicate userId in payout order payload');
+    }
+
+    for (const userId of payloadUserIds) {
+      if (!activeUserIds.has(userId)) {
+        throw new BadRequestException(
+          `Payout order contains non-active member userId=${userId}`,
+        );
+      }
+    }
+
+    const payoutPositions = payload.map((item) => item.payoutPosition);
+    this.assertContiguousPositions(payoutPositions);
+
+    const payoutPositionByUserId = new Map(
+      payload.map((item) => [item.userId, item.payoutPosition]),
+    );
+
+    const updatedMembers = await this.prisma.$transaction(async (tx) => {
+      await Promise.all(
+        activeMembers.map((member) => {
+          const payoutPosition = payoutPositionByUserId.get(member.userId);
+
+          if (!payoutPosition) {
+            throw new BadRequestException(
+              `Missing payout position for userId=${member.userId}`,
+            );
+          }
+
+          return tx.equbMember.update({
+            where: {
+              id: member.id,
+            },
+            data: {
+              payoutPosition,
+            },
+          });
+        }),
+      );
+
+      return tx.equbMember.findMany({
+        where: {
+          groupId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+        },
+        orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
+      });
+    });
+
+    await this.auditService.log(
+      'PAYOUT_ORDER_UPDATED',
+      currentUser.id,
+      {
+        payload,
+      },
+      groupId,
+    );
+
+    return updatedMembers.map((member) => ({
+      user: member.user,
+      role: member.role,
+      status: member.status,
+      payoutPosition: member.payoutPosition,
+      joinedAt: member.joinedAt,
+    }));
+  }
+
+  async generateCycles(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    dto: GenerateCyclesDto,
+  ): Promise<GroupCycleResponseDto[]> {
+    const count = dto?.count ?? 1;
+
+    if (count < 1 || count > 12) {
+      throw new BadRequestException('count must be between 1 and 12');
+    }
+
+    const createdCycles = await this.prisma.$transaction(async (tx) => {
+      const group = await tx.equbGroup.findUnique({
+        where: {
+          id: groupId,
+        },
+        select: {
+          id: true,
+          frequency: true,
+          startDate: true,
+          timezone: true,
+          status: true,
+        },
+      });
+
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      if (group.status !== GroupStatus.ACTIVE) {
+        throw new BadRequestException(
+          'Cycles can only be generated for active groups',
+        );
+      }
+
+      const existingOpenCycle = await tx.equbCycle.findFirst({
+        where: {
+          groupId,
+          status: CycleStatus.OPEN,
+        },
+      });
+
+      if (existingOpenCycle) {
+        throw new BadRequestException(
+          'An open cycle already exists for this group',
+        );
+      }
+
+      const activeMembers = await tx.equbMember.findMany({
+        where: {
+          groupId,
+          status: MemberStatus.ACTIVE,
+        },
+        select: {
+          userId: true,
+          payoutPosition: true,
+        },
+      });
+
+      if (activeMembers.length === 0) {
+        throw new BadRequestException('No active members found for this group');
+      }
+
+      const hasUnsetPositions = activeMembers.some(
+        (member) => member.payoutPosition === null,
+      );
+      if (hasUnsetPositions) {
+        throw new BadRequestException(
+          'Payout order is incomplete for active members',
+        );
+      }
+
+      const positions = activeMembers.map(
+        (member) => member.payoutPosition as number,
+      );
+      this.assertContiguousPositions(positions);
+
+      const payoutUserByPosition = new Map<number, string>();
+      for (const member of activeMembers) {
+        payoutUserByPosition.set(
+          member.payoutPosition as number,
+          member.userId,
+        );
+      }
+
+      const latestCycle = await tx.equbCycle.findFirst({
+        where: { groupId },
+        orderBy: {
+          cycleNo: 'desc',
+        },
+      });
+
+      let cycleNo = (latestCycle?.cycleNo ?? 0) + 1;
+      let dueDate = latestCycle
+        ? this.dateService.advanceDueDate(
+            latestCycle.dueDate,
+            group.frequency,
+            group.timezone,
+          )
+        : this.dateService.normalizeGroupDate(group.startDate, group.timezone);
+
+      const generatedCycles: Array<{
+        id: string;
+        groupId: string;
+        cycleNo: number;
+        dueDate: Date;
+        payoutUserId: string;
+        status: CycleStatus;
+        createdByUserId: string;
+        createdAt: Date;
+        payoutUser: {
+          id: string;
+          phone: string;
+          fullName: string | null;
+        };
+      }> = [];
+
+      for (let index = 0; index < count; index += 1) {
+        const payoutPosition = ((cycleNo - 1) % activeMembers.length) + 1;
+        const payoutUserId = payoutUserByPosition.get(payoutPosition);
+
+        if (!payoutUserId) {
+          throw new BadRequestException(
+            `No active member found for payout position=${payoutPosition}`,
+          );
+        }
+
+        const status =
+          index === count - 1 ? CycleStatus.OPEN : CycleStatus.CLOSED;
+
+        const createdCycle = await tx.equbCycle.create({
+          data: {
+            groupId,
+            cycleNo,
+            dueDate,
+            payoutUserId,
+            status,
+            createdByUserId: currentUser.id,
+          },
+          include: {
+            payoutUser: {
+              select: {
+                id: true,
+                phone: true,
+                fullName: true,
+              },
+            },
+          },
+        });
+
+        generatedCycles.push(createdCycle);
+        cycleNo += 1;
+        dueDate = this.dateService.advanceDueDate(
+          dueDate,
+          group.frequency,
+          group.timezone,
+        );
+      }
+
+      return generatedCycles;
+    });
+
+    await this.auditService.log(
+      'CYCLE_GENERATED',
+      currentUser.id,
+      {
+        cycles: createdCycles.map((cycle) => ({
+          cycleNo: cycle.cycleNo,
+          dueDate: cycle.dueDate,
+          payoutUserId: cycle.payoutUserId,
+          status: cycle.status,
+        })),
+      },
+      groupId,
+    );
+
+    return createdCycles.map((cycle) => this.toCycleResponse(cycle));
+  }
+
+  async getCurrentCycle(
+    groupId: string,
+  ): Promise<GroupCycleResponseDto | null> {
+    const currentCycle = await this.prisma.equbCycle.findFirst({
+      where: {
+        groupId,
+        status: CycleStatus.OPEN,
+      },
+      include: {
+        payoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: {
+        cycleNo: 'desc',
+      },
+    });
+
+    if (!currentCycle) {
+      return null;
+    }
+
+    return this.toCycleResponse(currentCycle);
+  }
+
+  async getCycleById(
+    groupId: string,
+    cycleId: string,
+  ): Promise<GroupCycleResponseDto> {
+    const cycle = await this.prisma.equbCycle.findFirst({
+      where: {
+        id: cycleId,
+        groupId,
+      },
+      include: {
+        payoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    if (!cycle) {
+      throw new NotFoundException('Cycle not found');
+    }
+
+    return this.toCycleResponse(cycle);
+  }
+
+  async listCycles(groupId: string): Promise<GroupCycleResponseDto[]> {
+    const cycles = await this.prisma.equbCycle.findMany({
+      where: {
+        groupId,
+      },
+      include: {
+        payoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: {
+        cycleNo: 'desc',
+      },
+      take: 50,
+    });
+
+    return cycles.map((cycle) => this.toCycleResponse(cycle));
+  }
+
   private async countActiveAdmins(groupId: string): Promise<number> {
     return this.prisma.equbMember.count({
       where: {
@@ -602,6 +992,51 @@ export class GroupsService {
         status: MemberStatus.ACTIVE,
       },
     });
+  }
+
+  private assertContiguousPositions(positions: number[]): void {
+    const sorted = [...positions].sort((a, b) => a - b);
+
+    if (new Set(sorted).size !== sorted.length) {
+      throw new BadRequestException('Payout positions must be unique');
+    }
+
+    for (let index = 0; index < sorted.length; index += 1) {
+      const expectedPosition = index + 1;
+      if (sorted[index] !== expectedPosition) {
+        throw new BadRequestException(
+          'Payout positions must be contiguous from 1..N',
+        );
+      }
+    }
+  }
+
+  private toCycleResponse(cycle: {
+    id: string;
+    groupId: string;
+    cycleNo: number;
+    dueDate: Date;
+    payoutUserId: string;
+    status: CycleStatus;
+    createdByUserId: string;
+    createdAt: Date;
+    payoutUser: {
+      id: string;
+      phone: string;
+      fullName: string | null;
+    };
+  }): GroupCycleResponseDto {
+    return {
+      id: cycle.id,
+      groupId: cycle.groupId,
+      cycleNo: cycle.cycleNo,
+      dueDate: cycle.dueDate,
+      payoutUserId: cycle.payoutUserId,
+      status: cycle.status,
+      createdByUserId: cycle.createdByUserId,
+      createdAt: cycle.createdAt,
+      payoutUser: cycle.payoutUser,
+    };
   }
 
   private generateInviteCode(): string {

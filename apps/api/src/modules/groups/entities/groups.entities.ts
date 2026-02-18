@@ -1,4 +1,5 @@
 import {
+  CycleStatus,
   GroupFrequency,
   GroupStatus,
   MemberRole,
@@ -43,6 +44,12 @@ export class GroupDetailResponseDto extends GroupSummaryResponseDto {
 
   @ApiProperty()
   createdAt!: Date;
+
+  @ApiProperty()
+  strictPayout!: boolean;
+
+  @ApiProperty()
+  timezone!: string;
 
   @ApiProperty({ type: () => CurrentMembershipResponseDto })
   membership!: CurrentMembershipResponseDto;
@@ -96,4 +103,44 @@ export class GroupMemberResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   joinedAt!: Date | null;
+}
+
+export class CyclePayoutUserResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  phone!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  fullName!: string | null;
+}
+
+export class GroupCycleResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  groupId!: string;
+
+  @ApiProperty()
+  cycleNo!: number;
+
+  @ApiProperty()
+  dueDate!: Date;
+
+  @ApiProperty()
+  payoutUserId!: string;
+
+  @ApiProperty({ enum: CycleStatus })
+  status!: CycleStatus;
+
+  @ApiProperty()
+  createdByUserId!: string;
+
+  @ApiProperty()
+  createdAt!: Date;
+
+  @ApiProperty({ type: () => CyclePayoutUserResponseDto })
+  payoutUser!: CyclePayoutUserResponseDto;
 }

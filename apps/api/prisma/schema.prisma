@@ -29,16 +29,23 @@ enum MemberStatus {
   REMOVED
 }
 
+enum CycleStatus {
+  OPEN
+  CLOSED
+}
+
 model User {
-  id            String         @id @default(cuid())
-  phone         String         @unique
-  fullName      String?
-  createdAt     DateTime       @default(now())
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
-  createdGroups EqubGroup[]    @relation("GroupCreator")
-  memberships   EqubMember[]
-  createdInvites InviteCode[]  @relation("InviteCreator")
+  id             String         @id @default(cuid())
+  phone          String         @unique
+  fullName       String?
+  createdAt      DateTime       @default(now())
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+  createdGroups  EqubGroup[]    @relation("GroupCreator")
+  memberships    EqubMember[]
+  createdInvites InviteCode[]   @relation("InviteCreator")
+  payoutCycles   EqubCycle[]    @relation("CyclePayoutUser")
+  createdCycles  EqubCycle[]    @relation("CycleCreator")
 }
 
 model OtpCode {
@@ -65,19 +72,22 @@ model RefreshToken {
 }
 
 model EqubGroup {
-  id                 String          @id @default(uuid())
+  id                 String         @id @default(uuid())
   name               String
-  currency           String          @default("ETB")
+  currency           String         @default("ETB")
   contributionAmount Int
   frequency          GroupFrequency
-  startDate          DateTime        @db.Date
-  status             GroupStatus     @default(ACTIVE)
+  startDate          DateTime       @db.Date
+  status             GroupStatus    @default(ACTIVE)
+  strictPayout       Boolean        @default(false)
+  timezone           String         @default("Africa/Addis_Ababa")
   createdByUserId    String
-  createdAt          DateTime        @default(now())
-  createdByUser      User            @relation("GroupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt          DateTime       @default(now())
+  createdByUser      User           @relation("GroupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   members            EqubMember[]
   inviteCodes        InviteCode[]
   auditLogs          AuditLog[]
+  cycles             EqubCycle[]
 
   @@index([createdByUserId])
 }
@@ -113,6 +123,23 @@ model InviteCode {
   createdByUser   User      @relation("InviteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
 
   @@index([groupId])
+}
+
+model EqubCycle {
+  id              String      @id @default(uuid())
+  groupId         String
+  cycleNo         Int
+  dueDate         DateTime    @db.Date
+  payoutUserId    String
+  status          CycleStatus @default(OPEN)
+  createdByUserId String
+  createdAt       DateTime    @default(now())
+  group           EqubGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payoutUser      User        @relation("CyclePayoutUser", fields: [payoutUserId], references: [id], onDelete: Restrict)
+  createdByUser   User        @relation("CycleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([groupId, cycleNo])
+  @@index([groupId, status])
 }
 
 model AuditLog {
