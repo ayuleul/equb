@@ -10,11 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -39,9 +43,10 @@ import {
 } from './entities/groups.entities';
 import { GroupsService } from './groups.service';
 
-@ApiTags('groups')
+@ApiTags('Groups')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Controller('groups')
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
@@ -72,6 +77,9 @@ export class GroupsController {
   @ApiOperation({ summary: 'Join a group with invite code' })
   @ApiBody({ type: JoinGroupDto })
   @ApiOkResponse({ type: GroupJoinResponseDto })
+  @ApiBadRequestResponse({ description: 'Invite is invalid or unusable' })
+  @ApiNotFoundResponse({ description: 'Invite code not found' })
+  @ApiForbiddenResponse({ description: 'Removed members cannot self-rejoin' })
   joinGroup(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: JoinGroupDto,
@@ -81,8 +89,11 @@ export class GroupsController {
 
   @Get(':id')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Members')
   @ApiOperation({ summary: 'Get group details for current member' })
   @ApiOkResponse({ type: GroupDetailResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiNotFoundResponse({ description: 'Group or membership not found' })
   getGroup(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -95,6 +106,9 @@ export class GroupsController {
   @ApiOperation({ summary: 'Create invite code for group' })
   @ApiBody({ type: CreateInviteDto })
   @ApiOkResponse({ type: InviteCodeResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({ description: 'Invalid invite constraints' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
   createInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -105,8 +119,10 @@ export class GroupsController {
 
   @Get(':id/members')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Members')
   @ApiOperation({ summary: 'List members in a group' })
   @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
   listMembers(
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupMemberResponseDto[]> {
@@ -115,9 +131,13 @@ export class GroupsController {
 
   @Patch(':id/members/:userId/role')
   @UseGuards(GroupAdminGuard)
+  @ApiTags('Members')
   @ApiOperation({ summary: 'Update member role in a group' })
   @ApiBody({ type: UpdateMemberRoleDto })
   @ApiOkResponse({ type: GroupMemberResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({ description: 'Last active admin cannot be removed' })
+  @ApiNotFoundResponse({ description: 'Member not found in group' })
   updateMemberRole(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -133,11 +153,17 @@ export class GroupsController {
   }
 
   @Patch(':id/members/:userId/status')
+  @ApiTags('Members')
   @ApiOperation({
     summary: 'Update member status (self leave or admin remove)',
   })
   @ApiBody({ type: UpdateMemberStatusDto })
   @ApiOkResponse({ type: GroupMemberResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Only self-leave or admin remove is allowed',
+  })
+  @ApiBadRequestResponse({ description: 'Status transition rule violation' })
+  @ApiNotFoundResponse({ description: 'Member not found in group' })
   updateMemberStatus(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -154,9 +180,14 @@ export class GroupsController {
 
   @Patch(':id/payout-order')
   @UseGuards(GroupAdminGuard)
+  @ApiTags('Cycles')
   @ApiOperation({ summary: 'Set payout order for active members' })
   @ApiBody({ type: PayoutOrderItemDto, isArray: true })
   @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Payout positions must be contiguous and unique',
+  })
   updatePayoutOrder(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -168,9 +199,15 @@ export class GroupsController {
 
   @Post(':id/cycles/generate')
   @UseGuards(GroupAdminGuard)
+  @ApiTags('Cycles')
   @ApiOperation({ summary: 'Generate next cycle(s) based on payout order' })
   @ApiBody({ type: GenerateCyclesDto, required: false })
   @ApiOkResponse({ type: GroupCycleResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Cycle generation constraints not satisfied',
+  })
+  @ApiNotFoundResponse({ description: 'Group not found' })
   generateCycles(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -181,8 +218,10 @@ export class GroupsController {
 
   @Get(':id/cycles/current')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Cycles')
   @ApiOperation({ summary: 'Get current open cycle for a group' })
   @ApiOkResponse({ type: GroupCycleResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
   getCurrentCycle(
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupCycleResponseDto | null> {
@@ -191,8 +230,11 @@ export class GroupsController {
 
   @Get(':id/cycles/:cycleId')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Cycles')
   @ApiOperation({ summary: 'Get cycle details by id' })
   @ApiOkResponse({ type: GroupCycleResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiNotFoundResponse({ description: 'Cycle not found in group' })
   getCycleById(
     @Param('id', new ParseUUIDPipe()) groupId: string,
     @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
@@ -202,8 +244,10 @@ export class GroupsController {
 
   @Get(':id/cycles')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Cycles')
   @ApiOperation({ summary: 'List cycles for a group' })
   @ApiOkResponse({ type: GroupCycleResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
   listCycles(
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupCycleResponseDto[]> {

@@ -3,7 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { SystemService } from './system.service';
 
-@ApiTags('system')
+@ApiTags('System')
 @Controller()
 export class SystemController {
   constructor(private readonly systemService: SystemService) {}

@@ -20,7 +20,7 @@ import {
 } from './entities/auth.entities';
 import { AuthService } from './auth.service';
 
-@ApiTags('auth')
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

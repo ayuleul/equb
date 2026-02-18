@@ -1,0 +1,2657 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/devices/register-token": {
+      "post": {
+        "operationId": "NotificationsController_registerDeviceToken",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTokenResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid token or platform payload"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register or refresh a device push token",
+        "tags": [
+          "Notifications",
+          "Devices"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_listNotifications",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "UNREAD",
+                "READ"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid pagination or status filter"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List current user notifications",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Only notification owner can mark as read"
+          },
+          "404": {
+            "description": "Notification not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark one notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "SystemController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "degraded"
+                      ]
+                    },
+                    "checks": {
+                      "type": "object",
+                      "properties": {
+                        "database": {
+                          "type": "string",
+                          "enum": [
+                            "up",
+                            "down"
+                          ]
+                        },
+                        "redis": {
+                          "type": "string",
+                          "enum": [
+                            "up",
+                            "down",
+                            "disabled"
+                          ]
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Health check for API dependencies",
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/auth/request-otp": {
+      "post": {
+        "operationId": "AuthController_requestOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestOtpResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many OTP requests"
+          }
+        },
+        "summary": "Request OTP for login",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "operationId": "AuthController_verifyOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired OTP"
+          },
+          "429": {
+            "description": "Too many verification attempts"
+          }
+        },
+        "summary": "Verify OTP and issue access/refresh tokens",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid refresh token"
+          }
+        },
+        "summary": "Rotate refresh token and issue new token pair",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Revoke refresh token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/groups": {
+      "post": {
+        "operationId": "GroupsController_createGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDetailResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create an Equb group",
+        "tags": [
+          "Groups"
+        ]
+      },
+      "get": {
+        "operationId": "GroupsController_listGroups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupSummaryResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List groups where current user is an active member",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/groups/join": {
+      "post": {
+        "operationId": "GroupsController_joinGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupJoinResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invite is invalid or unusable"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Removed members cannot self-rejoin"
+          },
+          "404": {
+            "description": "Invite code not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join a group with invite code",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/groups/{id}": {
+      "get": {
+        "operationId": "GroupsController_getGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDetailResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          },
+          "404": {
+            "description": "Group or membership not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get group details for current member",
+        "tags": [
+          "Groups",
+          "Members"
+        ]
+      }
+    },
+    "/groups/{id}/invite": {
+      "post": {
+        "operationId": "GroupsController_createInvite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCodeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid invite constraints"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Group not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create invite code for group",
+        "tags": [
+          "Groups"
+        ]
+      }
+    },
+    "/groups/{id}/members": {
+      "get": {
+        "operationId": "GroupsController_listMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupMemberResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List members in a group",
+        "tags": [
+          "Groups",
+          "Members"
+        ]
+      }
+    },
+    "/groups/{id}/members/{userId}/role": {
+      "patch": {
+        "operationId": "GroupsController_updateMemberRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Last active admin cannot be removed"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Member not found in group"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update member role in a group",
+        "tags": [
+          "Groups",
+          "Members"
+        ]
+      }
+    },
+    "/groups/{id}/members/{userId}/status": {
+      "patch": {
+        "operationId": "GroupsController_updateMemberStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Status transition rule violation"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Only self-leave or admin remove is allowed"
+          },
+          "404": {
+            "description": "Member not found in group"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update member status (self leave or admin remove)",
+        "tags": [
+          "Groups",
+          "Members"
+        ]
+      }
+    },
+    "/groups/{id}/payout-order": {
+      "patch": {
+        "operationId": "GroupsController_updatePayoutOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PayoutOrderItemDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupMemberResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payout positions must be contiguous and unique"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set payout order for active members",
+        "tags": [
+          "Groups",
+          "Cycles"
+        ]
+      }
+    },
+    "/groups/{id}/cycles/generate": {
+      "post": {
+        "operationId": "GroupsController_generateCycles",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateCyclesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupCycleResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cycle generation constraints not satisfied"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Group not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate next cycle(s) based on payout order",
+        "tags": [
+          "Groups",
+          "Cycles"
+        ]
+      }
+    },
+    "/groups/{id}/cycles/current": {
+      "get": {
+        "operationId": "GroupsController_getCurrentCycle",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupCycleResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current open cycle for a group",
+        "tags": [
+          "Groups",
+          "Cycles"
+        ]
+      }
+    },
+    "/groups/{id}/cycles/{cycleId}": {
+      "get": {
+        "operationId": "GroupsController_getCycleById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cycleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupCycleResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          },
+          "404": {
+            "description": "Cycle not found in group"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get cycle details by id",
+        "tags": [
+          "Groups",
+          "Cycles"
+        ]
+      }
+    },
+    "/groups/{id}/cycles": {
+      "get": {
+        "operationId": "GroupsController_listCycles",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupCycleResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List cycles for a group",
+        "tags": [
+          "Groups",
+          "Cycles"
+        ]
+      }
+    },
+    "/files/signed-upload": {
+      "post": {
+        "operationId": "FilesController_createSignedUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignedUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "uploadUrl": {
+                      "type": "string"
+                    },
+                    "expiresInSeconds": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file metadata or unsupported upload purpose"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "User is not authorized to upload for this group/cycle/purpose"
+          },
+          "404": {
+            "description": "Cycle not found for group"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create signed upload URL for file storage",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/files/signed-download": {
+      "get": {
+        "operationId": "FilesController_createSignedDownload",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "downloadUrl": {
+                      "type": "string"
+                    },
+                    "expiresInSeconds": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key format"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active membership required for key scope"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create signed download URL for file storage",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/cycles/{cycleId}/contributions": {
+      "post": {
+        "operationId": "ContributionsController_submitContribution",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitContributionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContributionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cycle closed or invalid proof key scope"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active membership required for the cycle group"
+          },
+          "404": {
+            "description": "Cycle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit or resubmit contribution for an open cycle",
+        "tags": [
+          "Contributions"
+        ]
+      }
+    },
+    "/contributions/{id}/confirm": {
+      "patch": {
+        "operationId": "ContributionsController_confirmContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmContributionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContributionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Only SUBMITTED contributions can be confirmed"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Contribution not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm a submitted contribution",
+        "tags": [
+          "Contributions"
+        ]
+      }
+    },
+    "/contributions/{id}/reject": {
+      "patch": {
+        "operationId": "ContributionsController_rejectContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectContributionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContributionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Only SUBMITTED contributions can be rejected"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Contribution not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reject a submitted contribution",
+        "tags": [
+          "Contributions"
+        ]
+      }
+    },
+    "/groups/{id}/cycles/{cycleId}/contributions": {
+      "get": {
+        "operationId": "ContributionsController_listCycleContributions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cycleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContributionListResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          },
+          "404": {
+            "description": "Group or cycle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List cycle contributions and summary for group members",
+        "tags": [
+          "Contributions",
+          "Cycles"
+        ]
+      }
+    },
+    "/cycles/{cycleId}/payout": {
+      "post": {
+        "operationId": "PayoutsController_createPayout",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cycle closed, payout already exists, or invalid proof scope"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Cycle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create payout for an open cycle",
+        "tags": [
+          "Payouts"
+        ]
+      },
+      "get": {
+        "operationId": "PayoutsController_getCyclePayout",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active group membership required"
+          },
+          "404": {
+            "description": "Cycle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get payout for cycle if available",
+        "tags": [
+          "Payouts",
+          "Cycles"
+        ]
+      }
+    },
+    "/payouts/{id}/confirm": {
+      "patch": {
+        "operationId": "PayoutsController_confirmPayout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payout state or strict payout checks failed"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Payout not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm a pending payout",
+        "tags": [
+          "Payouts"
+        ]
+      }
+    },
+    "/cycles/{cycleId}/close": {
+      "post": {
+        "operationId": "PayoutsController_closeCycle",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cycle is closed or payout is not confirmed"
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          },
+          "403": {
+            "description": "Active admin membership required"
+          },
+          "404": {
+            "description": "Cycle not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close cycle after payout is confirmed",
+        "tags": [
+          "Payouts"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Equb API",
+    "description": "Equb backend API documentation",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": ""
+    },
+    {
+      "name": "Groups",
+      "description": ""
+    },
+    {
+      "name": "Members",
+      "description": ""
+    },
+    {
+      "name": "Cycles",
+      "description": ""
+    },
+    {
+      "name": "Contributions",
+      "description": ""
+    },
+    {
+      "name": "Payouts",
+      "description": ""
+    },
+    {
+      "name": "Files",
+      "description": ""
+    },
+    {
+      "name": "Devices",
+      "description": ""
+    },
+    {
+      "name": "Notifications",
+      "description": ""
+    },
+    {
+      "name": "System",
+      "description": ""
+    }
+  ],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "RegisterDeviceTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "IOS",
+              "ANDROID",
+              "WEB"
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ]
+      },
+      "DeviceTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "IOS",
+              "ANDROID",
+              "WEB"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "token",
+          "platform",
+          "isActive",
+          "lastSeenAt",
+          "createdAt"
+        ]
+      },
+      "NotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "object",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MEMBER_JOINED",
+              "CONTRIBUTION_SUBMITTED",
+              "CONTRIBUTION_CONFIRMED",
+              "CONTRIBUTION_REJECTED",
+              "PAYOUT_CONFIRMED",
+              "DUE_REMINDER"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "dataJson": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNREAD",
+              "READ"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "readAt": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "title",
+          "body",
+          "status",
+          "createdAt"
+        ]
+      },
+      "NotificationListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponseDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ]
+      },
+      "RequestOtpDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+251911223344"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "RequestOtpResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "OTP sent"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "VerifyOtpDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+251911223344"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "phone",
+          "code"
+        ]
+      },
+      "AuthUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "phone"
+        ]
+      },
+      "AuthTokensResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserResponseDto"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "user"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LogoutDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LogoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "CreateGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Family Equb"
+          },
+          "contributionAmount": {
+            "type": "number",
+            "example": 500
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "MONTHLY"
+            ],
+            "example": "MONTHLY"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-03-01"
+          },
+          "currency": {
+            "type": "string",
+            "example": "ETB"
+          }
+        },
+        "required": [
+          "name",
+          "contributionAmount",
+          "frequency",
+          "startDate"
+        ]
+      },
+      "CurrentMembershipResponseDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "MEMBER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "INVITED",
+              "ACTIVE",
+              "LEFT",
+              "REMOVED"
+            ]
+          }
+        },
+        "required": [
+          "role",
+          "status"
+        ]
+      },
+      "GroupDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "contributionAmount": {
+            "type": "number"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "MONTHLY"
+            ]
+          },
+          "startDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ]
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "strictPayout": {
+            "type": "boolean"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/CurrentMembershipResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "currency",
+          "contributionAmount",
+          "frequency",
+          "startDate",
+          "status",
+          "createdByUserId",
+          "createdAt",
+          "strictPayout",
+          "timezone",
+          "membership"
+        ]
+      },
+      "GroupSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "contributionAmount": {
+            "type": "number"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "MONTHLY"
+            ]
+          },
+          "startDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "currency",
+          "contributionAmount",
+          "frequency",
+          "startDate",
+          "status"
+        ]
+      },
+      "JoinGroupDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "A1B2C3D4"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "GroupJoinResponseDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "MEMBER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "INVITED",
+              "ACTIVE",
+              "LEFT",
+              "REMOVED"
+            ]
+          },
+          "joinedAt": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "groupId",
+          "role",
+          "status"
+        ]
+      },
+      "CreateInviteDto": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-04-01T00:00:00.000Z"
+          },
+          "maxUses": {
+            "type": "number",
+            "example": 20
+          }
+        }
+      },
+      "InviteCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "joinUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "joinUrl"
+        ]
+      },
+      "MemberProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "phone"
+        ]
+      },
+      "GroupMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/MemberProfileResponseDto"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "MEMBER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "INVITED",
+              "ACTIVE",
+              "LEFT",
+              "REMOVED"
+            ]
+          },
+          "payoutPosition": {
+            "type": "object",
+            "nullable": true
+          },
+          "joinedAt": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "user",
+          "role",
+          "status"
+        ]
+      },
+      "UpdateMemberRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "MEMBER"
+            ],
+            "example": "ADMIN"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "UpdateMemberStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "LEFT",
+              "REMOVED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "PayoutOrderItemDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payoutPosition": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "userId",
+          "payoutPosition"
+        ]
+      },
+      "GenerateCyclesDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "default": 1,
+            "minimum": 1,
+            "maximum": 12
+          }
+        }
+      },
+      "CyclePayoutUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "phone"
+        ]
+      },
+      "GroupCycleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "cycleNo": {
+            "type": "number"
+          },
+          "dueDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "payoutUserId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ]
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "payoutUser": {
+            "$ref": "#/components/schemas/CyclePayoutUserResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "cycleNo",
+          "dueDate",
+          "payoutUserId",
+          "status",
+          "createdByUserId",
+          "createdAt",
+          "payoutUser"
+        ]
+      },
+      "SignedUploadDto": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "contribution_proof",
+              "payout_proof"
+            ],
+            "example": "contribution_proof"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cycleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentType": {
+            "type": "string",
+            "example": "image/jpeg"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "proof.jpg"
+          }
+        },
+        "required": [
+          "purpose",
+          "groupId",
+          "cycleId",
+          "contentType",
+          "fileName"
+        ]
+      },
+      "SubmitContributionDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 500
+          },
+          "proofFileKey": {
+            "type": "string"
+          },
+          "paymentRef": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "ContributionUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "object",
+            "nullable": true
+          },
+          "phone": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ContributionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "cycleId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "SUBMITTED",
+              "CONFIRMED",
+              "REJECTED"
+            ]
+          },
+          "proofFileKey": {
+            "type": "object",
+            "nullable": true
+          },
+          "paymentRef": {
+            "type": "object",
+            "nullable": true
+          },
+          "note": {
+            "type": "object",
+            "nullable": true
+          },
+          "submittedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "confirmedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "rejectedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "rejectReason": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/ContributionUserResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "cycleId",
+          "userId",
+          "amount",
+          "status",
+          "createdAt",
+          "user"
+        ]
+      },
+      "ConfirmContributionDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "RejectContributionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ContributionListSummaryDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "submitted": {
+            "type": "number"
+          },
+          "confirmed": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "pending",
+          "submitted",
+          "confirmed",
+          "rejected"
+        ]
+      },
+      "ContributionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContributionResponseDto"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ContributionListSummaryDto"
+          }
+        },
+        "required": [
+          "items",
+          "summary"
+        ]
+      },
+      "CreatePayoutDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 500
+          },
+          "proofFileKey": {
+            "type": "string"
+          },
+          "paymentRef": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "PayoutUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "object",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "phone"
+        ]
+      },
+      "PayoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "cycleId": {
+            "type": "string"
+          },
+          "toUserId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED"
+            ]
+          },
+          "proofFileKey": {
+            "type": "object",
+            "nullable": true
+          },
+          "paymentRef": {
+            "type": "object",
+            "nullable": true
+          },
+          "note": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdByUserId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "confirmedByUserId": {
+            "type": "object",
+            "nullable": true
+          },
+          "confirmedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "toUser": {
+            "$ref": "#/components/schemas/PayoutUserResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "cycleId",
+          "toUserId",
+          "amount",
+          "status",
+          "createdByUserId",
+          "createdAt",
+          "toUser"
+        ]
+      },
+      "ConfirmPayoutDto": {
+        "type": "object",
+        "properties": {
+          "proofFileKey": {
+            "type": "string"
+          },
+          "paymentRef": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

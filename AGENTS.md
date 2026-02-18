@@ -25,6 +25,10 @@
 - Prefer small diffs and incremental commits.
 - No business logic in controllers: use services + use-cases.
 - Always create/extend DTOs, never accept `any`.
+- Every controller endpoint must include Swagger decorators at minimum:
+  - `@ApiOperation`
+  - success response decorator (`@ApiOkResponse`/equivalent)
+  - auth/error response decorators where applicable (`401/403/400/404`)
 - Every write endpoint must:
   - validate input
   - enforce auth + role checks

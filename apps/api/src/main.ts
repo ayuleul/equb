@@ -39,6 +39,16 @@ async function bootstrap() {
       .setDescription('Equb backend API documentation')
       .setVersion('1.0.0')
       .addBearerAuth()
+      .addTag('Auth')
+      .addTag('Groups')
+      .addTag('Members')
+      .addTag('Cycles')
+      .addTag('Contributions')
+      .addTag('Payouts')
+      .addTag('Files')
+      .addTag('Devices')
+      .addTag('Notifications')
+      .addTag('System')
       .build();
 
     const document = SwaggerModule.createDocument(app, config);

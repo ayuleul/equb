@@ -9,11 +9,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -26,9 +30,10 @@ import { CreatePayoutDto } from './dto/create-payout.dto';
 import { PayoutResponseDto } from './entities/payouts.entities';
 import { PayoutsService } from './payouts.service';
 
-@ApiTags('payouts')
+@ApiTags('Payouts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Controller()
 export class PayoutsController {
   constructor(private readonly payoutsService: PayoutsService) {}
@@ -38,6 +43,11 @@ export class PayoutsController {
   @ApiOperation({ summary: 'Create payout for an open cycle' })
   @ApiBody({ type: CreatePayoutDto, required: false })
   @ApiOkResponse({ type: PayoutResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Cycle closed, payout already exists, or invalid proof scope',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
   createPayout(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
@@ -51,6 +61,11 @@ export class PayoutsController {
   @ApiOperation({ summary: 'Confirm a pending payout' })
   @ApiBody({ type: ConfirmPayoutDto, required: false })
   @ApiOkResponse({ type: PayoutResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Payout state or strict payout checks failed',
+  })
+  @ApiNotFoundResponse({ description: 'Payout not found' })
   confirmPayout(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) payoutId: string,
@@ -70,6 +85,11 @@ export class PayoutsController {
       },
     },
   })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Cycle is closed or payout is not confirmed',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
   closeCycle(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
@@ -79,8 +99,11 @@ export class PayoutsController {
 
   @Get('cycles/:cycleId/payout')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Cycles')
   @ApiOperation({ summary: 'Get payout for cycle if available' })
   @ApiOkResponse({ type: PayoutResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
   getCyclePayout(
     @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
   ): Promise<PayoutResponseDto | null> {

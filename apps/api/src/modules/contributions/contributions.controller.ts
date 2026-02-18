@@ -9,11 +9,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -30,9 +34,10 @@ import {
 } from './entities/contributions.entities';
 import { ContributionsService } from './contributions.service';
 
-@ApiTags('contributions')
+@ApiTags('Contributions')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Controller()
 export class ContributionsController {
   constructor(private readonly contributionsService: ContributionsService) {}
@@ -43,6 +48,13 @@ export class ContributionsController {
   })
   @ApiBody({ type: SubmitContributionDto })
   @ApiOkResponse({ type: ContributionResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Active membership required for the cycle group',
+  })
+  @ApiBadRequestResponse({
+    description: 'Cycle closed or invalid proof key scope',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
   submitContribution(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
@@ -60,6 +72,11 @@ export class ContributionsController {
   @ApiOperation({ summary: 'Confirm a submitted contribution' })
   @ApiBody({ type: ConfirmContributionDto })
   @ApiOkResponse({ type: ContributionResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Only SUBMITTED contributions can be confirmed',
+  })
+  @ApiNotFoundResponse({ description: 'Contribution not found' })
   confirmContribution(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) contributionId: string,
@@ -77,6 +94,11 @@ export class ContributionsController {
   @ApiOperation({ summary: 'Reject a submitted contribution' })
   @ApiBody({ type: RejectContributionDto })
   @ApiOkResponse({ type: ContributionResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Only SUBMITTED contributions can be rejected',
+  })
+  @ApiNotFoundResponse({ description: 'Contribution not found' })
   rejectContribution(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) contributionId: string,
@@ -91,10 +113,13 @@ export class ContributionsController {
 
   @Get('groups/:id/cycles/:cycleId/contributions')
   @UseGuards(GroupMemberGuard)
+  @ApiTags('Cycles')
   @ApiOperation({
     summary: 'List cycle contributions and summary for group members',
   })
   @ApiOkResponse({ type: ContributionListResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiNotFoundResponse({ description: 'Group or cycle not found' })
   listCycleContributions(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,

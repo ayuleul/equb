@@ -1,11 +1,15 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -15,9 +19,10 @@ import { SignedDownloadDto } from './dto/signed-download.dto';
 import { SignedUploadDto } from './dto/signed-upload.dto';
 import { FilesService } from './files.service';
 
-@ApiTags('files')
+@ApiTags('Files')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Controller('files')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
@@ -35,6 +40,14 @@ export class FilesController {
       },
     },
   })
+  @ApiForbiddenResponse({
+    description:
+      'User is not authorized to upload for this group/cycle/purpose',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid file metadata or unsupported upload purpose',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found for group' })
   createSignedUpload(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: SignedUploadDto,
@@ -54,6 +67,10 @@ export class FilesController {
       },
     },
   })
+  @ApiForbiddenResponse({
+    description: 'Active membership required for key scope',
+  })
+  @ApiBadRequestResponse({ description: 'Invalid key format' })
   createSignedDownload(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: SignedDownloadDto,

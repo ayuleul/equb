@@ -10,11 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -29,17 +33,20 @@ import {
 } from './entities/notifications.entities';
 import { NotificationsService } from './notifications.service';
 
-@ApiTags('notifications')
+@ApiTags('Notifications')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Controller()
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post('devices/register-token')
+  @ApiTags('Devices')
   @ApiOperation({ summary: 'Register or refresh a device push token' })
   @ApiBody({ type: RegisterDeviceTokenDto })
   @ApiOkResponse({ type: DeviceTokenResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid token or platform payload' })
   registerDeviceToken(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: RegisterDeviceTokenDto,
@@ -50,6 +57,7 @@ export class NotificationsController {
   @Get('notifications')
   @ApiOperation({ summary: 'List current user notifications' })
   @ApiOkResponse({ type: NotificationListResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid pagination or status filter' })
   listNotifications(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() dto: ListNotificationsDto,
@@ -60,6 +68,10 @@ export class NotificationsController {
   @Patch('notifications/:id/read')
   @ApiOperation({ summary: 'Mark one notification as read' })
   @ApiOkResponse({ type: NotificationResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Only notification owner can mark as read',
+  })
+  @ApiNotFoundResponse({ description: 'Notification not found' })
   markNotificationRead(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) notificationId: string,
