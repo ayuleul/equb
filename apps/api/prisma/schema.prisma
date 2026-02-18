@@ -7,6 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum GroupFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum GroupStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+  LEFT
+  REMOVED
+}
+
 model User {
   id            String         @id @default(cuid())
   phone         String         @unique
@@ -14,6 +36,9 @@ model User {
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  createdGroups EqubGroup[]    @relation("GroupCreator")
+  memberships   EqubMember[]
+  createdInvites InviteCode[]  @relation("InviteCreator")
 }
 
 model OtpCode {
@@ -39,14 +64,68 @@ model RefreshToken {
   @@index([userId])
 }
 
+model EqubGroup {
+  id                 String          @id @default(uuid())
+  name               String
+  currency           String          @default("ETB")
+  contributionAmount Int
+  frequency          GroupFrequency
+  startDate          DateTime        @db.Date
+  status             GroupStatus     @default(ACTIVE)
+  createdByUserId    String
+  createdAt          DateTime        @default(now())
+  createdByUser      User            @relation("GroupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  members            EqubMember[]
+  inviteCodes        InviteCode[]
+  auditLogs          AuditLog[]
+
+  @@index([createdByUserId])
+}
+
+model EqubMember {
+  id             String       @id @default(uuid())
+  groupId        String
+  userId         String
+  role           MemberRole   @default(MEMBER)
+  status         MemberStatus @default(INVITED)
+  payoutPosition Int?
+  joinedAt       DateTime?
+  createdAt      DateTime     @default(now())
+  group          EqubGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId, status, role])
+}
+
+model InviteCode {
+  id              String    @id @default(uuid())
+  groupId         String
+  code            String    @unique
+  createdByUserId String
+  expiresAt       DateTime?
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  isRevoked       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  group           EqubGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdByUser   User      @relation("InviteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+}
+
 model AuditLog {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
+  groupId     String?
   action      String
   actorUserId String?
   metadata    Json?
-  createdAt   DateTime @default(now())
-  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  actorUser   User?      @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  group       EqubGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
+  @@index([groupId])
   @@index([actorUserId])
   @@index([action, createdAt(sort: Desc)])
 }

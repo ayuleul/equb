@@ -1,0 +1,566 @@
+import { BadRequestException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  GroupFrequency,
+  GroupStatus,
+  MemberRole,
+  MemberStatus,
+} from '@prisma/client';
+
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/common/prisma/prisma.service';
+import { AuthenticatedUser } from '../src/common/types/authenticated-user.type';
+import { GroupsController } from '../src/modules/groups/groups.controller';
+
+type UserRecord = {
+  id: string;
+  phone: string;
+  fullName: string | null;
+  createdAt: Date;
+};
+
+type GroupRecord = {
+  id: string;
+  name: string;
+  currency: string;
+  contributionAmount: number;
+  frequency: GroupFrequency;
+  startDate: Date;
+  status: GroupStatus;
+  createdByUserId: string;
+  createdAt: Date;
+};
+
+type MemberRecord = {
+  id: string;
+  groupId: string;
+  userId: string;
+  role: MemberRole;
+  status: MemberStatus;
+  payoutPosition: number | null;
+  joinedAt: Date | null;
+  createdAt: Date;
+};
+
+type InviteRecord = {
+  id: string;
+  groupId: string;
+  code: string;
+  createdByUserId: string;
+  expiresAt: Date | null;
+  maxUses: number | null;
+  usedCount: number;
+  isRevoked: boolean;
+  createdAt: Date;
+};
+
+describe('Groups (e2e)', () => {
+  let groupsController: GroupsController;
+
+  const users: UserRecord[] = [
+    {
+      id: 'user_admin',
+      phone: '+251911111111',
+      fullName: 'Admin User',
+      createdAt: new Date(),
+    },
+    {
+      id: 'user_member',
+      phone: '+251922222222',
+      fullName: 'Member User',
+      createdAt: new Date(),
+    },
+  ];
+  const groups: GroupRecord[] = [];
+  const members: MemberRecord[] = [];
+  const invites: InviteRecord[] = [];
+
+  const actorAdmin: AuthenticatedUser = {
+    id: 'user_admin',
+    phone: '+251911111111',
+  };
+  const actorMember: AuthenticatedUser = {
+    id: 'user_member',
+    phone: '+251922222222',
+  };
+
+  const prismaMock = {
+    equbGroup: {
+      create: jest.fn(
+        ({
+          data,
+        }: {
+          data: {
+            name: string;
+            currency: string;
+            contributionAmount: number;
+            frequency: GroupFrequency;
+            startDate: Date;
+            createdByUserId: string;
+          };
+        }) => {
+          const record: GroupRecord = {
+            id: `group_${groups.length + 1}`,
+            name: data.name,
+            currency: data.currency,
+            contributionAmount: data.contributionAmount,
+            frequency: data.frequency,
+            startDate: data.startDate,
+            status: GroupStatus.ACTIVE,
+            createdByUserId: data.createdByUserId,
+            createdAt: new Date(),
+          };
+          groups.push(record);
+          return record;
+        },
+      ),
+      findUnique: jest.fn(
+        ({
+          where,
+          select,
+        }: {
+          where: { id: string };
+          select?: { id?: boolean; status?: boolean };
+        }) => {
+          const group = groups.find((item) => item.id === where.id) ?? null;
+          if (!group) {
+            return null;
+          }
+
+          if (select) {
+            return {
+              ...(select.id ? { id: group.id } : {}),
+              ...(select.status ? { status: group.status } : {}),
+            };
+          }
+
+          return group;
+        },
+      ),
+    },
+    equbMember: {
+      create: jest.fn(
+        ({
+          data,
+          select,
+        }: {
+          data: {
+            groupId: string;
+            userId: string;
+            role: MemberRole;
+            status: MemberStatus;
+            joinedAt: Date;
+          };
+          select?: {
+            role?: boolean;
+            status?: boolean;
+            joinedAt?: boolean;
+          };
+        }) => {
+          const record: MemberRecord = {
+            id: `member_${members.length + 1}`,
+            groupId: data.groupId,
+            userId: data.userId,
+            role: data.role,
+            status: data.status,
+            payoutPosition: null,
+            joinedAt: data.joinedAt,
+            createdAt: new Date(),
+          };
+
+          const duplicate = members.find(
+            (item) =>
+              item.groupId === record.groupId && item.userId === record.userId,
+          );
+          if (!duplicate) {
+            members.push(record);
+          }
+
+          if (select) {
+            return {
+              ...(select.role ? { role: record.role } : {}),
+              ...(select.status ? { status: record.status } : {}),
+              ...(select.joinedAt ? { joinedAt: record.joinedAt } : {}),
+            };
+          }
+
+          return record;
+        },
+      ),
+      findMany: jest.fn(
+        ({
+          where,
+          include,
+        }: {
+          where: { groupId?: string; userId?: string; status?: MemberStatus };
+          include?: {
+            group?: boolean;
+            user?: { select: { id: true; phone: true; fullName: true } };
+          };
+        }) => {
+          const filtered = members.filter((item) => {
+            const groupCheck = !where.groupId || item.groupId === where.groupId;
+            const userCheck = !where.userId || item.userId === where.userId;
+            const statusCheck = !where.status || item.status === where.status;
+            return groupCheck && userCheck && statusCheck;
+          });
+
+          return filtered.map((membership) => {
+            if (include?.group) {
+              return {
+                ...membership,
+                group: groups.find((group) => group.id === membership.groupId),
+              };
+            }
+
+            if (include?.user) {
+              return {
+                ...membership,
+                user: users.find((user) => user.id === membership.userId),
+              };
+            }
+
+            return membership;
+          });
+        },
+      ),
+      findUnique: jest.fn(
+        ({
+          where,
+          include,
+          select,
+        }: {
+          where: { groupId_userId: { groupId: string; userId: string } };
+          include?: {
+            user?: { select: { id: true; phone: true; fullName: true } };
+          };
+          select?: { status?: boolean; role?: boolean };
+        }) => {
+          const membership =
+            members.find(
+              (item) =>
+                item.groupId === where.groupId_userId.groupId &&
+                item.userId === where.groupId_userId.userId,
+            ) ?? null;
+
+          if (!membership) {
+            return null;
+          }
+
+          if (select) {
+            return {
+              ...(select.status ? { status: membership.status } : {}),
+              ...(select.role ? { role: membership.role } : {}),
+            };
+          }
+
+          if (include?.user) {
+            return {
+              ...membership,
+              user: users.find((user) => user.id === membership.userId) ?? null,
+            };
+          }
+
+          return membership;
+        },
+      ),
+      update: jest.fn(
+        ({
+          where,
+          data,
+          include,
+          select,
+        }: {
+          where: { id: string };
+          data: {
+            role?: MemberRole;
+            status?: MemberStatus;
+            joinedAt?: Date;
+          };
+          include?: {
+            user?: { select: { id: true; phone: true; fullName: true } };
+          };
+          select?: {
+            role?: boolean;
+            status?: boolean;
+            joinedAt?: boolean;
+          };
+        }) => {
+          const membership = members.find((item) => item.id === where.id);
+          if (!membership) {
+            throw new Error('Membership not found');
+          }
+
+          if (data.role) {
+            membership.role = data.role;
+          }
+          if (data.status) {
+            membership.status = data.status;
+          }
+          if (data.joinedAt) {
+            membership.joinedAt = data.joinedAt;
+          }
+
+          if (select) {
+            return {
+              ...(select.role ? { role: membership.role } : {}),
+              ...(select.status ? { status: membership.status } : {}),
+              ...(select.joinedAt ? { joinedAt: membership.joinedAt } : {}),
+            };
+          }
+
+          if (include?.user) {
+            return {
+              ...membership,
+              user: users.find((user) => user.id === membership.userId) ?? null,
+            };
+          }
+
+          return membership;
+        },
+      ),
+      count: jest.fn(
+        ({
+          where,
+        }: {
+          where: {
+            groupId: string;
+            role: MemberRole;
+            status: MemberStatus;
+          };
+        }) => {
+          return members.filter(
+            (item) =>
+              item.groupId === where.groupId &&
+              item.role === where.role &&
+              item.status === where.status,
+          ).length;
+        },
+      ),
+    },
+    inviteCode: {
+      create: jest.fn(
+        ({
+          data,
+          select,
+        }: {
+          data: {
+            groupId: string;
+            code: string;
+            createdByUserId: string;
+            expiresAt: Date | null;
+            maxUses: number | null;
+          };
+          select?: { code?: boolean };
+        }) => {
+          if (invites.some((invite) => invite.code === data.code)) {
+            throw new Error('Duplicate invite code');
+          }
+
+          const record: InviteRecord = {
+            id: `invite_${invites.length + 1}`,
+            groupId: data.groupId,
+            code: data.code,
+            createdByUserId: data.createdByUserId,
+            expiresAt: data.expiresAt,
+            maxUses: data.maxUses,
+            usedCount: 0,
+            isRevoked: false,
+            createdAt: new Date(),
+          };
+
+          invites.push(record);
+
+          if (select?.code) {
+            return { code: record.code };
+          }
+
+          return record;
+        },
+      ),
+      findUnique: jest.fn(
+        ({
+          where,
+          include,
+        }: {
+          where: { code: string };
+          include?: {
+            group?: {
+              select: {
+                id: true;
+                status: true;
+              };
+            };
+          };
+        }) => {
+          const invite =
+            invites.find((item) => item.code === where.code) ?? null;
+          if (!invite) {
+            return null;
+          }
+
+          if (include?.group) {
+            const group = groups.find((item) => item.id === invite.groupId);
+            return {
+              ...invite,
+              group: group ? { id: group.id, status: group.status } : null,
+            };
+          }
+
+          return invite;
+        },
+      ),
+      updateMany: jest.fn(
+        ({
+          where,
+          data,
+        }: {
+          where: { id: string; usedCount: number; isRevoked: boolean };
+          data: { usedCount: { increment: number } };
+        }) => {
+          const invite = invites.find(
+            (item) =>
+              item.id === where.id &&
+              item.usedCount === where.usedCount &&
+              item.isRevoked === where.isRevoked,
+          );
+
+          if (!invite) {
+            return { count: 0 };
+          }
+
+          invite.usedCount += data.usedCount.increment;
+          return { count: 1 };
+        },
+      ),
+    },
+    auditLog: {
+      create: jest.fn(() => ({ id: `audit_${Date.now()}` })),
+    },
+    $transaction: jest.fn(
+      (
+        arg:
+          | ((tx: PrismaService) => Promise<unknown>)
+          | Array<Promise<unknown>>,
+      ) => {
+        if (typeof arg === 'function') {
+          return arg(prismaMock);
+        }
+        return Promise.all(arg);
+      },
+    ),
+  } as unknown as PrismaService;
+
+  beforeAll(async () => {
+    process.env.INVITE_BASE_URL = 'http://localhost:3000';
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue(prismaMock)
+      .compile();
+
+    groupsController = moduleFixture.get<GroupsController>(GroupsController);
+  });
+
+  beforeEach(() => {
+    groups.splice(0, groups.length);
+    members.splice(0, members.length);
+    invites.splice(0, invites.length);
+    jest.clearAllMocks();
+  });
+
+  it('create group sets creator as ACTIVE ADMIN member', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Family Equb',
+      contributionAmount: 500,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-01',
+      currency: 'ETB',
+    });
+
+    expect(group.membership.role).toBe(MemberRole.ADMIN);
+    expect(group.membership.status).toBe(MemberStatus.ACTIVE);
+
+    const creatorMembership = members.find(
+      (item) => item.groupId === group.id && item.userId === actorAdmin.id,
+    );
+
+    expect(creatorMembership?.role).toBe(MemberRole.ADMIN);
+    expect(creatorMembership?.status).toBe(MemberStatus.ACTIVE);
+  });
+
+  it('create invite and join with code sets joining member ACTIVE', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Office Equb',
+      contributionAmount: 750,
+      frequency: GroupFrequency.WEEKLY,
+      startDate: '2026-03-02',
+      currency: 'ETB',
+    });
+
+    const invite = await groupsController.createInvite(actorAdmin, group.id, {
+      maxUses: 10,
+    });
+
+    const joinResult = await groupsController.joinGroup(actorMember, {
+      code: invite.code,
+    });
+
+    expect(joinResult.groupId).toBe(group.id);
+    expect(joinResult.status).toBe(MemberStatus.ACTIVE);
+
+    const joinedMembership = members.find(
+      (item) => item.groupId === group.id && item.userId === actorMember.id,
+    );
+
+    expect(joinedMembership?.status).toBe(MemberStatus.ACTIVE);
+  });
+
+  it('role updates work and last-admin protection is enforced', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Team Equb',
+      contributionAmount: 600,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-03',
+      currency: 'ETB',
+    });
+
+    const invite = await groupsController.createInvite(
+      actorAdmin,
+      group.id,
+      {},
+    );
+
+    await groupsController.joinGroup(actorMember, {
+      code: invite.code,
+    });
+
+    const promoted = await groupsController.updateMemberRole(
+      actorAdmin,
+      group.id,
+      actorMember.id,
+      {
+        role: MemberRole.ADMIN,
+      },
+    );
+
+    expect(promoted.role).toBe(MemberRole.ADMIN);
+
+    await groupsController.updateMemberRole(
+      actorAdmin,
+      group.id,
+      actorAdmin.id,
+      {
+        role: MemberRole.MEMBER,
+      },
+    );
+
+    await expect(
+      groupsController.updateMemberRole(actorMember, group.id, actorMember.id, {
+        role: MemberRole.MEMBER,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});

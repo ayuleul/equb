@@ -36,11 +36,19 @@
 - Refresh tokens stored hashed; rotate on refresh; allow revoke on logout.
 - Signed upload URLs must be scoped to authenticated user and group membership.
 - Use rate limiting on OTP endpoints.
+- Group role/status transitions must never leave a group with zero ACTIVE admins.
 
 ## Testing rules
 - Add unit tests for services that implement business rules.
 - Add e2e tests for auth and 1 critical group/cycle flow.
 - Migrations must be deterministic and checked in.
+
+## Group membership rules
+- Invite codes are uppercase URL-safe strings (8 chars) and must be unique.
+- Rejoin policy:
+  - `INVITED` -> can activate membership by joining with invite
+  - `LEFT` -> can rejoin with invite and become `ACTIVE`
+  - `REMOVED` -> cannot self-rejoin via invite code
 
 ## Folder conventions
 - `apps/api` is the canonical backend implementation path. If a legacy `server/` scaffold exists, treat it as deprecated bootstrap code and do not add new phase work there.
