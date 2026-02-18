@@ -11,6 +11,7 @@ import {
   GroupStatus,
   MemberRole,
   MemberStatus,
+  NotificationType,
   Prisma,
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -34,6 +35,7 @@ import {
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
 } from './entities/groups.entities';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class GroupsService {
@@ -42,6 +44,7 @@ export class GroupsService {
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
     private readonly dateService: DateService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createGroup(
@@ -384,6 +387,22 @@ export class GroupsService {
         code: normalizedCode,
       },
       result.groupId,
+    );
+
+    await this.notificationsService.notifyGroupAdmins(
+      result.groupId,
+      {
+        type: NotificationType.MEMBER_JOINED,
+        title: 'New member joined',
+        body: `${currentUser.phone} joined your Equb group.`,
+        data: {
+          groupId: result.groupId,
+          joinedUserId: currentUser.id,
+        },
+      },
+      {
+        excludeUserId: currentUser.id,
+      },
     );
 
     return result;

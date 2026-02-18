@@ -1,19 +1,24 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AuditModule } from './common/audit/audit.module';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { BullMqModule } from './common/queues/bullmq.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContributionsModule } from './modules/contributions/contributions.module';
 import { FilesModule } from './modules/files/files.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
+import { SystemModule } from './modules/system/system.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         name: 'default',
@@ -28,6 +33,9 @@ import { PayoutsModule } from './modules/payouts/payouts.module';
     ]),
     PrismaModule,
     AuditModule,
+    BullMqModule,
+    NotificationsModule,
+    SystemModule,
     AuthModule,
     GroupsModule,
     FilesModule,

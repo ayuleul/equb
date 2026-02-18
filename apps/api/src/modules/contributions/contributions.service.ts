@@ -8,12 +8,14 @@ import {
   ContributionStatus,
   MemberRole,
   MemberStatus,
+  NotificationType,
   Prisma,
 } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ConfirmContributionDto } from './dto/confirm-contribution.dto';
 import { RejectContributionDto } from './dto/reject-contribution.dto';
 import { SubmitContributionDto } from './dto/submit-contribution.dto';
@@ -40,6 +42,7 @@ export class ContributionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async submitContribution(
@@ -193,6 +196,23 @@ export class ContributionsService {
       cycle.groupId,
     );
 
+    await this.notificationsService.notifyGroupAdmins(
+      cycle.groupId,
+      {
+        type: NotificationType.CONTRIBUTION_SUBMITTED,
+        title: 'Contribution submitted',
+        body: `${currentUser.phone} submitted a contribution.`,
+        data: {
+          contributionId: contribution.id,
+          cycleId,
+          groupId: cycle.groupId,
+        },
+      },
+      {
+        excludeUserId: currentUser.id,
+      },
+    );
+
     return this.toContributionResponse(contribution, true);
   }
 
@@ -265,6 +285,18 @@ export class ContributionsService {
       contribution.groupId,
     );
 
+    await this.notificationsService.notifyUser(contribution.user.id, {
+      type: NotificationType.CONTRIBUTION_CONFIRMED,
+      title: 'Contribution confirmed',
+      body: 'Your contribution has been confirmed.',
+      groupId: contribution.groupId,
+      data: {
+        contributionId: contribution.id,
+        cycleId: contribution.cycleId,
+        groupId: contribution.groupId,
+      },
+    });
+
     return this.toContributionResponse(contribution, true);
   }
 
@@ -336,6 +368,19 @@ export class ContributionsService {
       },
       contribution.groupId,
     );
+
+    await this.notificationsService.notifyUser(contribution.user.id, {
+      type: NotificationType.CONTRIBUTION_REJECTED,
+      title: 'Contribution rejected',
+      body: 'Your contribution was rejected. Please review and resubmit.',
+      groupId: contribution.groupId,
+      data: {
+        contributionId: contribution.id,
+        cycleId: contribution.cycleId,
+        groupId: contribution.groupId,
+        reason: dto.reason,
+      },
+    });
 
     return this.toContributionResponse(contribution, true);
   }

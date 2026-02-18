@@ -7,6 +7,7 @@ import {
   ContributionStatus,
   CycleStatus,
   MemberStatus,
+  NotificationType,
   Prisma,
   PayoutStatus,
 } from '@prisma/client';
@@ -15,6 +16,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { isPayoutProofKeyScopedTo } from '../contributions/utils/proof-key.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ConfirmPayoutDto } from './dto/confirm-payout.dto';
 import { CreatePayoutDto } from './dto/create-payout.dto';
 import { PayoutResponseDto } from './entities/payouts.entities';
@@ -37,6 +39,7 @@ export class PayoutsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createPayout(
@@ -242,6 +245,18 @@ export class PayoutsService {
         return confirmedPayout;
       },
     );
+
+    await this.notificationsService.notifyGroupMembers(payout.groupId, {
+      type: NotificationType.PAYOUT_CONFIRMED,
+      title: 'Payout confirmed',
+      body: 'A payout was confirmed for the current cycle.',
+      groupId: payout.groupId,
+      data: {
+        payoutId: payout.id,
+        cycleId: payout.cycleId,
+        toUserId: payout.toUserId,
+      },
+    });
 
     return this.toPayoutResponse(payout);
   }

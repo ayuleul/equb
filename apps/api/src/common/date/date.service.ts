@@ -39,6 +39,33 @@ export class DateService {
     return new Date(Date.UTC(nextYear, normalizedNextMonthIndex, targetDay));
   }
 
+  isDueWithinNext24HoursOrToday(
+    dueDate: Date,
+    timezone: string,
+    reference: Date = new Date(),
+  ): boolean {
+    const resolvedTimezone = this.resolveTimezone(timezone);
+    const dueParts = this.extractDateParts(dueDate, resolvedTimezone);
+    const referenceParts = this.extractDateParts(reference, resolvedTimezone);
+
+    const dueDayUtc = Date.UTC(dueParts.year, dueParts.month - 1, dueParts.day);
+    const referenceDayUtc = Date.UTC(
+      referenceParts.year,
+      referenceParts.month - 1,
+      referenceParts.day,
+    );
+    const nextDayUtc = referenceDayUtc + ONE_DAY_MS;
+
+    return dueDayUtc >= referenceDayUtc && dueDayUtc <= nextDayUtc;
+  }
+
+  dateKey(date: Date, timezone: string): string {
+    const resolvedTimezone = this.resolveTimezone(timezone);
+    const parts = this.extractDateParts(date, resolvedTimezone);
+
+    return `${parts.year}-${this.pad(parts.month)}-${this.pad(parts.day)}`;
+  }
+
   private resolveTimezone(timezone: string | null | undefined): string {
     if (!timezone) {
       return DEFAULT_TIMEZONE;
@@ -72,5 +99,9 @@ export class DateService {
 
   private daysInMonth(year: number, monthIndex: number): number {
     return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  }
+
+  private pad(value: number): string {
+    return value.toString().padStart(2, '0');
   }
 }

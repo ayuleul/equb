@@ -1,11 +1,18 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
+import { HttpAdapterHost } from '@nestjs/core';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as Sentry from '@sentry/node';
 
 import { AppModule } from './app.module';
+import { SentryExceptionFilter } from './common/filters/sentry-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new ConsoleLogger('Bootstrap', {
+    json: true,
+    timestamp: true,
+  });
+  const app = await NestFactory.create(AppModule, { logger });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -14,6 +21,17 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  const sentryDsn = process.env.SENTRY_DSN;
+  if (sentryDsn) {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: process.env.NODE_ENV ?? 'development',
+    });
+
+    app.useGlobalFilters(new SentryExceptionFilter(app.get(HttpAdapterHost)));
+    logger.log('Sentry error reporting enabled');
+  }
 
   if ((process.env.NODE_ENV ?? 'development') !== 'production') {
     const config = new DocumentBuilder()

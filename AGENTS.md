@@ -81,6 +81,28 @@
 - Payout proof object key format is locked to:
   - `groups/<groupId>/cycles/<cycleId>/payouts/<uuid>_<sanitizedFileName>`
 
+## Notification and jobs rules
+- Notification types are locked to:
+  - `MEMBER_JOINED`
+  - `CONTRIBUTION_SUBMITTED`
+  - `CONTRIBUTION_CONFIRMED`
+  - `CONTRIBUTION_REJECTED`
+  - `PAYOUT_CONFIRMED`
+  - `DUE_REMINDER`
+- Event triggers (MVP):
+  - `MEMBER_JOINED` -> notify active group admins
+  - `CONTRIBUTION_SUBMITTED` -> notify active group admins
+  - `CONTRIBUTION_CONFIRMED` / `CONTRIBUTION_REJECTED` -> notify contributor
+  - `PAYOUT_CONFIRMED` -> notify active group members
+  - `DUE_REMINDER` -> notify active members missing `SUBMITTED|CONFIRMED` contribution
+- Reminder scheduler runs daily at `09:00` in `Africa/Addis_Ababa` and enqueues a reminder-scan job.
+- Reminder dedup strategy is locked to one reminder per `(userId, cycleId, type, local-date)` using `dataJson.dedupKey` and queue `jobId`.
+- FCM config method is env-based (no JSON file path):
+  - `FCM_DISABLED`
+  - `FCM_PROJECT_ID`
+  - `FCM_CLIENT_EMAIL`
+  - `FCM_PRIVATE_KEY` (supports escaped newlines)
+
 ## Folder conventions
 - `apps/api` is the canonical backend implementation path. If a legacy `server/` scaffold exists, treat it as deprecated bootstrap code and do not add new phase work there.
 - `apps/api/src/modules/<module>/`
@@ -118,6 +140,7 @@
 - `.env.example` for API (apps/api/.env.example) includes:
   - DATABASE_URL
   - REDIS_URL
+  - JOBS_DISABLED
   - JWT_ACCESS_SECRET
   - JWT_REFRESH_SECRET
   - OTP_TTL_SECONDS
@@ -127,3 +150,8 @@
   - S3_SECRET_KEY
   - S3_REGION
   - S3_FORCE_PATH_STYLE
+  - FCM_DISABLED
+  - FCM_PROJECT_ID
+  - FCM_CLIENT_EMAIL
+  - FCM_PRIVATE_KEY
+  - SENTRY_DSN

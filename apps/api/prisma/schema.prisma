@@ -46,6 +46,26 @@ enum PayoutStatus {
   CONFIRMED
 }
 
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum NotificationType {
+  MEMBER_JOINED
+  CONTRIBUTION_SUBMITTED
+  CONTRIBUTION_CONFIRMED
+  CONTRIBUTION_REJECTED
+  PAYOUT_CONFIRMED
+  DUE_REMINDER
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
 model User {
   id             String         @id @default(cuid())
   phone          String         @unique
@@ -65,6 +85,8 @@ model User {
   createdPayouts Payout[] @relation("PayoutCreatedBy")
   confirmedPayouts Payout[] @relation("PayoutConfirmedBy")
   closedCycles EqubCycle[] @relation("CycleClosedBy")
+  deviceTokens      DeviceToken[]
+  notifications     Notification[]
 }
 
 model OtpCode {
@@ -109,6 +131,7 @@ model EqubGroup {
   cycles             EqubCycle[]
   contributions      Contribution[]
   payouts            Payout[]
+  notifications      Notification[]
 
   @@index([createdByUserId])
 }
@@ -233,4 +256,35 @@ model AuditLog {
   @@index([groupId])
   @@index([actorUserId])
   @@index([action, createdAt(sort: Desc)])
+}
+
+model DeviceToken {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String
+  platform   Platform
+  isActive   Boolean  @default(true)
+  lastSeenAt DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId, isActive])
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String
+  groupId   String?
+  type      NotificationType
+  title     String
+  body      String
+  dataJson  Json?
+  status    NotificationStatus @default(UNREAD)
+  createdAt DateTime           @default(now())
+  readAt    DateTime?
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     EqubGroup?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt(sort: Desc)])
 }
