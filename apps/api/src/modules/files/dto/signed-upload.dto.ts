@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
-enum UploadPurpose {
+export enum UploadPurpose {
   CONTRIBUTION_PROOF = 'contribution_proof',
+  PAYOUT_PROOF = 'payout_proof',
 }
 
 export class SignedUploadDto {

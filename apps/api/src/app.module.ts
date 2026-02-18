@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ContributionsModule } from './modules/contributions/contributions.module';
 import { FilesModule } from './modules/files/files.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { PayoutsModule } from './modules/payouts/payouts.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { GroupsModule } from './modules/groups/groups.module';
     GroupsModule,
     FilesModule,
     ContributionsModule,
+    PayoutsModule,
   ],
   providers: [
     {

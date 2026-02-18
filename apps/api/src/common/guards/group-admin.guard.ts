@@ -9,7 +9,7 @@ import { MemberRole, MemberStatus } from '@prisma/client';
 import { Request } from 'express';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthenticatedUser } from '../types/authenticated-user.type';
+import type { AuthenticatedUser } from '../types/authenticated-user.type';
 
 type RequestWithUserAndParams = Request & {
   user?: AuthenticatedUser;
@@ -25,32 +25,13 @@ export class GroupAdminGuard implements CanActivate {
       .switchToHttp()
       .getRequest<RequestWithUserAndParams>();
 
-    const idParam = request.params?.id;
     const userId = request.user?.id;
-
-    if (!idParam) {
-      throw new BadRequestException('Resource id is required');
-    }
 
     if (!userId) {
       throw new ForbiddenException('Authentication required');
     }
 
-    let groupId = idParam;
-    const isContributionRoute = request.path.includes('/contributions/');
-
-    if (isContributionRoute) {
-      const contribution = await this.prisma.contribution.findUnique({
-        where: { id: idParam },
-        select: { groupId: true },
-      });
-
-      if (!contribution) {
-        throw new ForbiddenException('Contribution not found');
-      }
-
-      groupId = contribution.groupId;
-    }
+    const groupId = await this.resolveGroupId(request);
 
     const membership = await this.prisma.equbMember.findUnique({
       where: {
@@ -74,5 +55,58 @@ export class GroupAdminGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private async resolveGroupId(
+    request: RequestWithUserAndParams,
+  ): Promise<string> {
+    const params = request.params ?? {};
+
+    const cycleId = params.cycleId;
+    if (cycleId) {
+      const cycle = await this.prisma.equbCycle.findUnique({
+        where: { id: cycleId },
+        select: { groupId: true },
+      });
+
+      if (!cycle) {
+        throw new ForbiddenException('Cycle not found');
+      }
+
+      return cycle.groupId;
+    }
+
+    const idParam = params.id;
+    if (!idParam) {
+      throw new BadRequestException('Resource id is required');
+    }
+
+    if (request.path.includes('/contributions/')) {
+      const contribution = await this.prisma.contribution.findUnique({
+        where: { id: idParam },
+        select: { groupId: true },
+      });
+
+      if (!contribution) {
+        throw new ForbiddenException('Contribution not found');
+      }
+
+      return contribution.groupId;
+    }
+
+    if (request.path.includes('/payouts/')) {
+      const payout = await this.prisma.payout.findUnique({
+        where: { id: idParam },
+        select: { groupId: true },
+      });
+
+      if (!payout) {
+        throw new ForbiddenException('Payout not found');
+      }
+
+      return payout.groupId;
+    }
+
+    return idParam;
   }
 }

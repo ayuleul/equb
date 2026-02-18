@@ -66,8 +66,20 @@
   - submit/resubmit: `PENDING|REJECTED|SUBMITTED -> SUBMITTED`
   - confirm: `SUBMITTED -> CONFIRMED`
   - reject: `SUBMITTED -> REJECTED`
-  - `CONFIRMED` contributions are immutable (no resubmit/update).
+- `CONFIRMED` contributions are immutable (no resubmit/update).
 - Privacy rule: contribution list responses expose member phone numbers only to ACTIVE admins; non-admin members receive `phone = null`.
+
+## Payout rules
+- Payout recipient is strict: payout `toUserId` must match `EqubCycle.payoutUserId` (no override in MVP).
+- Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `CONFIRMED` contribution for the cycle.
+- In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
+- Cycle closure prerequisites:
+  - `EqubCycle` must be `OPEN`
+  - a payout must exist for the cycle
+  - payout must be `CONFIRMED`
+  - cycle transition is one-way: `OPEN -> CLOSED`
+- Payout proof object key format is locked to:
+  - `groups/<groupId>/cycles/<cycleId>/payouts/<uuid>_<sanitizedFileName>`
 
 ## Folder conventions
 - `apps/api` is the canonical backend implementation path. If a legacy `server/` scaffold exists, treat it as deprecated bootstrap code and do not add new phase work there.

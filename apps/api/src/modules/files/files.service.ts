@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MemberStatus } from '@prisma/client';
+import { MemberRole, MemberStatus } from '@prisma/client';
 import {
   GetObjectCommand,
   PutObjectCommand,
@@ -16,13 +16,14 @@ import { randomUUID } from 'crypto';
 
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
-import { SignedDownloadDto } from './dto/signed-download.dto';
-import { SignedUploadDto } from './dto/signed-upload.dto';
 import {
   buildContributionProofPrefix,
-  parseContributionProofKey,
+  buildPayoutProofPrefix,
+  parseGroupScopedStorageKey,
   sanitizeFileName,
 } from '../contributions/utils/proof-key.util';
+import { SignedDownloadDto } from './dto/signed-download.dto';
+import { SignedUploadDto, UploadPurpose } from './dto/signed-upload.dto';
 
 @Injectable()
 export class FilesService {
@@ -63,18 +64,37 @@ export class FilesService {
           userId: currentUser.id,
         },
       },
-      select: { status: true },
+      select: { status: true, role: true },
     });
 
     if (!membership || membership.status !== MemberStatus.ACTIVE) {
       throw new ForbiddenException('Active group membership is required');
     }
 
-    const key = `${buildContributionProofPrefix(
-      dto.groupId,
-      dto.cycleId,
-      currentUser.id,
-    )}${randomUUID()}_${sanitizeFileName(dto.fileName)}`;
+    let keyPrefix = '';
+
+    if (dto.purpose === UploadPurpose.CONTRIBUTION_PROOF) {
+      keyPrefix = buildContributionProofPrefix(
+        dto.groupId,
+        dto.cycleId,
+        currentUser.id,
+      );
+    }
+
+    if (dto.purpose === UploadPurpose.PAYOUT_PROOF) {
+      if (membership.role !== MemberRole.ADMIN) {
+        throw new ForbiddenException(
+          'Only admins can upload payout proof files',
+        );
+      }
+      keyPrefix = buildPayoutProofPrefix(dto.groupId, dto.cycleId);
+    }
+
+    if (!keyPrefix) {
+      throw new BadRequestException('Unsupported upload purpose');
+    }
+
+    const key = `${keyPrefix}${randomUUID()}_${sanitizeFileName(dto.fileName)}`;
 
     const command = new PutObjectCommand({
       Bucket: this.s3Bucket,
@@ -97,7 +117,7 @@ export class FilesService {
     currentUser: AuthenticatedUser,
     dto: SignedDownloadDto,
   ): Promise<{ downloadUrl: string; expiresInSeconds: number }> {
-    const parsedKey = parseContributionProofKey(dto.key);
+    const parsedKey = parseGroupScopedStorageKey(dto.key);
 
     if (!parsedKey) {
       throw new BadRequestException('Invalid file key format');

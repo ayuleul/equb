@@ -9,7 +9,7 @@ import { MemberStatus } from '@prisma/client';
 import { Request } from 'express';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { AuthenticatedUser } from '../types/authenticated-user.type';
+import type { AuthenticatedUser } from '../types/authenticated-user.type';
 
 type RequestWithUserAndParams = Request & {
   user?: AuthenticatedUser;
@@ -25,16 +25,12 @@ export class GroupMemberGuard implements CanActivate {
       .switchToHttp()
       .getRequest<RequestWithUserAndParams>();
 
-    const groupId = request.params?.id;
     const userId = request.user?.id;
-
-    if (!groupId) {
-      throw new BadRequestException('Group id is required');
-    }
-
     if (!userId) {
       throw new ForbiddenException('Authentication required');
     }
+
+    const groupId = await this.resolveGroupId(request);
 
     const membership = await this.prisma.equbMember.findUnique({
       where: {
@@ -53,5 +49,30 @@ export class GroupMemberGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private async resolveGroupId(
+    request: RequestWithUserAndParams,
+  ): Promise<string> {
+    const groupIdFromRoute = request.params?.id;
+    if (groupIdFromRoute) {
+      return groupIdFromRoute;
+    }
+
+    const cycleId = request.params?.cycleId;
+    if (!cycleId) {
+      throw new BadRequestException('Group or cycle identifier is required');
+    }
+
+    const cycle = await this.prisma.equbCycle.findUnique({
+      where: { id: cycleId },
+      select: { groupId: true },
+    });
+
+    if (!cycle) {
+      throw new ForbiddenException('Cycle not found');
+    }
+
+    return cycle.groupId;
   }
 }

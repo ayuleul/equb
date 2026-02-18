@@ -1,0 +1,353 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ContributionStatus,
+  CycleStatus,
+  MemberStatus,
+  Prisma,
+  PayoutStatus,
+} from '@prisma/client';
+
+import { AuditService } from '../../common/audit/audit.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
+import { isPayoutProofKeyScopedTo } from '../contributions/utils/proof-key.util';
+import { ConfirmPayoutDto } from './dto/confirm-payout.dto';
+import { CreatePayoutDto } from './dto/create-payout.dto';
+import { PayoutResponseDto } from './entities/payouts.entities';
+import { calculateStrictPayoutEligibility } from './utils/strict-payout.util';
+
+type PayoutWithUser = Prisma.PayoutGetPayload<{
+  include: {
+    toUser: {
+      select: {
+        id: true;
+        fullName: true;
+        phone: true;
+      };
+    };
+  };
+}>;
+
+@Injectable()
+export class PayoutsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
+
+  async createPayout(
+    currentUser: AuthenticatedUser,
+    cycleId: string,
+    dto: CreatePayoutDto,
+  ): Promise<PayoutResponseDto> {
+    const payout = await this.prisma.$transaction(async (tx) => {
+      const cycle = await tx.equbCycle.findUnique({
+        where: { id: cycleId },
+        include: {
+          group: {
+            select: {
+              contributionAmount: true,
+            },
+          },
+        },
+      });
+
+      if (!cycle) {
+        throw new NotFoundException('Cycle not found');
+      }
+
+      if (cycle.status !== CycleStatus.OPEN) {
+        throw new BadRequestException(
+          'Payout can only be created for open cycle',
+        );
+      }
+
+      if (
+        dto.proofFileKey &&
+        !isPayoutProofKeyScopedTo(dto.proofFileKey, cycle.groupId, cycle.id)
+      ) {
+        throw new BadRequestException(
+          'proofFileKey does not match payout scope',
+        );
+      }
+
+      return tx.payout.create({
+        data: {
+          groupId: cycle.groupId,
+          cycleId: cycle.id,
+          toUserId: cycle.payoutUserId,
+          amount: dto.amount ?? cycle.group.contributionAmount,
+          status: PayoutStatus.PENDING,
+          proofFileKey: dto.proofFileKey ?? null,
+          paymentRef: dto.paymentRef ?? null,
+          note: dto.note ?? null,
+          createdByUserId: currentUser.id,
+        },
+        include: {
+          toUser: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+        },
+      });
+    });
+
+    await this.auditService.log(
+      'PAYOUT_CREATED',
+      currentUser.id,
+      {
+        payoutId: payout.id,
+        cycleId,
+        toUserId: payout.toUserId,
+        amount: payout.amount,
+      },
+      payout.groupId,
+    );
+
+    return this.toPayoutResponse(payout);
+  }
+
+  async confirmPayout(
+    currentUser: AuthenticatedUser,
+    payoutId: string,
+    dto: ConfirmPayoutDto,
+  ): Promise<PayoutResponseDto> {
+    const payout = await this.prisma.$transaction(
+      async (tx): Promise<PayoutWithUser> => {
+        const existing = await tx.payout.findUnique({
+          where: { id: payoutId },
+          include: {
+            toUser: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
+            cycle: {
+              select: {
+                id: true,
+                groupId: true,
+                status: true,
+              },
+            },
+            group: {
+              select: {
+                strictPayout: true,
+              },
+            },
+          },
+        });
+
+        if (!existing) {
+          throw new NotFoundException('Payout not found');
+        }
+
+        if (existing.status !== PayoutStatus.PENDING) {
+          throw new BadRequestException('Only pending payout can be confirmed');
+        }
+
+        if (existing.cycle.status !== CycleStatus.OPEN) {
+          throw new BadRequestException('Cycle must be open to confirm payout');
+        }
+
+        if (
+          dto.proofFileKey &&
+          !isPayoutProofKeyScopedTo(
+            dto.proofFileKey,
+            existing.groupId,
+            existing.cycleId,
+          )
+        ) {
+          throw new BadRequestException(
+            'proofFileKey does not match payout scope',
+          );
+        }
+
+        const activeMemberIds = (
+          await tx.equbMember.findMany({
+            where: {
+              groupId: existing.groupId,
+              status: MemberStatus.ACTIVE,
+            },
+            select: { userId: true },
+          })
+        ).map((member) => member.userId);
+
+        const confirmedContributionUserIds = (
+          await tx.contribution.findMany({
+            where: {
+              cycleId: existing.cycleId,
+              status: ContributionStatus.CONFIRMED,
+            },
+            select: { userId: true },
+          })
+        ).map((contribution) => contribution.userId);
+
+        const strictEligibility = calculateStrictPayoutEligibility(
+          activeMemberIds,
+          confirmedContributionUserIds,
+        );
+
+        if (existing.group.strictPayout && !strictEligibility.eligible) {
+          throw new BadRequestException(
+            `Strict payout check failed. Missing confirmed contributions for ${strictEligibility.missingMemberIds.length} active member(s).`,
+          );
+        }
+
+        const confirmedPayout = await tx.payout.update({
+          where: { id: payoutId },
+          data: {
+            status: PayoutStatus.CONFIRMED,
+            proofFileKey: dto.proofFileKey ?? existing.proofFileKey,
+            paymentRef: dto.paymentRef ?? existing.paymentRef,
+            note: dto.note ?? existing.note,
+            confirmedByUserId: currentUser.id,
+            confirmedAt: new Date(),
+          },
+          include: {
+            toUser: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        await this.auditService.log(
+          'PAYOUT_CONFIRMED',
+          currentUser.id,
+          {
+            payoutId: confirmedPayout.id,
+            strictPayout: existing.group.strictPayout,
+            requiredActiveMemberCount:
+              strictEligibility.requiredMemberIds.length,
+            confirmedContributionCount:
+              strictEligibility.confirmedMemberIds.length,
+            missingContributionCount: strictEligibility.missingMemberIds.length,
+            missingMemberIds: strictEligibility.missingMemberIds,
+          },
+          confirmedPayout.groupId,
+        );
+
+        return confirmedPayout;
+      },
+    );
+
+    return this.toPayoutResponse(payout);
+  }
+
+  async closeCycle(
+    currentUser: AuthenticatedUser,
+    cycleId: string,
+  ): Promise<{ success: true }> {
+    const closedCycle = await this.prisma.$transaction(async (tx) => {
+      const cycle = await tx.equbCycle.findUnique({
+        where: {
+          id: cycleId,
+        },
+        include: {
+          payout: true,
+        },
+      });
+
+      if (!cycle) {
+        throw new NotFoundException('Cycle not found');
+      }
+
+      if (cycle.status !== CycleStatus.OPEN) {
+        throw new BadRequestException('Cycle is already closed');
+      }
+
+      if (!cycle.payout || cycle.payout.status !== PayoutStatus.CONFIRMED) {
+        throw new BadRequestException(
+          'Cycle can only be closed after payout is confirmed',
+        );
+      }
+
+      await tx.equbCycle.update({
+        where: {
+          id: cycleId,
+        },
+        data: {
+          status: CycleStatus.CLOSED,
+          closedAt: new Date(),
+          closedByUserId: currentUser.id,
+        },
+      });
+
+      return cycle;
+    });
+
+    await this.auditService.log(
+      'CYCLE_CLOSED',
+      currentUser.id,
+      {
+        cycleId,
+        payoutId: closedCycle.payout?.id,
+      },
+      closedCycle.groupId,
+    );
+
+    return { success: true };
+  }
+
+  async getCyclePayout(cycleId: string): Promise<PayoutResponseDto | null> {
+    const cycle = await this.prisma.equbCycle.findUnique({
+      where: {
+        id: cycleId,
+      },
+      include: {
+        payout: {
+          include: {
+            toUser: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cycle) {
+      throw new NotFoundException('Cycle not found');
+    }
+
+    if (!cycle.payout) {
+      return null;
+    }
+
+    return this.toPayoutResponse(cycle.payout);
+  }
+
+  private toPayoutResponse(payout: PayoutWithUser): PayoutResponseDto {
+    return {
+      id: payout.id,
+      groupId: payout.groupId,
+      cycleId: payout.cycleId,
+      toUserId: payout.toUserId,
+      amount: payout.amount,
+      status: payout.status,
+      proofFileKey: payout.proofFileKey,
+      paymentRef: payout.paymentRef,
+      note: payout.note,
+      createdByUserId: payout.createdByUserId,
+      createdAt: payout.createdAt,
+      confirmedByUserId: payout.confirmedByUserId,
+      confirmedAt: payout.confirmedAt,
+      toUser: payout.toUser,
+    };
+  }
+}
