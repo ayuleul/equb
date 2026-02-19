@@ -1,16 +1,22 @@
-# mobile
+# Equb Mobile (Flutter)
 
-A new Flutter project.
+## Setup
+```bash
+cd apps/mobile
+cp .env.example .env
+flutter pub get
+```
 
-## Getting Started
+## Run
+```bash
+flutter run
+```
 
-This project is a starting point for a Flutter application.
+## Codegen (Freezed / Json)
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Notes
+- Environment is loaded from `apps/mobile/.env` using `flutter_dotenv`.
+- `API_BASE_URL` is required at startup.

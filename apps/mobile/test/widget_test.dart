@@ -1,16 +1,31 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/src/app.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/app/app.dart';
+import 'package:mobile/app/bootstrap.dart';
+import 'package:mobile/app/router.dart';
 
 void main() {
-  testWidgets('shows config guidance when API_BASE_URL is not provided', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const ProviderScope(child: EqubApp()));
+  testWidgets('routes unauthenticated users to login', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapConfigProvider.overrideWithValue(
+            const AppBootstrapConfig(
+              apiBaseUrl: 'http://localhost:3000',
+              apiTimeoutMs: 15000,
+            ),
+          ),
+          authBootstrapProvider.overrideWith((ref) async => false),
+        ],
+        child: const EqubApp(),
+      ),
+    );
 
-    expect(find.text('Equb Configuration'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Login'), findsOneWidget);
     expect(
-      find.textContaining('API_BASE_URL is not configured'),
+      find.text('OTP login will be implemented in Phase 1.'),
       findsOneWidget,
     );
   });

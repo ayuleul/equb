@@ -11,7 +11,7 @@
 - Typecheck: `pnpm -C apps/api typecheck`
 - DB: `pnpm -C apps/api prisma migrate dev`
 - Mobile install: `flutter pub get` (in `apps/mobile`)
-- Mobile run: `flutter run --dart-define=API_BASE_URL=<url>` (in `apps/mobile`)
+- Mobile run: `flutter run` (in `apps/mobile`, loads `apps/mobile/.env`)
 - Mobile test: `flutter test` (in `apps/mobile`)
 - Mobile analyze: `flutter analyze` (in `apps/mobile`)
 
@@ -121,11 +121,12 @@
   - `entities/` (optional)
 - Shared guards/decorators in `apps/api/src/common/`
 - `apps/mobile` is the canonical Flutter client path.
-- `apps/mobile/lib/src/` structure:
-  - `core/` for config, networking, storage, logging
-  - `routing/` for GoRouter setup
-  - `features/<feature>/` for UI + data per domain
-  - `shared/widgets/` for reusable UI components
+- `apps/mobile/lib/` structure:
+  - `app/` for bootstrap, router, and theme
+  - `data/api/` for networking, token storage, and API errors
+  - `data/models/` for Freezed models
+  - `features/<feature>/` for feature screens and logic
+  - `shared/widgets/` and `shared/utils/` for reusable UI and helpers
 
 ## Phase delivery rule
 - Implement phases strictly in order (1 → 6).
@@ -172,8 +173,8 @@
 - Mobile env example: `apps/mobile/.env.example` must include `API_BASE_URL`.
 
 ## Mobile rules
-- Env strategy is locked to compile-time Dart defines:
-  - Use `String.fromEnvironment('API_BASE_URL')`
-  - Run with `--dart-define=API_BASE_URL=<url>`
+- Env strategy is locked to `flutter_dotenv`:
+  - Load `.env` at startup from `apps/mobile/.env`
+  - `API_BASE_URL` is required and must fail-fast if missing
 - Never hardcode API URLs or secrets in Flutter source.
 - Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.

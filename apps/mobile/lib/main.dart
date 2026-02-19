@@ -1,9 +1,38 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'src/app.dart';
+import 'app/app.dart';
+import 'app/bootstrap.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: EqubApp()));
+
+  try {
+    final bootstrapConfig = await AppBootstrapConfig.load();
+
+    runApp(
+      ProviderScope(
+        overrides: [
+          appBootstrapConfigProvider.overrideWithValue(bootstrapConfig),
+        ],
+        child: const EqubApp(),
+      ),
+    );
+  } catch (error) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                'Bootstrap failed: $error',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
