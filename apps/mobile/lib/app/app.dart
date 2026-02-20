@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
-import 'theme.dart';
+import 'theme/app_theme.dart';
 
 class EqubApp extends ConsumerWidget {
   const EqubApp({super.key});
@@ -13,7 +13,9 @@ class EqubApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'Equb',
-      theme: buildAppTheme(),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       routerConfig: router,
     );
   }

@@ -30,6 +30,9 @@
 ## Folder conventions
 - `lib/app/`
   - `app.dart`, `router.dart`, `theme.dart`, `bootstrap.dart`
+- `lib/app/theme/`
+  - `app_theme.dart`, `app_colors.dart`, `app_typography.dart`
+  - `app_spacing.dart`, `app_components.dart`, `app_theme_extensions.dart`
 - `lib/data/api/`
   - `api_client.dart`, `auth_interceptor.dart`, `token_store.dart`, `api_error.dart`
 - `lib/data/models/`
@@ -41,6 +44,11 @@
 - Every screen should provide loading and error states.
 - Reuse shared widgets for buttons, text fields, loading, and error views.
 - Keep visuals minimal and clear; prioritize stable flow over complex design.
+
+## Theming rules
+- Theme tokens in `lib/app/theme/` are the single source of truth for app styling.
+- Do not hardcode colors in feature/shared UI files; use `Theme.of(context).colorScheme` or theme extensions.
+- Spacing and corner radii must use `AppSpacing` and `AppRadius` tokens.
 
 ## DX commands
 - Install deps: `flutter pub get`
