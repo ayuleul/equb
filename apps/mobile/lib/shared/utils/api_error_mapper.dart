@@ -76,6 +76,32 @@ String _mapApiError(ApiError error) {
     return 'Only submitted contributions can be rejected.';
   }
 
+  if (normalized.contains('strict payout check failed')) {
+    return 'Cannot confirm payout yet. Some contributions are still unconfirmed. Review contributions first.';
+  }
+
+  if (normalized.contains('payout can only be created for open cycle')) {
+    return 'Payout can only be created for an open cycle.';
+  }
+
+  if (normalized.contains('only pending payout can be confirmed')) {
+    return 'Only pending payout can be confirmed.';
+  }
+
+  if (normalized.contains('cycle must be open to confirm payout')) {
+    return 'Cycle must be open to confirm payout.';
+  }
+
+  if (normalized.contains(
+    'cycle can only be closed after payout is confirmed',
+  )) {
+    return 'Confirm payout before closing this cycle.';
+  }
+
+  if (normalized.contains('cycle is already closed')) {
+    return 'This cycle is already closed.';
+  }
+
   switch (error.type) {
     case ApiErrorType.timeout:
       return 'Request timed out. Please retry.';

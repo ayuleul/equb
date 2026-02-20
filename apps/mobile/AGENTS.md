@@ -84,6 +84,11 @@
 - Contribution state transitions are backend-authoritative: submit/resubmit to `SUBMITTED`, admin confirm to `CONFIRMED`, admin reject to `REJECTED`; treat `CONFIRMED` as immutable.
 - Resubmission UX should only be offered when contribution is not `CONFIRMED`, and primarily after `REJECTED` as permitted by backend rules.
 
+## Payout rules
+- Payout flow order is locked to: create payout -> confirm payout -> close cycle.
+- Strict payout failures must show guidance to review cycle contributions before retrying confirmation.
+- Closing a cycle must invalidate and refresh cycle detail, current cycle, cycles list, and cycle payout state.
+
 ## DX commands
 - Install deps: `flutter pub get`
 - Codegen: `flutter pub run build_runner build --delete-conflicting-outputs`

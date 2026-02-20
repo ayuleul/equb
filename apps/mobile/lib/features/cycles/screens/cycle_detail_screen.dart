@@ -117,6 +117,30 @@ class _CycleDetailBody extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Payout', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Track payout status and close cycle after confirmation.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton(
+                  onPressed: () => context.go(
+                    AppRoutePaths.groupCyclePayout(groupId, cycleId),
+                  ),
+                  child: const Text('Open Payout'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

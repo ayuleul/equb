@@ -40,6 +40,41 @@ void main() {
       expect(contentTypeHeader, 'image/jpeg');
     },
   );
+
+  test(
+    'payout proof upload also uses unauthenticated client and exact content-type',
+    () async {
+      final uploadDio = Dio();
+
+      String? authorizationHeader;
+      String? contentTypeHeader;
+
+      uploadDio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            authorizationHeader = options.headers['Authorization'] as String?;
+            contentTypeHeader =
+                options.headers[Headers.contentTypeHeader] as String?;
+
+            handler.resolve(
+              Response<void>(requestOptions: options, statusCode: 200),
+            );
+          },
+        ),
+      );
+
+      final repository = FilesRepository(_FakeFilesApi(), uploadDio: uploadDio);
+
+      await repository.uploadToSignedUrl(
+        'https://upload.test/path/payout-proof.jpg',
+        Uint8List.fromList(<int>[10, 20, 30]),
+        'image/jpeg',
+      );
+
+      expect(authorizationHeader, isNull);
+      expect(contentTypeHeader, 'image/jpeg');
+    },
+  );
 }
 
 class _FakeFilesApi implements FilesApi {

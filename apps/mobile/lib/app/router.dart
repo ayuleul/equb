@@ -19,6 +19,7 @@ import '../features/cycles/screens/generate_cycle_screen.dart';
 import '../features/cycles/screens/payout_order_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/submit_contribution_screen.dart';
+import '../features/payouts/screens/payout_screen.dart';
 import '../features/splash/splash_screen.dart';
 
 class AppRoutePaths {
@@ -48,6 +49,8 @@ class AppRoutePaths {
       '/groups/$groupId/cycles/$cycleId/contributions';
   static String groupCycleContributionsSubmit(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId/contributions/submit';
+  static String groupCyclePayout(String groupId, String cycleId) =>
+      '/groups/$groupId/cycles/$cycleId/payout';
 }
 
 final _routerRefreshProvider = Provider<_RouterRefreshNotifier>((ref) {
@@ -127,6 +130,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final groupId = state.pathParameters['groupId'] ?? '';
         final cycleId = state.pathParameters['cycleId'] ?? '';
         return ContributionsListScreen(groupId: groupId, cycleId: cycleId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:groupId/cycles/:cycleId/payout',
+      builder: (context, state) {
+        final groupId = state.pathParameters['groupId'] ?? '';
+        final cycleId = state.pathParameters['cycleId'] ?? '';
+        return PayoutScreen(groupId: groupId, cycleId: cycleId);
       },
     ),
     GoRoute(

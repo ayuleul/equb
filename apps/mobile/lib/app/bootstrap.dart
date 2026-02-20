@@ -13,6 +13,8 @@ import '../data/files/files_api.dart';
 import '../data/files/files_repository.dart';
 import '../data/groups/groups_api.dart';
 import '../data/groups/groups_repository.dart';
+import '../data/payouts/payouts_api.dart';
+import '../data/payouts/payouts_repository.dart';
 import '../data/auth/token_store.dart';
 import '../shared/utils/app_logger.dart';
 
@@ -149,4 +151,14 @@ final filesRepositoryProvider = Provider<FilesRepository>((ref) {
   final config = ref.watch(appBootstrapConfigProvider);
   final api = ref.watch(filesApiProvider);
   return FilesRepository(api, timeout: config.apiTimeout);
+});
+
+final payoutsApiProvider = Provider<PayoutsApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioPayoutsApi(apiClient);
+});
+
+final payoutsRepositoryProvider = Provider<PayoutsRepository>((ref) {
+  final api = ref.watch(payoutsApiProvider);
+  return PayoutsRepository(api);
 });
