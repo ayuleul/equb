@@ -20,6 +20,14 @@ class GroupsRepository {
     final groups = payload.map(GroupModel.fromJson).toList(growable: false);
 
     for (final group in groups) {
+      final existing = _groupCache[group.id];
+
+      if (existing != null &&
+          existing.membership != null &&
+          group.membership == null) {
+        continue;
+      }
+
       _groupCache[group.id] = group;
     }
 
@@ -38,7 +46,7 @@ class GroupsRepository {
     bool forceRefresh = false,
   }) async {
     final cached = _groupCache[groupId];
-    if (!forceRefresh && cached != null) {
+    if (!forceRefresh && cached != null && cached.membership != null) {
       return cached;
     }
 

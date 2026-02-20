@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../auth/auth_controller.dart';
 import '../../../shared/utils/date_formatter.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
@@ -49,11 +50,34 @@ class _CyclesOverviewBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
     final cyclesAsync = ref.watch(cyclesListProvider(group.id));
-    final isAdmin = group.membership?.role == MemberRoleModel.admin;
+    final isAdminFromGroup = group.membership?.role == MemberRoleModel.admin;
+
+    final currentUser = ref.watch(currentUserProvider);
+    var isAdminFromMembers = false;
+    if (!isAdminFromGroup && currentUser != null) {
+      final membersAsync = ref.watch(groupMembersProvider(group.id));
+      final members = membersAsync.valueOrNull;
+      if (members != null) {
+        for (final member in members) {
+          if (member.userId == currentUser.id &&
+              member.status == MemberStatusModel.active &&
+              member.role == MemberRoleModel.admin) {
+            isAdminFromMembers = true;
+            break;
+          }
+        }
+      }
+    }
+
+    final isAdmin = isAdminFromGroup || isAdminFromMembers;
 
     Future<void> onRefresh() async {
       ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
+      ref.read(groupsRepositoryProvider).invalidateGroup(group.id);
+      ref.read(groupsRepositoryProvider).invalidateMembers(group.id);
       await Future.wait([
+        ref.refresh(groupDetailProvider(group.id).future),
+        ref.refresh(groupMembersProvider(group.id).future),
         ref.refresh(currentCycleProvider(group.id).future),
         ref.refresh(cyclesListProvider(group.id).future),
       ]);
