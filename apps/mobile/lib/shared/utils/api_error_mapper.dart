@@ -48,6 +48,34 @@ String _mapApiError(ApiError error) {
     return 'A cycle is already open for this group.';
   }
 
+  if (normalized.contains(
+    'contributions can only be submitted for open cycles',
+  )) {
+    return 'This cycle is closed. Contributions are no longer accepted.';
+  }
+
+  if (normalized.contains(
+    'only active group members can submit contributions',
+  )) {
+    return 'Only active group members can submit contributions.';
+  }
+
+  if (normalized.contains('prooffilekey does not match')) {
+    return 'Uploaded proof is invalid for this cycle. Please retry upload.';
+  }
+
+  if (normalized.contains('confirmed contribution cannot be modified')) {
+    return 'This contribution is already confirmed and cannot be changed.';
+  }
+
+  if (normalized.contains('only submitted contributions can be confirmed')) {
+    return 'Only submitted contributions can be confirmed.';
+  }
+
+  if (normalized.contains('only submitted contributions can be rejected')) {
+    return 'Only submitted contributions can be rejected.';
+  }
+
   switch (error.type) {
     case ApiErrorType.timeout:
       return 'Request timed out. Please retry.';

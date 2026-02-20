@@ -5,8 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/api/api_client.dart';
 import '../data/auth/auth_api.dart';
 import '../data/auth/auth_repository.dart';
+import '../data/contributions/contributions_api.dart';
+import '../data/contributions/contributions_repository.dart';
 import '../data/cycles/cycles_api.dart';
 import '../data/cycles/cycles_repository.dart';
+import '../data/files/files_api.dart';
+import '../data/files/files_repository.dart';
 import '../data/groups/groups_api.dart';
 import '../data/groups/groups_repository.dart';
 import '../data/auth/token_store.dart';
@@ -122,4 +126,27 @@ final cyclesApiProvider = Provider<CyclesApi>((ref) {
 final cyclesRepositoryProvider = Provider<CyclesRepository>((ref) {
   final cyclesApi = ref.watch(cyclesApiProvider);
   return CyclesRepository(cyclesApi);
+});
+
+final contributionsApiProvider = Provider<ContributionsApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioContributionsApi(apiClient);
+});
+
+final contributionsRepositoryProvider = Provider<ContributionsRepository>((
+  ref,
+) {
+  final api = ref.watch(contributionsApiProvider);
+  return ContributionsRepository(api);
+});
+
+final filesApiProvider = Provider<FilesApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioFilesApi(apiClient);
+});
+
+final filesRepositoryProvider = Provider<FilesRepository>((ref) {
+  final config = ref.watch(appBootstrapConfigProvider);
+  final api = ref.watch(filesApiProvider);
+  return FilesRepository(api, timeout: config.apiTimeout);
 });

@@ -78,6 +78,12 @@
 - Admin-only cycle actions (set payout order, generate cycles) must only be shown when `membership.role == ADMIN`.
 - After cycle mutations (`setPayoutOrder`, `generateCycles`), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
 
+## Uploads & contributions rules
+- Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.
+- The `Content-Type` used for signed upload request must exactly match the `Content-Type` sent in signed PUT upload.
+- Contribution state transitions are backend-authoritative: submit/resubmit to `SUBMITTED`, admin confirm to `CONFIRMED`, admin reject to `REJECTED`; treat `CONFIRMED` as immutable.
+- Resubmission UX should only be offered when contribution is not `CONFIRMED`, and primarily after `REJECTED` as permitted by backend rules.
+
 ## DX commands
 - Install deps: `flutter pub get`
 - Codegen: `flutter pub run build_runner build --delete-conflicting-outputs`

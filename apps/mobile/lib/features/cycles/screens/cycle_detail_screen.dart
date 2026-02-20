@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../shared/utils/date_formatter.dart';
@@ -35,7 +37,11 @@ class CycleDetailScreen extends ConsumerWidget {
               cycleDetailProvider((groupId: groupId, cycleId: cycleId)),
             ),
           ),
-          data: (cycle) => _CycleDetailBody(cycle: cycle),
+          data: (cycle) => _CycleDetailBody(
+            groupId: groupId,
+            cycleId: cycleId,
+            cycle: cycle,
+          ),
         ),
       ),
     );
@@ -43,8 +49,14 @@ class CycleDetailScreen extends ConsumerWidget {
 }
 
 class _CycleDetailBody extends StatelessWidget {
-  const _CycleDetailBody({required this.cycle});
+  const _CycleDetailBody({
+    required this.groupId,
+    required this.cycleId,
+    required this.cycle,
+  });
 
+  final String groupId;
+  final String cycleId;
   final CycleModel cycle;
 
   @override
@@ -91,13 +103,15 @@ class _CycleDetailBody extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Contributions flow is coming next.',
+                  'View and submit contributions for this cycle.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 OutlinedButton(
-                  onPressed: null,
-                  child: const Text('Contributions (Coming next)'),
+                  onPressed: () => context.go(
+                    AppRoutePaths.groupCycleContributions(groupId, cycleId),
+                  ),
+                  child: const Text('Open Contributions'),
                 ),
               ],
             ),
