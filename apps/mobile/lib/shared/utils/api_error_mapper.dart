@@ -40,6 +40,14 @@ String _mapApiError(ApiError error) {
     return 'Too many requests. Please wait and try again.';
   }
 
+  if (normalized.contains('payout order is incomplete')) {
+    return 'Set payout order for all active members before generating cycles.';
+  }
+
+  if (normalized.contains('open cycle already exists')) {
+    return 'A cycle is already open for this group.';
+  }
+
   switch (error.type) {
     case ApiErrorType.timeout:
       return 'Request timed out. Please retry.';

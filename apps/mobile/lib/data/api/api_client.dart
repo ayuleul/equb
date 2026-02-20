@@ -75,6 +75,22 @@ class ApiClient {
     }
   }
 
+  Future<Object?> getObject(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        path,
+        queryParameters: queryParameters,
+      );
+
+      return response.data;
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
   Future<Map<String, dynamic>> postMap(
     String path, {
     Object? data,
@@ -88,6 +104,42 @@ class ApiClient {
       );
 
       return response.data ?? <String, dynamic>{};
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
+  Future<List<dynamic>> postList(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.post<List<dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+      );
+
+      return response.data ?? <dynamic>[];
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
+  Future<List<dynamic>> patchList(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.patch<List<dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+      );
+
+      return response.data ?? <dynamic>[];
     } on DioException catch (error) {
       throw _toApiError(error);
     }

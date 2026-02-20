@@ -73,6 +73,11 @@
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
 
+## Cycles rules
+- Payout order positions are always saved as contiguous `1..N` after reorder; the UI order is the source of truth.
+- Admin-only cycle actions (set payout order, generate cycles) must only be shown when `membership.role == ADMIN`.
+- After cycle mutations (`setPayoutOrder`, `generateCycles`), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
+
 ## DX commands
 - Install deps: `flutter pub get`
 - Codegen: `flutter pub run build_runner build --delete-conflicting-outputs`

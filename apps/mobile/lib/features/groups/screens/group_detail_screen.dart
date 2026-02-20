@@ -107,11 +107,20 @@ class _GroupDetailContent extends StatelessWidget {
             label: const Text('Create Invite'),
           ),
         const SizedBox(height: AppSpacing.sm),
-        OutlinedButton.icon(
-          onPressed: null,
+        FilledButton.icon(
+          onPressed: () => context.go(AppRoutePaths.groupCycles(group.id)),
           icon: const Icon(Icons.timelapse),
-          label: const Text('Cycles (Coming soon)'),
+          label: const Text('Cycles'),
         ),
+        if (isAdmin) ...[
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.go(AppRoutePaths.groupPayoutOrder(group.id)),
+            icon: const Icon(Icons.swap_vert),
+            label: const Text('Payout order'),
+          ),
+        ],
       ],
     );
   }

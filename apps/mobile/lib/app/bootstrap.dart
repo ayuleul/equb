@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/api/api_client.dart';
 import '../data/auth/auth_api.dart';
 import '../data/auth/auth_repository.dart';
+import '../data/cycles/cycles_api.dart';
+import '../data/cycles/cycles_repository.dart';
 import '../data/groups/groups_api.dart';
 import '../data/groups/groups_repository.dart';
 import '../data/auth/token_store.dart';
@@ -110,4 +112,14 @@ final groupsApiProvider = Provider<GroupsApi>((ref) {
 final groupsRepositoryProvider = Provider<GroupsRepository>((ref) {
   final groupsApi = ref.watch(groupsApiProvider);
   return GroupsRepository(groupsApi);
+});
+
+final cyclesApiProvider = Provider<CyclesApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioCyclesApi(apiClient);
+});
+
+final cyclesRepositoryProvider = Provider<CyclesRepository>((ref) {
+  final cyclesApi = ref.watch(cyclesApiProvider);
+  return CyclesRepository(cyclesApi);
 });

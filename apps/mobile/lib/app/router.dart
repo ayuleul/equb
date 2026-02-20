@@ -13,6 +13,10 @@ import '../features/groups/screens/group_invite_screen.dart';
 import '../features/groups/screens/group_members_screen.dart';
 import '../features/groups/screens/groups_list_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
+import '../features/cycles/screens/cycle_detail_screen.dart';
+import '../features/cycles/screens/cycles_overview_screen.dart';
+import '../features/cycles/screens/generate_cycle_screen.dart';
+import '../features/cycles/screens/payout_order_screen.dart';
 import '../features/splash/splash_screen.dart';
 
 class AppRoutePaths {
@@ -29,6 +33,15 @@ class AppRoutePaths {
   static String groupDetail(String groupId) => '/groups/$groupId';
   static String groupMembers(String groupId) => '/groups/$groupId/members';
   static String groupInvite(String groupId) => '/groups/$groupId/invite';
+  static String groupCycles(String groupId) => '/groups/$groupId/cycles';
+  static String groupCyclesCurrent(String groupId) =>
+      '/groups/$groupId/cycles/current';
+  static String groupCycleDetail(String groupId, String cycleId) =>
+      '/groups/$groupId/cycles/$cycleId';
+  static String groupPayoutOrder(String groupId) =>
+      '/groups/$groupId/payout-order';
+  static String groupCyclesGenerate(String groupId) =>
+      '/groups/$groupId/cycles/generate';
 }
 
 final _routerRefreshProvider = Provider<_RouterRefreshNotifier>((ref) {
@@ -72,6 +85,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     GoRoute(
       path: AppRoutePaths.groupsJoin,
       builder: (context, state) => const JoinGroupScreen(),
+    ),
+    GoRoute(
+      path: '/groups/:id/cycles/generate',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return GenerateCycleScreen(groupId: groupId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:id/payout-order',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return PayoutOrderScreen(groupId: groupId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:id/cycles/current',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return CyclesOverviewScreen(groupId: groupId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:id/cycles/:cycleId',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        final cycleId = state.pathParameters['cycleId'] ?? '';
+        return CycleDetailScreen(groupId: groupId, cycleId: cycleId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:id/cycles',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return CyclesOverviewScreen(groupId: groupId);
+      },
     ),
     GoRoute(
       path: '/groups/:id',
