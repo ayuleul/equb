@@ -34,9 +34,13 @@
   - `app_theme.dart`, `app_colors.dart`, `app_typography.dart`
   - `app_spacing.dart`, `app_components.dart`, `app_theme_extensions.dart`
 - `lib/data/api/`
-  - `api_client.dart`, `auth_interceptor.dart`, `token_store.dart`, `api_error.dart`
+  - `api_client.dart`, `api_error.dart`
+- `lib/data/auth/`
+  - `token_store.dart`, `auth_api.dart`, `auth_repository.dart`
 - `lib/data/models/`
 - `lib/features/<feature>/`
+- `lib/features/auth/screens/`
+  - `phone_screen.dart`, `otp_screen.dart`
 - `lib/shared/widgets/`
 - `lib/shared/utils/`
 
@@ -49,6 +53,15 @@
 - Theme tokens in `lib/app/theme/` are the single source of truth for app styling.
 - Do not hardcode colors in feature/shared UI files; use `Theme.of(context).colorScheme` or theme extensions.
 - Spacing and corner radii must use `AppSpacing` and `AppRadius` tokens.
+
+## Auth rules
+- Token refresh is attempted at most once per failing request (`401`) before surfacing an auth error.
+- Logout must call backend refresh-token revocation when refresh token exists, and must always clear secure storage locally.
+- Never log access tokens or refresh tokens.
+- Router redirects are locked to:
+  - `unknown` auth state -> `/splash`
+  - unauthenticated users -> `/login` (allow `/otp` only when OTP flow has a phone)
+  - authenticated users cannot navigate back to `/login` or `/otp`
 
 ## DX commands
 - Install deps: `flutter pub get`

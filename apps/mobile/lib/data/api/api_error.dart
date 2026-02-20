@@ -28,6 +28,13 @@ class ApiError implements Exception {
       final message = payload['message'];
       if (message is String) {
         payloadMessage = message;
+      } else if (message is List) {
+        for (final item in message) {
+          if (item is String && item.isNotEmpty) {
+            payloadMessage = item;
+            break;
+          }
+        }
       }
     }
 

@@ -1,11 +1,11 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/api/api_client.dart';
-import '../data/api/auth_interceptor.dart';
-import '../data/api/token_store.dart';
+import '../data/auth/auth_api.dart';
+import '../data/auth/auth_repository.dart';
+import '../data/auth/token_store.dart';
 import '../shared/utils/app_logger.dart';
 
 class AppBootstrapConfig {
@@ -68,48 +68,34 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 
 final tokenStoreProvider = Provider<TokenStore>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  return TokenStore(storage);
+  return TokenStore.fromSecureStorage(storage);
 });
 
 final sessionExpiredProvider = StateProvider<bool>((ref) => false);
 
-final dioProvider = Provider<Dio>((ref) {
+final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(appBootstrapConfigProvider);
   final tokenStore = ref.watch(tokenStoreProvider);
   final logger = ref.watch(appLoggerProvider);
 
-  final baseOptions = BaseOptions(
+  return ApiClient(
     baseUrl: config.apiBaseUrl,
-    connectTimeout: config.apiTimeout,
-    receiveTimeout: config.apiTimeout,
-    sendTimeout: config.apiTimeout,
-    headers: {
-      Headers.contentTypeHeader: Headers.jsonContentType,
-      Headers.acceptHeader: Headers.jsonContentType,
+    timeout: config.apiTimeout,
+    tokenStore: tokenStore,
+    onSessionExpired: () {
+      logger.info('Session expired after refresh failure. Routing to /login.');
+      ref.read(sessionExpiredProvider.notifier).state = true;
     },
   );
-
-  final dio = Dio(baseOptions);
-  final refreshDio = Dio(baseOptions);
-
-  dio.interceptors.add(
-    AuthInterceptor(
-      dio: dio,
-      refreshDio: refreshDio,
-      tokenStore: tokenStore,
-      onSessionExpired: () async {
-        logger.info(
-          'Session expired after refresh failure. Routing to /login.',
-        );
-        ref.read(sessionExpiredProvider.notifier).state = true;
-      },
-    ),
-  );
-
-  return dio;
 });
 
-final apiClientProvider = Provider<ApiClient>((ref) {
-  final dio = ref.watch(dioProvider);
-  return ApiClient(dio);
+final authApiProvider = Provider<AuthApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return AuthApi(apiClient);
+});
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final authApi = ref.watch(authApiProvider);
+  final tokenStore = ref.watch(tokenStoreProvider);
+  return AuthRepository(authApi: authApi, tokenStore: tokenStore);
 });

@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import 'bootstrap.dart';
 import '../features/debug/theme_preview_screen.dart';
-import '../features/auth/login_screen.dart';
+import '../features/auth/auth_controller.dart';
+import '../features/auth/screens/otp_screen.dart';
+import '../features/auth/screens/phone_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/splash/splash_screen.dart';
 
@@ -13,22 +15,27 @@ class AppRoutePaths {
 
   static const splash = '/splash';
   static const login = '/login';
+  static const otp = '/otp';
   static const home = '/home';
   static const debugTheme = '/debug/theme';
 }
 
-final authBootstrapProvider = FutureProvider<bool>((ref) async {
-  final tokenStore = ref.watch(tokenStoreProvider);
-  final accessToken = await tokenStore.getAccessToken();
-  final refreshToken = await tokenStore.getRefreshToken();
+final _routerRefreshProvider = Provider<_RouterRefreshNotifier>((ref) {
+  final notifier = _RouterRefreshNotifier();
 
-  return (accessToken?.isNotEmpty ?? false) ||
-      (refreshToken?.isNotEmpty ?? false);
+  ref.listen(authControllerProvider, (previous, next) {
+    notifier.refresh();
+  });
+  ref.listen(sessionExpiredProvider, (previous, next) {
+    notifier.refresh();
+  });
+
+  ref.onDispose(notifier.dispose);
+  return notifier;
 });
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final sessionExpired = ref.watch(sessionExpiredProvider);
-  final authBootstrap = ref.watch(authBootstrapProvider);
+  final refreshNotifier = ref.watch(_routerRefreshProvider);
   final routes = <GoRoute>[
     GoRoute(
       path: AppRoutePaths.splash,
@@ -36,7 +43,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ),
     GoRoute(
       path: AppRoutePaths.login,
-      builder: (context, state) => const LoginScreen(),
+      builder: (context, state) => const PhoneScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.otp,
+      builder: (context, state) =>
+          OtpScreen(phone: state.uri.queryParameters['phone']),
     ),
     GoRoute(
       path: AppRoutePaths.home,
@@ -55,12 +67,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: AppRoutePaths.splash,
+    refreshListenable: refreshNotifier,
     routes: routes,
     redirect: (context, state) {
+      final authState = ref.read(authControllerProvider);
+      final sessionExpired = ref.read(sessionExpiredProvider);
       final location = state.uri.path;
       final isSplash = location == AppRoutePaths.splash;
       final isLogin = location == AppRoutePaths.login;
-      final isHome = location == AppRoutePaths.home;
+      final isOtp = location == AppRoutePaths.otp;
       final isDebugTheme = location == AppRoutePaths.debugTheme;
 
       if (kDebugMode && isDebugTheme) {
@@ -68,31 +83,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (sessionExpired) {
-        if (!isLogin) {
+        if (!isLogin && !isOtp) {
           return AppRoutePaths.login;
         }
-
-        return null;
       }
 
-      if (authBootstrap.isLoading) {
+      if (authState.isBootstrapping) {
         return isSplash ? null : AppRoutePaths.splash;
       }
 
-      if (authBootstrap.hasError) {
-        return isLogin ? null : AppRoutePaths.login;
-      }
-
-      final isAuthenticated = authBootstrap.value ?? false;
+      final isAuthenticated = authState.isAuthenticated;
       if (isSplash) {
         return isAuthenticated ? AppRoutePaths.home : AppRoutePaths.login;
       }
 
-      if (!isAuthenticated && isHome) {
+      if (!isAuthenticated && !isLogin && !isOtp) {
         return AppRoutePaths.login;
       }
 
-      if (isAuthenticated && isLogin) {
+      if (isAuthenticated && (isLogin || isOtp)) {
         return AppRoutePaths.home;
       }
 
@@ -100,3 +109,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
   );
 });
+
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void refresh() {
+    notifyListeners();
+  }
+}
