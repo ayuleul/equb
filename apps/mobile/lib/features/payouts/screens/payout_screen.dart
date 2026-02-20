@@ -122,7 +122,11 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
         0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Payout')),
+      appBar: AppBar(
+        title: const Text('Payout'),
+        automaticallyImplyLeading: false,
+        leading: context.canPop() ? const BackButton() : null,
+      ),
       body: SafeArea(
         child: groupAsync.when(
           loading: () => const LoadingView(message: 'Loading payout...'),
@@ -165,6 +169,8 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                           onViewProof: (proofFileKey) =>
                               _viewProof(context, ref, proofFileKey),
                         ),
+                        const SizedBox(height: AppSpacing.md),
+                        _PayoutTimelineCard(cycle: cycleData, payout: payout),
                         const SizedBox(height: AppSpacing.md),
                         if (payout == null)
                           _CreatePayoutSection(
@@ -355,6 +361,95 @@ class _PayoutStatusCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PayoutTimelineCard extends StatelessWidget {
+  const _PayoutTimelineCard({required this.cycle, required this.payout});
+
+  final CycleModel cycle;
+  final PayoutModel? payout;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCreated = payout != null;
+    final isConfirmed = payout?.status == PayoutStatusModel.confirmed;
+    final isClosed = cycle.status == CycleStatusModel.closed;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payout timeline',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _TimelineRow(
+              label: 'Payout created',
+              done: isCreated,
+              detail: isCreated ? 'Recorded by admin' : 'Pending',
+            ),
+            _TimelineRow(
+              label: 'Payout confirmed',
+              done: isConfirmed,
+              detail: isConfirmed ? 'Confirmed and locked' : 'Pending',
+            ),
+            _TimelineRow(
+              label: 'Cycle closed',
+              done: isClosed,
+              detail: isClosed ? 'Cycle completed' : 'Pending',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({
+    required this.label,
+    required this.done,
+    required this.detail,
+  });
+
+  final String label;
+  final bool done;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Icon(
+            done ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 18,
+            color: done ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  detail,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -582,7 +677,7 @@ class _PayoutActionsSection extends ConsumerWidget {
                       'review contributions',
                     ))
                       TextButton(
-                        onPressed: () => context.go(
+                        onPressed: () => context.push(
                           AppRoutePaths.groupCycleContributions(
                             args.groupId,
                             args.cycleId,
@@ -693,9 +788,12 @@ class _PayoutActionsSection extends ConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Cycle closed.')),
                               );
-                              context.go(
-                                AppRoutePaths.groupCycles(args.groupId),
-                              );
+                              if (context.canPop()) {
+                                context.pop();
+                              }
+                              if (context.canPop()) {
+                                context.pop();
+                              }
                             }
                           },
                   ),

@@ -5,9 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
-import '../../../features/auth/auth_controller.dart';
+import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
-import '../../../shared/widgets/loading_view.dart';
 import '../groups_list_controller.dart';
 
 class GroupsListScreen extends ConsumerWidget {
@@ -16,7 +15,6 @@ class GroupsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(groupsListProvider);
-    final authState = ref.watch(authControllerProvider);
 
     ref.listen(groupsListProvider, (previous, next) {
       final previousError = previous?.errorMessage;
@@ -24,9 +22,7 @@ class GroupsListScreen extends ConsumerWidget {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppSnackbars.error(context, nextError);
       }
     });
 
@@ -34,57 +30,44 @@ class GroupsListScreen extends ConsumerWidget {
       return ref.read(groupsListProvider.notifier).refresh();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Groups'),
-        actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            onPressed: () => context.go(AppRoutePaths.notifications),
-            icon: const Icon(Icons.notifications_outlined),
-          ),
-          IconButton(
-            tooltip: 'Logout',
-            onPressed: authState.isLoggingOut
-                ? null
-                : () => ref.read(authControllerProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return AppScaffold(
+      title: 'Groups',
+      subtitle: 'Track your Equb groups and payment cycles',
+      actions: [
+        IconButton(
+          tooltip: 'Notifications',
+          onPressed: () => context.push(AppRoutePaths.notifications),
+          icon: const Icon(Icons.notifications_outlined),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => context.go(AppRoutePaths.groupsCreate),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create Group'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => context.go(AppRoutePaths.groupsJoin),
-                    icon: const Icon(Icons.group_add),
-                    label: const Text('Join Group'),
-                  ),
-                ],
+              FilledButton.icon(
+                onPressed: () => context.push(AppRoutePaths.groupsCreate),
+                icon: const Icon(Icons.add),
+                label: const Text('Create group'),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Expanded(
-                child: _GroupsBody(
-                  state: state,
-                  onRetry: () => ref.read(groupsListProvider.notifier).load(),
-                  onRefresh: onRefresh,
-                ),
+              OutlinedButton.icon(
+                onPressed: () => context.push(AppRoutePaths.groupsJoin),
+                icon: const Icon(Icons.group_add_outlined),
+                label: const Text('Join'),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: _GroupsBody(
+              state: state,
+              onRetry: () => ref.read(groupsListProvider.notifier).load(),
+              onRefresh: onRefresh,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -104,7 +87,20 @@ class _GroupsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.isLoading && !state.hasData) {
-      return const LoadingView(message: 'Loading groups...');
+      return ListView.separated(
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+        itemBuilder: (context, index) => const EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SkeletonBox(height: 18, width: 180),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonBox(height: 14, width: 120),
+            ],
+          ),
+        ),
+      );
     }
 
     if (state.errorMessage != null && !state.hasData) {
@@ -112,7 +108,13 @@ class _GroupsBody extends StatelessWidget {
     }
 
     if (!state.hasData) {
-      return const _EmptyGroupsView();
+      return EmptyState(
+        icon: Icons.groups_2_outlined,
+        title: 'No groups yet',
+        message: 'Create a group or join one with an invite code.',
+        ctaLabel: 'Create group',
+        onCtaPressed: () => context.push(AppRoutePaths.groupsCreate),
+      );
     }
 
     return RefreshIndicator(
@@ -120,25 +122,7 @@ class _GroupsBody extends StatelessWidget {
       child: ListView.separated(
         itemCount: state.items.length,
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) {
-          final group = state.items[index];
-          return _GroupCard(group: group);
-        },
-      ),
-    );
-  }
-}
-
-class _EmptyGroupsView extends StatelessWidget {
-  const _EmptyGroupsView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'You are not in any group yet. Create one or join by invite code.',
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium,
+        itemBuilder: (context, index) => _GroupCard(group: state.items[index]),
       ),
     );
   }
@@ -151,32 +135,34 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final frequency = switch (group.frequency) {
       GroupFrequencyModel.weekly => 'WEEKLY',
       GroupFrequencyModel.monthly => 'MONTHLY',
       GroupFrequencyModel.unknown => 'UNKNOWN',
     };
 
-    return Card(
-      child: ListTile(
-        onTap: () => context.go(AppRoutePaths.groupDetail(group.id)),
-        title: Text(group.name, style: theme.textTheme.titleMedium),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: AppSpacing.xs),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return EqubCard(
+      onTap: () => context.push(AppRoutePaths.groupDetail(group.id)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(
-                '${group.contributionAmount} ${group.currency}',
-                style: theme.textTheme.bodyMedium,
+              Expanded(
+                child: Text(
+                  group.name,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Chip(label: Text(frequency)),
+              StatusBadge.fromLabel(frequency),
             ],
           ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: AppSpacing.xs),
+          AmountText(
+            amount: group.contributionAmount,
+            currency: group.currency,
+          ),
+        ],
       ),
     );
   }

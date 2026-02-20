@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
-import '../../../shared/utils/date_formatter.dart';
+import '../../../shared/ui/ui.dart';
+import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../cycle_detail_provider.dart';
@@ -26,23 +27,18 @@ class CycleDetailScreen extends ConsumerWidget {
       cycleDetailProvider((groupId: groupId, cycleId: cycleId)),
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cycle Detail')),
-      body: SafeArea(
-        child: cycleAsync.when(
-          loading: () => const LoadingView(message: 'Loading cycle...'),
-          error: (error, _) => ErrorView(
-            message: error.toString(),
-            onRetry: () => ref.invalidate(
-              cycleDetailProvider((groupId: groupId, cycleId: cycleId)),
-            ),
-          ),
-          data: (cycle) => _CycleDetailBody(
-            groupId: groupId,
-            cycleId: cycleId,
-            cycle: cycle,
+    return AppScaffold(
+      title: 'Cycle detail',
+      child: cycleAsync.when(
+        loading: () => const LoadingView(message: 'Loading cycle...'),
+        error: (error, _) => ErrorView(
+          message: error.toString(),
+          onRetry: () => ref.invalidate(
+            cycleDetailProvider((groupId: groupId, cycleId: cycleId)),
           ),
         ),
+        data: (cycle) =>
+            _CycleDetailBody(groupId: groupId, cycleId: cycleId, cycle: cycle),
       ),
     );
   }
@@ -68,77 +64,50 @@ class _CycleDetailBody extends StatelessWidget {
     };
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Cycle #${cycle.cycleNo}',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
-                const SizedBox(height: AppSpacing.xs),
-                Text('Recipient: ${_recipientLabel(cycle)}'),
-                const SizedBox(height: AppSpacing.xs),
-                Chip(label: Text(statusLabel)),
-              ],
-            ),
+        EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Cycle #${cycle.cycleNo}',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  StatusBadge.fromLabel(statusLabel),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text('Due date: ${formatDate(cycle.dueDate)}'),
+              const SizedBox(height: AppSpacing.xs),
+              Text('Recipient: ${_recipientLabel(cycle)}'),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Contributions',
-                  style: Theme.of(context).textTheme.titleMedium,
+        SectionHeader(title: 'Quick actions'),
+        EqubCard(
+          child: Column(
+            children: [
+              EqubListTile(
+                title: 'Contributions',
+                subtitle: 'View submissions and statuses',
+                onTap: () => context.push(
+                  AppRoutePaths.groupCycleContributions(groupId, cycleId),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'View and submit contributions for this cycle.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              EqubListTile(
+                title: 'Payout',
+                subtitle: 'Track payout confirmation and cycle closure',
+                onTap: () => context.push(
+                  AppRoutePaths.groupCyclePayout(groupId, cycleId),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                OutlinedButton(
-                  onPressed: () => context.go(
-                    AppRoutePaths.groupCycleContributions(groupId, cycleId),
-                  ),
-                  child: const Text('Open Contributions'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Payout', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Track payout status and close cycle after confirmation.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                OutlinedButton(
-                  onPressed: () => context.go(
-                    AppRoutePaths.groupCyclePayout(groupId, cycleId),
-                  ),
-                  child: const Text('Open Payout'),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],

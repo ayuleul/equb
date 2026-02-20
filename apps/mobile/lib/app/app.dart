@@ -56,7 +56,7 @@ class _EqubAppState extends ConsumerState<EqubApp> {
               return;
             }
 
-            ref.read(appRouterProvider).go(location);
+            navigateToDeepLink(ref.read(appRouterProvider), location);
           },
           onTokenRefresh: (token) async {
             final currentUserId = ref.read(currentUserProvider)?.id;

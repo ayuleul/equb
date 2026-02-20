@@ -1,23 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/notification_model.dart';
+import '../../../shared/ui/ui.dart';
+import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../deeplink_mapper.dart';
 import '../notification_actions_controller.dart';
 import '../notifications_list_provider.dart';
 
-final DateFormat _timestampFormat = DateFormat('d MMM yyyy, h:mm a');
-
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  bool _showUnreadOnly = false;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(notificationsListProvider);
     final actionsState = ref.watch(notificationActionsControllerProvider);
 
@@ -27,9 +34,7 @@ class NotificationsScreen extends ConsumerWidget {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppSnackbars.error(context, nextError);
       }
     });
 
@@ -39,9 +44,7 @@ class NotificationsScreen extends ConsumerWidget {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppSnackbars.error(context, nextError);
       }
     });
 
@@ -62,38 +65,42 @@ class NotificationsScreen extends ConsumerWidget {
         updated.deepLinkPayload,
       );
       if (location == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('No details available.')));
+        AppSnackbars.info(context, 'No details available.');
         return;
       }
 
-      context.go(location);
+      navigateToDeepLinkFromContext(context, location);
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () =>
-                ref.read(notificationsListProvider.notifier).refresh(),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: _NotificationsBody(
-          state: state,
-          actionsState: actionsState,
-          onRefresh: onRefresh,
-          onRetry: () =>
-              ref.read(notificationsListProvider.notifier).loadInitial(),
-          onLoadMore: () =>
-              ref.read(notificationsListProvider.notifier).loadMore(),
-          onTapNotification: onTapNotification,
+    final unreadCount = state.items.where((item) => item.isUnread).length;
+    final visibleItems = _showUnreadOnly
+        ? state.items.where((item) => item.isUnread).toList(growable: false)
+        : state.items;
+
+    return AppScaffold(
+      title: 'Notifications',
+      subtitle: 'Updates about your groups and cycles',
+      actions: [
+        IconButton(
+          tooltip: 'Refresh',
+          onPressed: () =>
+              ref.read(notificationsListProvider.notifier).refresh(),
+          icon: const Icon(Icons.refresh),
         ),
+      ],
+      child: _NotificationsBody(
+        state: state,
+        actionsState: actionsState,
+        unreadCount: unreadCount,
+        showUnreadOnly: _showUnreadOnly,
+        visibleItems: visibleItems,
+        onToggleUnread: (value) => setState(() => _showUnreadOnly = value),
+        onRefresh: onRefresh,
+        onRetry: () =>
+            ref.read(notificationsListProvider.notifier).loadInitial(),
+        onLoadMore: () =>
+            ref.read(notificationsListProvider.notifier).loadMore(),
+        onTapNotification: onTapNotification,
       ),
     );
   }
@@ -103,6 +110,10 @@ class _NotificationsBody extends StatelessWidget {
   const _NotificationsBody({
     required this.state,
     required this.actionsState,
+    required this.unreadCount,
+    required this.showUnreadOnly,
+    required this.visibleItems,
+    required this.onToggleUnread,
     required this.onRefresh,
     required this.onRetry,
     required this.onLoadMore,
@@ -111,6 +122,10 @@ class _NotificationsBody extends StatelessWidget {
 
   final NotificationsListState state;
   final NotificationActionsState actionsState;
+  final int unreadCount;
+  final bool showUnreadOnly;
+  final List<NotificationModel> visibleItems;
+  final ValueChanged<bool> onToggleUnread;
   final Future<void> Function() onRefresh;
   final VoidCallback onRetry;
   final VoidCallback onLoadMore;
@@ -127,23 +142,32 @@ class _NotificationsBody extends StatelessWidget {
     }
 
     if (!state.hasData) {
-      return Center(
-        child: Text(
-          'No notifications yet',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
+      return const EmptyState(
+        icon: Icons.notifications_none,
+        title: 'No notifications yet',
+        message: 'You will see member and payment updates here.',
       );
     }
 
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: state.items.length + 1,
+        itemCount: visibleItems.length + 2,
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
-          if (index == state.items.length) {
-            if (!state.hasMore) {
+          if (index == 0) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: FilterChip(
+                label: Text('Unread only ($unreadCount)'),
+                selected: showUnreadOnly,
+                onSelected: onToggleUnread,
+              ),
+            );
+          }
+
+          if (index == visibleItems.length + 1) {
+            if (!state.hasMore || showUnreadOnly) {
               return const SizedBox.shrink();
             }
 
@@ -156,14 +180,15 @@ class _NotificationsBody extends StatelessWidget {
             );
           }
 
-          final notification = state.items[index];
+          final notification = visibleItems[index - 1];
           final isLoading =
               actionsState.isLoading &&
               actionsState.activeNotificationId == notification.id;
 
-          return Card(
+          return EqubCard(
             child: ListTile(
               onTap: isLoading ? null : () => onTapNotification(notification),
+              minVerticalPadding: AppSpacing.sm,
               leading: _UnreadIndicator(isUnread: notification.isUnread),
               title: Text(notification.title),
               subtitle: Column(
@@ -173,7 +198,7 @@ class _NotificationsBody extends StatelessWidget {
                   Text(notification.body),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    _timestampFormat.format(notification.createdAt.toLocal()),
+                    formatRelativeTime(notification.createdAt),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],

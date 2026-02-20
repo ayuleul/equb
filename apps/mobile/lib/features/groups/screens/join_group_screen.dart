@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/primary_button.dart';
 import '../groups_list_controller.dart';
 
 class JoinGroupScreen extends ConsumerStatefulWidget {
@@ -35,13 +35,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   }
 
   Future<void> _submit() async {
-    final messenger = ScaffoldMessenger.of(context);
     final code = _codeController.text.trim().toUpperCase();
-
     if (code.isEmpty) {
-      setState(() {
-        _formError = 'Invite code is required.';
-      });
+      setState(() => _formError = 'Invite code is required.');
       return;
     }
 
@@ -53,73 +49,68 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     try {
       final repository = ref.read(groupsRepositoryProvider);
       final groupId = await repository.joinByCode(code);
-
       if (!mounted) {
         return;
       }
 
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Joined group successfully.')),
-      );
-
       await ref.read(groupsListProvider.notifier).refresh();
-      if (mounted) {
-        context.go(AppRoutePaths.groupDetail(groupId));
+      if (!mounted) {
+        return;
       }
+      AppSnackbars.success(context, 'Joined group successfully');
+      if (context.canPop()) {
+        context.pop();
+      }
+      context.push(AppRoutePaths.groupDetail(groupId));
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       final message = mapApiErrorToMessage(error);
-      setState(() {
-        _formError = message;
-      });
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      setState(() => _formError = message);
+      AppSnackbars.error(context, message);
     } finally {
       if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
+        setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Join Group')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            AppTextField(
-              controller: _codeController,
-              label: 'Invite code',
-              hint: 'A1B2C3D4',
-              onChanged: (_) {
-                if (_formError != null) {
-                  setState(() {
-                    _formError = null;
-                  });
-                }
-              },
-            ),
-            if (_formError != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                _formError!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
+    return AppScaffold(
+      title: 'Join group',
+      subtitle: 'Use an invite code from your group admin',
+      child: ListView(
+        children: [
+          EqubCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppTextField(
+                  controller: _codeController,
+                  label: 'Invite code',
+                  hint: 'A1B2C3D4',
+                  onChanged: (_) => setState(() => _formError = null),
                 ),
-              ),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(
-              label: 'Join Group',
-              isLoading: _isSubmitting,
-              onPressed: _isSubmitting ? null : _submit,
+                if (_formError != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    _formError!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(
+            onPressed: _isSubmitting ? null : _submit,
+            child: Text(_isSubmitting ? 'Joining...' : 'Join group'),
+          ),
+        ],
       ),
     );
   }

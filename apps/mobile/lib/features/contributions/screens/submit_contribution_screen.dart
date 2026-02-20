@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
-import '../../../shared/utils/date_formatter.dart';
+import '../../../shared/ui/ui.dart';
+import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
-import '../../../shared/widgets/primary_button.dart';
 import '../../cycles/cycle_detail_provider.dart';
 import '../../groups/group_detail_controller.dart';
 import '../cycle_contributions_provider.dart';
@@ -34,7 +34,6 @@ class _SubmitContributionScreenState
   late final TextEditingController _amountController;
   late final TextEditingController _paymentRefController;
   late final TextEditingController _noteController;
-
   String? _formError;
 
   @override
@@ -68,9 +67,7 @@ class _SubmitContributionScreenState
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppSnackbars.error(context, nextError);
       }
     });
 
@@ -79,47 +76,44 @@ class _SubmitContributionScreenState
       _amountController.text = group.contributionAmount.toString();
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Submit Contribution')),
-      body: SafeArea(
-        child: groupAsync.when(
-          loading: () => const LoadingView(message: 'Loading group...'),
-          error: (error, _) => ErrorView(
-            message: error.toString(),
-            onRetry: () => ref
-                .read(groupDetailControllerProvider)
-                .refreshGroup(widget.groupId),
-          ),
-          data: (groupData) {
-            return cycleAsync.when(
-              loading: () => const LoadingView(message: 'Loading cycle...'),
-              error: (error, _) => ErrorView(
-                message: error.toString(),
-                onRetry: () => ref.invalidate(
-                  cycleDetailProvider((
-                    groupId: widget.groupId,
-                    cycleId: widget.cycleId,
-                  )),
-                ),
-              ),
-              data: (cycle) => _SubmitForm(
-                args: args,
-                group: groupData,
-                cycle: cycle,
-                amountController: _amountController,
-                paymentRefController: _paymentRefController,
-                noteController: _noteController,
-                submitState: submitState,
-                formError: _formError,
-                onFormErrorChanged: (value) {
-                  setState(() {
-                    _formError = value;
-                  });
-                },
-              ),
-            );
-          },
+    return AppScaffold(
+      title: 'Submit contribution',
+      subtitle: 'Upload receipt and submit payment details',
+      child: groupAsync.when(
+        loading: () => const LoadingView(message: 'Loading group...'),
+        error: (error, _) => ErrorView(
+          message: error.toString(),
+          onRetry: () => ref
+              .read(groupDetailControllerProvider)
+              .refreshGroup(widget.groupId),
         ),
+        data: (groupData) {
+          return cycleAsync.when(
+            loading: () => const LoadingView(message: 'Loading cycle...'),
+            error: (error, _) => ErrorView(
+              message: error.toString(),
+              onRetry: () => ref.invalidate(
+                cycleDetailProvider((
+                  groupId: widget.groupId,
+                  cycleId: widget.cycleId,
+                )),
+              ),
+            ),
+            data: (cycleData) => _SubmitForm(
+              args: args,
+              group: groupData,
+              cycle: cycleData,
+              amountController: _amountController,
+              paymentRefController: _paymentRefController,
+              noteController: _noteController,
+              submitState: submitState,
+              formError: _formError,
+              onFormErrorChanged: (value) {
+                setState(() => _formError = value);
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -157,9 +151,7 @@ class _SubmitForm extends ConsumerWidget {
     final isCycleOpen = cycle.status == CycleStatusModel.open;
 
     Future<void> submit() async {
-      final amountRaw = amountController.text.trim();
-      final amount = int.tryParse(amountRaw);
-
+      final amount = int.tryParse(amountController.text.trim());
       if (amount == null || amount <= 0) {
         onFormErrorChanged('Amount must be greater than 0.');
         return;
@@ -182,131 +174,140 @@ class _SubmitForm extends ConsumerWidget {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contribution submitted successfully.')),
-      );
+      AppSnackbars.success(context, 'Contribution submitted successfully');
       ref.invalidate(cycleContributionsProvider(args));
       Navigator.of(context).pop();
     }
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  group.name,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text('Cycle #${cycle.cycleNo}'),
-                const SizedBox(height: AppSpacing.xs),
-                Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Default amount: ${group.contributionAmount} ${group.currency}',
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (!isCycleOpen)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                'This cycle is closed. You cannot submit new contributions.',
-                style: Theme.of(context).textTheme.bodyMedium,
+        EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(group.name, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Cycle #${cycle.cycleNo} • Due ${formatDate(cycle.dueDate)}',
               ),
-            ),
+              const SizedBox(height: AppSpacing.xs),
+              AmountText(
+                amount: group.contributionAmount,
+                currency: group.currency,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ],
           ),
-        if (!isCycleOpen) const SizedBox(height: AppSpacing.md),
-        AppTextField(
-          controller: amountController,
-          label: 'Amount',
-          hint: group.contributionAmount.toString(),
-          keyboardType: TextInputType.number,
-          onChanged: (_) => onFormErrorChanged(null),
         ),
+        if (!isCycleOpen) ...[
+          const SizedBox(height: AppSpacing.md),
+          const EmptyState(
+            icon: Icons.lock_clock_outlined,
+            title: 'Cycle is closed',
+            message: 'You cannot submit new contributions for a closed cycle.',
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
-        AppTextField(
-          controller: paymentRefController,
-          label: 'Payment reference (optional)',
-          hint: 'Transaction ID',
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppTextField(
-          controller: noteController,
-          label: 'Note (optional)',
-          hint: 'Any details for admins',
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            OutlinedButton.icon(
-              onPressed: submitState.isBusy || !isCycleOpen
-                  ? null
-                  : () => controller.pickFromCamera(),
-              icon: const Icon(Icons.photo_camera),
-              label: const Text('Camera'),
-            ),
-            OutlinedButton.icon(
-              onPressed: submitState.isBusy || !isCycleOpen
-                  ? null
-                  : () => controller.pickFromGallery(),
-              icon: const Icon(Icons.photo_library),
-              label: const Text('Gallery'),
-            ),
-          ],
-        ),
-        if (submitState.image != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(title: '1) Upload receipt'),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: [
-                  Text(
-                    submitState.image!.fileName,
-                    style: Theme.of(context).textTheme.labelMedium,
+                  OutlinedButton.icon(
+                    onPressed: submitState.isBusy || !isCycleOpen
+                        ? null
+                        : controller.pickFromCamera,
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Camera'),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    child: Image.memory(
-                      submitState.image!.bytes,
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: submitState.isBusy || !isCycleOpen
+                        ? null
+                        : controller.pickFromGallery,
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Gallery'),
                   ),
                 ],
               ),
-            ),
+              if (submitState.image != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  submitState.image!.fileName,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Image.memory(
+                    submitState.image!.bytes,
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-        if (submitState.isBusy) ...[
-          const SizedBox(height: AppSpacing.md),
-          LinearProgressIndicator(value: submitState.uploadProgress),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            _progressLabel(submitState.step),
-            style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(title: '2) Add details'),
+              AppTextField(
+                controller: amountController,
+                label: 'Amount',
+                hint: group.contributionAmount.toString(),
+                keyboardType: TextInputType.number,
+                onChanged: (_) => onFormErrorChanged(null),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: paymentRefController,
+                label: 'Payment reference (optional)',
+                hint: 'Transaction ID',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: noteController,
+                label: 'Note (optional)',
+                hint: 'Any details for admins',
+              ),
+            ],
           ),
-        ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(title: '3) Submit'),
+              if (submitState.isBusy) ...[
+                LinearProgressIndicator(value: submitState.uploadProgress),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  _progressLabel(submitState.step),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              FilledButton(
+                onPressed: submitState.isBusy || !isCycleOpen ? null : submit,
+                child: Text(submitState.isBusy ? 'Submitting...' : 'Submit'),
+              ),
+            ],
+          ),
+        ),
         if (formError != null) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
             formError!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.error,
             ),
           ),
@@ -316,17 +317,12 @@ class _SubmitForm extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             submitState.errorMessage!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.error,
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.lg),
-        PrimaryButton(
-          label: 'Submit contribution',
-          isLoading: submitState.isBusy,
-          onPressed: submitState.isBusy || !isCycleOpen ? null : submit,
-        ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
@@ -334,12 +330,12 @@ class _SubmitForm extends ConsumerWidget {
 
 String _progressLabel(SubmitContributionStep step) {
   return switch (step) {
-    SubmitContributionStep.pickingImage => 'Loading image...',
-    SubmitContributionStep.requestingUpload => 'Preparing secure upload...',
+    SubmitContributionStep.idle => 'Ready',
+    SubmitContributionStep.pickingImage => 'Picking receipt...',
+    SubmitContributionStep.requestingUpload => 'Preparing upload...',
     SubmitContributionStep.uploading => 'Uploading receipt...',
     SubmitContributionStep.submitting => 'Submitting contribution...',
     SubmitContributionStep.success => 'Done',
     SubmitContributionStep.error => 'Failed',
-    SubmitContributionStep.idle => '',
   };
 }

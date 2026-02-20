@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../group_detail_controller.dart';
@@ -17,28 +18,28 @@ class GroupDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Group Detail'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () =>
-                ref.read(groupDetailControllerProvider).refreshAll(groupId),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: groupAsync.when(
-          loading: () => const LoadingView(message: 'Loading group...'),
-          error: (error, _) => ErrorView(
-            message: error.toString(),
-            onRetry: () =>
-                ref.read(groupDetailControllerProvider).refreshAll(groupId),
-          ),
-          data: (group) => _GroupDetailContent(group: group),
+    return AppScaffold(
+      title: 'Group detail',
+      actions: [
+        IconButton(
+          tooltip: 'Refresh',
+          onPressed: () =>
+              ref.read(groupDetailControllerProvider).refreshAll(groupId),
+          icon: const Icon(Icons.refresh),
+        ),
+      ],
+      child: groupAsync.when(
+        loading: () => const LoadingView(message: 'Loading group...'),
+        error: (error, _) => ErrorView(
+          message: error.toString(),
+          onRetry: () =>
+              ref.read(groupDetailControllerProvider).refreshAll(groupId),
+        ),
+        data: (group) => _GroupDetailContent(
+          group: group,
+          memberCount: membersAsync.valueOrNull?.length,
         ),
       ),
     );
@@ -46,82 +47,160 @@ class GroupDetailScreen extends ConsumerWidget {
 }
 
 class _GroupDetailContent extends StatelessWidget {
-  const _GroupDetailContent({required this.group});
+  const _GroupDetailContent({required this.group, this.memberCount});
 
   final GroupModel group;
+  final int? memberCount;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final isAdmin = group.membership?.role == MemberRoleModel.admin;
     final roleLabel = switch (group.membership?.role) {
       MemberRoleModel.admin => 'ADMIN',
       MemberRoleModel.member => 'MEMBER',
-      MemberRoleModel.unknown => 'UNKNOWN',
-      null => 'UNKNOWN',
+      _ => 'UNKNOWN',
+    };
+    final frequency = switch (group.frequency) {
+      GroupFrequencyModel.weekly => 'WEEKLY',
+      GroupFrequencyModel.monthly => 'MONTHLY',
+      GroupFrequencyModel.unknown => 'UNKNOWN',
     };
 
-    final isAdmin = group.membership?.role == MemberRoleModel.admin;
-
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(group.name, style: theme.textTheme.titleLarge),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Contribution: ${group.contributionAmount} ${group.currency}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Frequency: ${switch (group.frequency) {
-                    GroupFrequencyModel.weekly => 'WEEKLY',
-                    GroupFrequencyModel.monthly => 'MONTHLY',
-                    GroupFrequencyModel.unknown => 'UNKNOWN',
-                  }}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text('Role: $roleLabel', style: theme.textTheme.bodyMedium),
-              ],
-            ),
+        EqubCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      group.name,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  StatusBadge.fromLabel(roleLabel),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  _StatItem(
+                    label: 'Contribution',
+                    child: AmountText(
+                      amount: group.contributionAmount,
+                      currency: group.currency,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  _StatItem(label: 'Frequency', child: Text(frequency)),
+                  _StatItem(
+                    label: 'Members',
+                    child: Text(memberCount == null ? '-' : '$memberCount'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        FilledButton.icon(
-          onPressed: () => context.go(AppRoutePaths.groupMembers(group.id)),
-          icon: const Icon(Icons.people),
-          label: const Text('Members'),
+        SectionHeader(title: 'Actions'),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 1.9,
+          children: [
+            _ActionTile(
+              icon: Icons.people_outline,
+              label: 'Members',
+              onTap: () => context.push(AppRoutePaths.groupMembers(group.id)),
+            ),
+            _ActionTile(
+              icon: Icons.timelapse_outlined,
+              label: 'Cycles',
+              onTap: () => context.push(AppRoutePaths.groupCycles(group.id)),
+            ),
+            if (isAdmin)
+              _ActionTile(
+                icon: Icons.share_outlined,
+                label: 'Invite',
+                onTap: () => context.push(AppRoutePaths.groupInvite(group.id)),
+              ),
+            if (isAdmin)
+              _ActionTile(
+                icon: Icons.swap_vert_rounded,
+                label: 'Payout order',
+                onTap: () =>
+                    context.push(AppRoutePaths.groupPayoutOrder(group.id)),
+              ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        if (isAdmin)
-          FilledButton.icon(
-            onPressed: () => context.go(AppRoutePaths.groupInvite(group.id)),
-            icon: const Icon(Icons.share),
-            label: const Text('Create Invite'),
-          ),
-        const SizedBox(height: AppSpacing.sm),
-        FilledButton.icon(
-          onPressed: () => context.go(AppRoutePaths.groupCycles(group.id)),
-          icon: const Icon(Icons.timelapse),
-          label: const Text('Cycles'),
-        ),
-        if (isAdmin) ...[
-          const SizedBox(height: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () =>
-                context.go(AppRoutePaths.groupPayoutOrder(group.id)),
-            icon: const Icon(Icons.swap_vert),
-            label: const Text('Payout order'),
-          ),
-        ],
       ],
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 110),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return EqubCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: Text(label)),
+        ],
+      ),
     );
   }
 }

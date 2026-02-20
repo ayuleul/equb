@@ -6,8 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/primary_button.dart';
+import '../../../shared/ui/ui.dart';
 import '../auth_controller.dart';
 import '../auth_state.dart';
 
@@ -22,8 +21,8 @@ class OtpScreen extends ConsumerStatefulWidget {
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   static const int _resendCooldownSeconds = 45;
-
   late final TextEditingController _otpController;
+  late final FocusNode _otpFocusNode;
   Timer? _cooldownTimer;
   int _remainingSeconds = _resendCooldownSeconds;
   String? _validationError;
@@ -32,6 +31,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   void initState() {
     super.initState();
     _otpController = TextEditingController();
+    _otpFocusNode = FocusNode();
 
     final initialPhone = widget.phone?.trim();
     if (initialPhone != null && initialPhone.isNotEmpty) {
@@ -50,52 +50,37 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   void dispose() {
     _cooldownTimer?.cancel();
     _otpController.dispose();
+    _otpFocusNode.dispose();
     super.dispose();
   }
 
   void _startCooldown() {
     _cooldownTimer?.cancel();
-    setState(() {
-      _remainingSeconds = _resendCooldownSeconds;
-    });
+    setState(() => _remainingSeconds = _resendCooldownSeconds);
 
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
-
       if (_remainingSeconds <= 1) {
         timer.cancel();
-        setState(() {
-          _remainingSeconds = 0;
-        });
+        setState(() => _remainingSeconds = 0);
         return;
       }
-
-      setState(() {
-        _remainingSeconds -= 1;
-      });
+      setState(() => _remainingSeconds -= 1);
     });
   }
 
   Future<void> _verify(String phone) async {
-    final messenger = ScaffoldMessenger.of(context);
     final code = _otpController.text.trim();
-
     if (code.length != 6) {
-      setState(() {
-        _validationError = 'Enter the 6-digit OTP code.';
-      });
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Enter the 6-digit OTP code.')),
-      );
+      setState(() => _validationError = 'Enter the 6-digit OTP code.');
+      AppSnackbars.error(context, 'Enter the 6-digit OTP code.');
       return;
     }
 
-    setState(() {
-      _validationError = null;
-    });
+    setState(() => _validationError = null);
 
     final success = await ref
         .read(authControllerProvider.notifier)
@@ -106,23 +91,20 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
 
     if (success) {
-      context.go(AppRoutePaths.groups);
+      context.go(AppRoutePaths.home);
       return;
     }
 
     final message = ref.read(authControllerProvider).errorMessage;
     if (message != null && message.isNotEmpty) {
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+      AppSnackbars.error(context, message);
     }
   }
 
   Future<void> _resend(String phone) async {
-    final messenger = ScaffoldMessenger.of(context);
-
     final success = await ref
         .read(authControllerProvider.notifier)
         .requestOtp(phone);
-
     if (!mounted) {
       return;
     }
@@ -130,21 +112,18 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (!success) {
       final message = ref.read(authControllerProvider).errorMessage;
       if (message != null && message.isNotEmpty) {
-        messenger.showSnackBar(SnackBar(content: Text(message)));
+        AppSnackbars.error(context, message);
       }
       return;
     }
 
-    messenger.showSnackBar(
-      const SnackBar(content: Text('A new OTP code has been sent.')),
-    );
+    AppSnackbars.success(context, 'A new OTP code has been sent.');
     _startCooldown();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final theme = Theme.of(context);
     final routePhone = widget.phone?.trim();
     final phone = (routePhone != null && routePhone.isNotEmpty)
         ? routePhone
@@ -156,109 +135,138 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        AppSnackbars.error(context, nextError);
       }
     });
 
     if (phone == null || phone.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('OTP Verification')),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Phone number is missing. Request a new OTP to continue.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                PrimaryButton(
-                  label: 'Back to Login',
-                  onPressed: () => context.go(AppRoutePaths.login),
-                ),
-              ],
-            ),
-          ),
+      return AppScaffold(
+        title: 'OTP verification',
+        child: EmptyState(
+          icon: Icons.sms_failed_outlined,
+          title: 'Phone number missing',
+          message: 'Request a new OTP to continue.',
+          ctaLabel: 'Back to login',
+          onCtaPressed: () => context.go(AppRoutePaths.login),
         ),
       );
     }
 
     final canResend = _remainingSeconds == 0 && !authState.isRequestingOtp;
+    final otpValue = _otpController.text.trim();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('OTP Verification')),
+      appBar: AppBar(
+        title: const Text('OTP verification'),
+        automaticallyImplyLeading: false,
+        leading: context.canPop() ? const BackButton() : null,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter verification code',
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text('Code sent to $phone', style: theme.textTheme.bodyMedium),
-              const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                controller: _otpController,
-                label: 'OTP code',
-                hint: '123456',
-                keyboardType: TextInputType.number,
-                onChanged: (_) {
-                  if (_validationError != null) {
-                    setState(() {
-                      _validationError = null;
-                    });
-                  }
-                  if (authState.hasError) {
-                    ref.read(authControllerProvider.notifier).clearError();
-                  }
-                },
-              ),
-              if (_validationError != null) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  _validationError!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: EqubCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Enter verification code',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text('Code sent to $phone'),
+                    const SizedBox(height: AppSpacing.md),
+                    GestureDetector(
+                      onTap: () => _otpFocusNode.requestFocus(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List<Widget>.generate(
+                          6,
+                          (index) => _OtpDigitBox(
+                            value: index < otpValue.length
+                                ? otpValue[index]
+                                : '',
+                          ),
+                        ),
+                      ),
+                    ),
+                    Opacity(
+                      opacity: 0.01,
+                      child: TextField(
+                        controller: _otpController,
+                        focusNode: _otpFocusNode,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        autofocus: true,
+                        onChanged: (_) {
+                          setState(() {
+                            _validationError = null;
+                          });
+                        },
+                      ),
+                    ),
+                    if (_validationError != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        _validationError!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: authState.isVerifyingOtp
+                            ? null
+                            : () => _verify(phone),
+                        child: Text(
+                          authState.isVerifyingOtp
+                              ? 'Verifying...'
+                              : 'Verify OTP',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    TextButton(
+                      onPressed: canResend ? () => _resend(phone) : null,
+                      child: Text(
+                        canResend
+                            ? 'Resend OTP'
+                            : 'Resend OTP in ${_remainingSeconds}s',
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-              if (authState.hasError) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  authState.errorMessage!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(
-                label: 'Verify OTP',
-                isLoading: authState.isVerifyingOtp,
-                onPressed: authState.isVerifyingOtp
-                    ? null
-                    : () => _verify(phone),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextButton(
-                onPressed: canResend ? () => _resend(phone) : null,
-                child: Text(
-                  canResend
-                      ? 'Resend OTP'
-                      : 'Resend OTP in ${_remainingSeconds}s',
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OtpDigitBox extends StatelessWidget {
+  const _OtpDigitBox({required this.value});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 52,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Text(value, style: Theme.of(context).textTheme.titleLarge),
     );
   }
 }

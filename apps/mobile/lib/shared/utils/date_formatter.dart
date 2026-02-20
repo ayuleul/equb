@@ -1,7 +1,5 @@
-import 'package:intl/intl.dart';
-
-final DateFormat _friendlyDateFormat = DateFormat('d MMM yyyy');
+import 'formatters.dart';
 
 String formatFriendlyDate(DateTime date) {
-  return _friendlyDateFormat.format(date.toLocal());
+  return formatDate(date);
 }

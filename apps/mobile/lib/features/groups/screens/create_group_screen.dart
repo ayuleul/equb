@@ -7,9 +7,10 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/create_group_request.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/api_error_mapper.dart';
+import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/primary_button.dart';
 import '../groups_list_controller.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
@@ -53,38 +54,32 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       lastDate: DateTime.now().add(const Duration(days: 3650)),
     );
 
-    if (picked != null) {
-      setState(() {
-        _startDate = DateTime(picked.year, picked.month, picked.day);
-      });
+    if (picked == null) {
+      return;
     }
+
+    setState(() {
+      _startDate = DateTime(picked.year, picked.month, picked.day);
+    });
   }
 
   Future<void> _submit() async {
-    final messenger = ScaffoldMessenger.of(context);
     final name = _nameController.text.trim();
-    final amountRaw = _amountController.text.trim();
-    final currencyRaw = _currencyController.text.trim().toUpperCase();
+    final amount = int.tryParse(_amountController.text.trim());
+    final currency = _currencyController.text.trim().toUpperCase();
 
     if (name.isEmpty) {
-      setState(() {
-        _formError = 'Group name is required.';
-      });
+      setState(() => _formError = 'Group name is required.');
       return;
     }
-
-    final amount = int.tryParse(amountRaw);
     if (amount == null || amount <= 0) {
-      setState(() {
-        _formError = 'Contribution amount must be greater than 0.';
-      });
+      setState(
+        () => _formError = 'Contribution amount must be greater than 0.',
+      );
       return;
     }
-
-    if (currencyRaw.isEmpty || currencyRaw.length != 3) {
-      setState(() {
-        _formError = 'Currency must be a 3-letter code (e.g. ETB).';
-      });
+    if (currency.length != 3) {
+      setState(() => _formError = 'Currency must be a 3-letter code.');
       return;
     }
 
@@ -101,7 +96,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           contributionAmount: amount,
           frequency: _frequency,
           startDate: _startDate,
-          currency: currencyRaw,
+          currency: currency,
         ),
       );
 
@@ -109,117 +104,106 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         return;
       }
 
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Group created successfully.')),
-      );
-
       await ref.read(groupsListProvider.notifier).refresh();
-      if (mounted) {
-        context.go(AppRoutePaths.groupDetail(group.id));
+      if (!mounted) {
+        return;
       }
+      AppSnackbars.success(context, 'Group created');
+      if (context.canPop()) {
+        context.pop();
+      }
+      context.push(AppRoutePaths.groupDetail(group.id));
     } catch (error) {
-      setState(() {
-        _formError = mapApiErrorToMessage(error);
-      });
-      messenger.showSnackBar(SnackBar(content: Text(_formError!)));
+      if (!mounted) {
+        return;
+      }
+      final message = mapApiErrorToMessage(error);
+      setState(() => _formError = message);
+      AppSnackbars.error(context, message);
     } finally {
       if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
+        setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create Group')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            AppTextField(
-              controller: _nameController,
-              label: 'Group name',
-              hint: 'Family Equb',
-              onChanged: (_) {
-                if (_formError != null) {
-                  setState(() {
-                    _formError = null;
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              controller: _amountController,
-              label: 'Contribution amount',
-              hint: '500',
-              keyboardType: TextInputType.number,
-              onChanged: (_) {
-                if (_formError != null) {
-                  setState(() {
-                    _formError = null;
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              controller: _currencyController,
-              label: 'Currency',
-              hint: 'ETB',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<GroupFrequencyModel>(
-              initialValue: _frequency,
-              decoration: const InputDecoration(labelText: 'Frequency'),
-              items: const [
-                DropdownMenuItem(
-                  value: GroupFrequencyModel.weekly,
-                  child: Text('WEEKLY'),
+    return AppScaffold(
+      title: 'Create group',
+      subtitle: 'Set up a new Equb group',
+      child: ListView(
+        children: [
+          EqubCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppTextField(
+                  controller: _nameController,
+                  label: 'Group name',
+                  hint: 'Family Equb',
+                  onChanged: (_) => setState(() => _formError = null),
                 ),
-                DropdownMenuItem(
-                  value: GroupFrequencyModel.monthly,
-                  child: Text('MONTHLY'),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  controller: _amountController,
+                  label: 'Contribution amount',
+                  hint: '500',
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() => _formError = null),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  controller: _currencyController,
+                  label: 'Currency',
+                  hint: 'ETB',
+                  onChanged: (_) => setState(() => _formError = null),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<GroupFrequencyModel>(
+                  initialValue: _frequency,
+                  decoration: const InputDecoration(labelText: 'Frequency'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: GroupFrequencyModel.weekly,
+                      child: Text('WEEKLY'),
+                    ),
+                    DropdownMenuItem(
+                      value: GroupFrequencyModel.monthly,
+                      child: Text('MONTHLY'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() => _frequency = value);
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                OutlinedButton.icon(
+                  onPressed: _pickStartDate,
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text('Start date: ${formatDate(_startDate)}'),
                 ),
               ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _frequency = value;
-                  });
-                }
-              },
             ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: _pickStartDate,
-              icon: const Icon(Icons.calendar_today),
-              label: Text(
-                'Start date: ${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
+          ),
+          if (_formError != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _formError!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
               ),
-            ),
-            if (_formError != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                _formError!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(
-              label: 'Create Group',
-              isLoading: _isSubmitting,
-              onPressed: _isSubmitting ? null : _submit,
             ),
           ],
-        ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(
+            onPressed: _isSubmitting ? null : _submit,
+            child: Text(_isSubmitting ? 'Creating...' : 'Create group'),
+          ),
+        ],
       ),
     );
   }

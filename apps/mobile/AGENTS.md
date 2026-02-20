@@ -25,7 +25,7 @@
 - Router baseline is locked to:
   - `/splash` as initial route while checking token presence
   - `/login` for unauthenticated sessions
-  - `/groups` for authenticated sessions
+  - `/home` for authenticated sessions
 
 ## Folder conventions
 - `lib/app/`
@@ -69,7 +69,7 @@
   - authenticated users cannot navigate back to `/login` or `/otp`
 
 ## Groups rules
-- Authenticated landing route is locked to `/groups`.
+- Authenticated landing route is locked to `/home`.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
 
@@ -94,6 +94,18 @@
 - Deep-link resolution from notification payload must stay centralized in `features/notifications/deeplink_mapper.dart`.
 - Tapping a notification row must mark it as read first, then navigate when a resolvable deep link exists.
 - Push delivery is optional; the app must keep notifications UX functional without Firebase by relying on in-app list and graceful fallback behavior.
+
+## Polish & Navigation rules
+- Main app sections must live under shell navigation with bottom tabs (`/home`, `/groups`, `/settings`); logout action belongs in Settings.
+- Use `context.push` for drill-down/detail routes and `context.go` only for root section switches or auth roots.
+- App bars must render an explicit back button (`leading: BackButton()`) when `context.canPop()` is true.
+- Shared UI under `lib/shared/ui/` is the default for layout and repeated visuals (cards, list rows, badges, empty/loading feedback, snackbars).
+- Standard content padding is `16` horizontal (`AppSpacing.md`); section spacing should stay within `12-16` (`AppSpacing.sm` to `AppSpacing.md`).
+
+## Tab architecture rules
+- Bottom tabs are implemented with `StatefulShellRoute.indexedStack` using separate navigator keys (`home`, `groups`, `settings`) so each tab preserves its own navigation stack.
+- Notifications are not a tab; `/notifications` is a root overlay route (`parentNavigatorKey: root`) opened from app-bar bell actions.
+- Notification/deeplink navigation into groups must use centralized helper flow: switch to `/groups` first, then push the target group route.
 
 ## DX commands
 - Install deps: `flutter pub get`

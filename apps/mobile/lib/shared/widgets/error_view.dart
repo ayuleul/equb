@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'primary_button.dart';
+import '../ui/empty_state.dart';
 
 class ErrorView extends StatelessWidget {
   const ErrorView({super.key, required this.message, this.onRetry});
@@ -10,24 +10,12 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            if (onRetry != null) ...[
-              const SizedBox(height: 12),
-              PrimaryButton(
-                label: 'Retry',
-                icon: Icons.refresh,
-                onPressed: onRetry,
-              ),
-            ],
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: Icons.error_outline,
+      title: 'Something went wrong',
+      message: message,
+      ctaLabel: onRetry == null ? null : 'Retry',
+      onCtaPressed: onRetry,
     );
   }
 }
