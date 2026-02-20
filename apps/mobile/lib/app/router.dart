@@ -20,6 +20,7 @@ import '../features/cycles/screens/payout_order_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/submit_contribution_screen.dart';
 import '../features/payouts/screens/payout_screen.dart';
+import '../features/notifications/screens/notifications_screen.dart';
 import '../features/splash/splash_screen.dart';
 
 class AppRoutePaths {
@@ -29,6 +30,7 @@ class AppRoutePaths {
   static const login = '/login';
   static const otp = '/otp';
   static const groups = '/groups';
+  static const notifications = '/notifications';
   static const groupsCreate = '/groups/create';
   static const groupsJoin = '/groups/join';
   static const debugTheme = '/debug/theme';
@@ -86,6 +88,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     GoRoute(
       path: AppRoutePaths.groups,
       builder: (context, state) => const GroupsListScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.notifications,
+      builder: (context, state) => const NotificationsScreen(),
     ),
     GoRoute(
       path: AppRoutePaths.groupsCreate,
@@ -199,7 +205,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLogin = location == AppRoutePaths.login;
       final isOtp = location == AppRoutePaths.otp;
       final isGroupsRoute = location.startsWith(AppRoutePaths.groups);
+      final isNotificationsRoute = location.startsWith(
+        AppRoutePaths.notifications,
+      );
       final isDebugTheme = location == AppRoutePaths.debugTheme;
+      final isProtectedRoute = isGroupsRoute || isNotificationsRoute;
 
       if (kDebugMode && isDebugTheme) {
         return null;
@@ -220,7 +230,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isAuthenticated ? AppRoutePaths.groups : AppRoutePaths.login;
       }
 
-      if (!isAuthenticated && isGroupsRoute) {
+      if (!isAuthenticated && isProtectedRoute) {
         return AppRoutePaths.login;
       }
 

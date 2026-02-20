@@ -39,6 +39,11 @@ class GroupsListScreen extends ConsumerWidget {
         title: const Text('Groups'),
         actions: [
           IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => context.go(AppRoutePaths.notifications),
+            icon: const Icon(Icons.notifications_outlined),
+          ),
+          IconButton(
             tooltip: 'Logout',
             onPressed: authState.isLoggingOut
                 ? null

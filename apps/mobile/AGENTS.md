@@ -89,6 +89,12 @@
 - Strict payout failures must show guidance to review cycle contributions before retrying confirmation.
 - Closing a cycle must invalidate and refresh cycle detail, current cycle, cycles list, and cycle payout state.
 
+## Notifications rules
+- Device token registration is best-effort and must only call `/devices/register-token` when token changed for the current authenticated user context.
+- Deep-link resolution from notification payload must stay centralized in `features/notifications/deeplink_mapper.dart`.
+- Tapping a notification row must mark it as read first, then navigate when a resolvable deep link exists.
+- Push delivery is optional; the app must keep notifications UX functional without Firebase by relying on in-app list and graceful fallback behavior.
+
 ## DX commands
 - Install deps: `flutter pub get`
 - Codegen: `flutter pub run build_runner build --delete-conflicting-outputs`

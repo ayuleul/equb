@@ -13,6 +13,11 @@ import '../data/files/files_api.dart';
 import '../data/files/files_repository.dart';
 import '../data/groups/groups_api.dart';
 import '../data/groups/groups_repository.dart';
+import '../data/notifications/device_token_store.dart';
+import '../data/notifications/devices_api.dart';
+import '../data/notifications/devices_repository.dart';
+import '../data/notifications/notifications_api.dart';
+import '../data/notifications/notifications_repository.dart';
 import '../data/payouts/payouts_api.dart';
 import '../data/payouts/payouts_repository.dart';
 import '../data/auth/token_store.dart';
@@ -79,6 +84,11 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 final tokenStoreProvider = Provider<TokenStore>((ref) {
   final storage = ref.watch(secureStorageProvider);
   return TokenStore.fromSecureStorage(storage);
+});
+
+final deviceTokenStoreProvider = Provider<DeviceTokenStore>((ref) {
+  final storage = ref.watch(secureStorageProvider);
+  return DeviceTokenStore.fromSecureStorage(storage);
 });
 
 final sessionExpiredProvider = StateProvider<bool>((ref) => false);
@@ -161,4 +171,26 @@ final payoutsApiProvider = Provider<PayoutsApi>((ref) {
 final payoutsRepositoryProvider = Provider<PayoutsRepository>((ref) {
   final api = ref.watch(payoutsApiProvider);
   return PayoutsRepository(api);
+});
+
+final devicesApiProvider = Provider<DevicesApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioDevicesApi(apiClient);
+});
+
+final devicesRepositoryProvider = Provider<DevicesRepository>((ref) {
+  final api = ref.watch(devicesApiProvider);
+  return DevicesRepository(api);
+});
+
+final notificationsApiProvider = Provider<NotificationsApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioNotificationsApi(apiClient);
+});
+
+final notificationsRepositoryProvider = Provider<NotificationsRepository>((
+  ref,
+) {
+  final api = ref.watch(notificationsApiProvider);
+  return NotificationsRepository(api);
 });
