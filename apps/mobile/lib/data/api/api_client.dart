@@ -93,6 +93,22 @@ class ApiClient {
     }
   }
 
+  Future<List<dynamic>> getList(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        path,
+        queryParameters: queryParameters,
+      );
+
+      return response.data ?? <dynamic>[];
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
   void _applyBaseOptions(Dio client, BaseOptions baseOptions) {
     final mergedHeaders = <String, dynamic>{
       ...client.options.headers,

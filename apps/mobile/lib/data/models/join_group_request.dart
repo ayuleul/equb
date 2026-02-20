@@ -1,0 +1,12 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'join_group_request.freezed.dart';
+part 'join_group_request.g.dart';
+
+@freezed
+sealed class JoinGroupRequest with _$JoinGroupRequest {
+  const factory JoinGroupRequest({required String code}) = _JoinGroupRequest;
+
+  factory JoinGroupRequest.fromJson(Map<String, dynamic> json) =>
+      _$JoinGroupRequestFromJson(json);
+}

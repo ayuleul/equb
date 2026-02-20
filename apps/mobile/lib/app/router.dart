@@ -7,7 +7,12 @@ import '../features/debug/theme_preview_screen.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/auth/screens/otp_screen.dart';
 import '../features/auth/screens/phone_screen.dart';
-import '../features/home/home_screen.dart';
+import '../features/groups/screens/create_group_screen.dart';
+import '../features/groups/screens/group_detail_screen.dart';
+import '../features/groups/screens/group_invite_screen.dart';
+import '../features/groups/screens/group_members_screen.dart';
+import '../features/groups/screens/groups_list_screen.dart';
+import '../features/groups/screens/join_group_screen.dart';
 import '../features/splash/splash_screen.dart';
 
 class AppRoutePaths {
@@ -16,8 +21,14 @@ class AppRoutePaths {
   static const splash = '/splash';
   static const login = '/login';
   static const otp = '/otp';
-  static const home = '/home';
+  static const groups = '/groups';
+  static const groupsCreate = '/groups/create';
+  static const groupsJoin = '/groups/join';
   static const debugTheme = '/debug/theme';
+
+  static String groupDetail(String groupId) => '/groups/$groupId';
+  static String groupMembers(String groupId) => '/groups/$groupId/members';
+  static String groupInvite(String groupId) => '/groups/$groupId/invite';
 }
 
 final _routerRefreshProvider = Provider<_RouterRefreshNotifier>((ref) {
@@ -51,8 +62,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           OtpScreen(phone: state.uri.queryParameters['phone']),
     ),
     GoRoute(
-      path: AppRoutePaths.home,
-      builder: (context, state) => const HomeScreen(),
+      path: AppRoutePaths.groups,
+      builder: (context, state) => const GroupsListScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.groupsCreate,
+      builder: (context, state) => const CreateGroupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.groupsJoin,
+      builder: (context, state) => const JoinGroupScreen(),
+    ),
+    GoRoute(
+      path: '/groups/:id',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return GroupDetailScreen(groupId: groupId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:id/members',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return GroupMembersScreen(groupId: groupId);
+      },
+    ),
+    GoRoute(
+      path: '/groups/:id/invite',
+      builder: (context, state) {
+        final groupId = state.pathParameters['id'] ?? '';
+        return GroupInviteScreen(groupId: groupId);
+      },
     ),
   ];
 
@@ -76,6 +116,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSplash = location == AppRoutePaths.splash;
       final isLogin = location == AppRoutePaths.login;
       final isOtp = location == AppRoutePaths.otp;
+      final isGroupsRoute = location.startsWith(AppRoutePaths.groups);
       final isDebugTheme = location == AppRoutePaths.debugTheme;
 
       if (kDebugMode && isDebugTheme) {
@@ -94,15 +135,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final isAuthenticated = authState.isAuthenticated;
       if (isSplash) {
-        return isAuthenticated ? AppRoutePaths.home : AppRoutePaths.login;
+        return isAuthenticated ? AppRoutePaths.groups : AppRoutePaths.login;
       }
 
-      if (!isAuthenticated && !isLogin && !isOtp) {
+      if (!isAuthenticated && isGroupsRoute) {
         return AppRoutePaths.login;
       }
 
       if (isAuthenticated && (isLogin || isOtp)) {
-        return AppRoutePaths.home;
+        return AppRoutePaths.groups;
       }
 
       return null;

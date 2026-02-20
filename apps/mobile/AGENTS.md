@@ -25,7 +25,7 @@
 - Router baseline is locked to:
   - `/splash` as initial route while checking token presence
   - `/login` for unauthenticated sessions
-  - `/home` for authenticated sessions
+  - `/groups` for authenticated sessions
 
 ## Folder conventions
 - `lib/app/`
@@ -37,10 +37,15 @@
   - `api_client.dart`, `api_error.dart`
 - `lib/data/auth/`
   - `token_store.dart`, `auth_api.dart`, `auth_repository.dart`
+- `lib/data/groups/`
+  - `groups_api.dart`, `groups_repository.dart`
 - `lib/data/models/`
 - `lib/features/<feature>/`
 - `lib/features/auth/screens/`
   - `phone_screen.dart`, `otp_screen.dart`
+- `lib/features/groups/screens/`
+  - `groups_list_screen.dart`, `create_group_screen.dart`, `join_group_screen.dart`
+  - `group_detail_screen.dart`, `group_members_screen.dart`, `group_invite_screen.dart`
 - `lib/shared/widgets/`
 - `lib/shared/utils/`
 
@@ -60,8 +65,13 @@
 - Never log access tokens or refresh tokens.
 - Router redirects are locked to:
   - `unknown` auth state -> `/splash`
-  - unauthenticated users -> `/login` (allow `/otp` only when OTP flow has a phone)
+  - unauthenticated users -> `/login` for protected routes; `/otp` is allowed and must handle missing phone gracefully in-screen
   - authenticated users cannot navigate back to `/login` or `/otp`
+
+## Groups rules
+- Authenticated landing route is locked to `/groups`.
+- Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
+- Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
 
 ## DX commands
 - Install deps: `flutter pub get`

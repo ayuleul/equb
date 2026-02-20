@@ -106,7 +106,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
 
     if (success) {
-      context.go(AppRoutePaths.home);
+      context.go(AppRoutePaths.groups);
       return;
     }
 

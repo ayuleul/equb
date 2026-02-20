@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/api/api_client.dart';
 import '../data/auth/auth_api.dart';
 import '../data/auth/auth_repository.dart';
+import '../data/groups/groups_api.dart';
+import '../data/groups/groups_repository.dart';
 import '../data/auth/token_store.dart';
 import '../shared/utils/app_logger.dart';
 
@@ -98,4 +100,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final authApi = ref.watch(authApiProvider);
   final tokenStore = ref.watch(tokenStoreProvider);
   return AuthRepository(authApi: authApi, tokenStore: tokenStore);
+});
+
+final groupsApiProvider = Provider<GroupsApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioGroupsApi(apiClient);
+});
+
+final groupsRepositoryProvider = Provider<GroupsRepository>((ref) {
+  final groupsApi = ref.watch(groupsApiProvider);
+  return GroupsRepository(groupsApi);
 });
