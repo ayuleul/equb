@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../kit/kit.dart';
+
 class AppTextField extends StatelessWidget {
   const AppTextField({
     super.key,
@@ -20,12 +22,13 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return KitTextField(
       controller: controller,
+      label: label,
+      placeholder: hint,
       keyboardType: keyboardType,
       onChanged: onChanged,
       obscureText: obscureText,
-      decoration: InputDecoration(labelText: label, hintText: hint),
     );
   }
 }

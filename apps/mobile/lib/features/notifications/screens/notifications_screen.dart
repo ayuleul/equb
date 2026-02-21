@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/notification_model.dart';
-import '../../../shared/ui/ui.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
-import '../../../shared/widgets/loading_view.dart';
 import '../deeplink_mapper.dart';
 import '../notification_actions_controller.dart';
 import '../notifications_list_provider.dart';
@@ -34,7 +33,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        AppSnackbars.error(context, nextError);
+        KitToast.error(context, nextError);
       }
     });
 
@@ -44,7 +43,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        AppSnackbars.error(context, nextError);
+        KitToast.error(context, nextError);
       }
     });
 
@@ -65,7 +64,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         updated.deepLinkPayload,
       );
       if (location == null) {
-        AppSnackbars.info(context, 'No details available.');
+        KitToast.info(context, 'No details available.');
         return;
       }
 
@@ -77,9 +76,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ? state.items.where((item) => item.isUnread).toList(growable: false)
         : state.items;
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Notifications',
-      subtitle: 'Updates about your groups and cycles',
       actions: [
         IconButton(
           tooltip: 'Refresh',
@@ -134,7 +132,7 @@ class _NotificationsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.isLoading && !state.hasData) {
-      return const LoadingView(message: 'Loading notifications...');
+      return const SizedBox(height: 340, child: KitSkeletonList(itemCount: 4));
     }
 
     if (state.errorMessage != null && !state.hasData) {
@@ -142,7 +140,7 @@ class _NotificationsBody extends StatelessWidget {
     }
 
     if (!state.hasData) {
-      return const EmptyState(
+      return const KitEmptyState(
         icon: Icons.notifications_none,
         title: 'No notifications yet',
         message: 'You will see member and payment updates here.',
@@ -158,10 +156,14 @@ class _NotificationsBody extends StatelessWidget {
           if (index == 0) {
             return Align(
               alignment: Alignment.centerLeft,
-              child: FilterChip(
-                label: Text('Unread only ($unreadCount)'),
-                selected: showUnreadOnly,
-                onSelected: onToggleUnread,
+              child: Row(
+                children: [
+                  FilterChip(
+                    label: Text('Unread only ($unreadCount)'),
+                    selected: showUnreadOnly,
+                    onSelected: onToggleUnread,
+                  ),
+                ],
               ),
             );
           }
@@ -173,9 +175,10 @@ class _NotificationsBody extends StatelessWidget {
 
             return Align(
               alignment: Alignment.centerLeft,
-              child: OutlinedButton(
+              child: KitSecondaryButton(
                 onPressed: state.isLoadingMore ? null : onLoadMore,
-                child: Text(state.isLoadingMore ? 'Loading...' : 'Load more'),
+                label: state.isLoadingMore ? 'Loading...' : 'Load more',
+                expand: false,
               ),
             );
           }
@@ -185,7 +188,7 @@ class _NotificationsBody extends StatelessWidget {
               actionsState.isLoading &&
               actionsState.activeNotificationId == notification.id;
 
-          return EqubCard(
+          return KitCard(
             child: ListTile(
               onTap: isLoading ? null : () => onTapNotification(notification),
               minVerticalPadding: AppSpacing.sm,
@@ -233,13 +236,6 @@ class _UnreadIndicator extends StatelessWidget {
       );
     }
 
-    return Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        shape: BoxShape.circle,
-      ),
-    );
+    return const KitBadge(isDot: true, tone: KitBadgeTone.info);
   }
 }

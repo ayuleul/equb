@@ -19,7 +19,7 @@ class AppComponents {
               vertical: AppSpacing.sm,
             ),
             shape: const RoundedRectangleBorder(
-              borderRadius: AppRadius.mdRounded,
+              borderRadius: AppRadius.inputRounded,
             ),
             textStyle: textTheme.labelLarge,
           ).copyWith(
@@ -52,7 +52,9 @@ class AppComponents {
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.sm,
         ),
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdRounded),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.inputRounded,
+        ),
         textStyle: textTheme.labelLarge,
       ),
     );
@@ -70,7 +72,9 @@ class AppComponents {
           vertical: AppSpacing.sm,
         ),
         side: BorderSide(color: colorScheme.outlineVariant),
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdRounded),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.inputRounded,
+        ),
         textStyle: textTheme.labelLarge,
       ),
     );
@@ -88,7 +92,9 @@ class AppComponents {
           vertical: AppSpacing.xs,
         ),
         foregroundColor: colorScheme.primary,
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdRounded),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.inputRounded,
+        ),
         textStyle: textTheme.labelLarge,
       ),
     );
@@ -98,7 +104,7 @@ class AppComponents {
     ColorScheme colorScheme,
     TextTheme textTheme,
   ) {
-    const radius = AppRadius.mdRounded;
+    const radius = AppRadius.inputRounded;
 
     OutlineInputBorder border(Color color) {
       return OutlineInputBorder(
@@ -110,7 +116,7 @@ class AppComponents {
     return InputDecorationTheme(
       isDense: true,
       filled: true,
-      fillColor: colorScheme.surfaceContainerLow,
+      fillColor: colorScheme.surface,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -129,10 +135,10 @@ class AppComponents {
   static AppBarTheme appBarTheme(ColorScheme colorScheme, TextTheme textTheme) {
     return AppBarTheme(
       elevation: 0,
-      scrolledUnderElevation: 0,
+      scrolledUnderElevation: 0.5,
       backgroundColor: colorScheme.surface,
       foregroundColor: colorScheme.onSurface,
-      centerTitle: false,
+      centerTitle: true,
       titleTextStyle: textTheme.titleLarge,
       surfaceTintColor: Colors.transparent,
     );
@@ -141,10 +147,14 @@ class AppComponents {
   static CardThemeData cardTheme(ColorScheme colorScheme) {
     return CardThemeData(
       margin: const EdgeInsets.all(0),
-      elevation: 0,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
       color: colorScheme.surface,
       surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgRounded),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.cardRounded,
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
       clipBehavior: Clip.antiAlias,
     );
   }
@@ -179,7 +189,9 @@ class AppComponents {
       modalElevation: 0,
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.card),
+        ),
       ),
       showDragHandle: true,
       dragHandleColor: colorScheme.onSurfaceVariant,
@@ -192,8 +204,8 @@ class AppComponents {
       backgroundColor: colorScheme.inverseSurface,
       contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
       actionTextColor: colorScheme.primary,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdRounded),
-      elevation: 0,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.inputRounded),
+      elevation: 0.5,
       insetPadding: const EdgeInsets.all(AppSpacing.md),
     );
   }
@@ -202,7 +214,7 @@ class AppComponents {
     return DividerThemeData(
       color: colorScheme.outlineVariant,
       space: 1,
-      thickness: 1,
+      thickness: 0.8,
     );
   }
 

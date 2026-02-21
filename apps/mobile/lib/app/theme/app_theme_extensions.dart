@@ -17,6 +17,10 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     required this.onInfo,
     required this.infoContainer,
     required this.onInfoContainer,
+    required this.danger,
+    required this.onDanger,
+    required this.dangerContainer,
+    required this.onDangerContainer,
   });
 
   final Color success;
@@ -34,6 +38,11 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   final Color infoContainer;
   final Color onInfoContainer;
 
+  final Color danger;
+  final Color onDanger;
+  final Color dangerContainer;
+  final Color onDangerContainer;
+
   static const AppSemanticColors light = AppSemanticColors(
     success: AppColors.success,
     onSuccess: Colors.white,
@@ -47,6 +56,10 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     onInfo: Colors.white,
     infoContainer: Color(0xFFDDEAFF),
     onInfoContainer: Color(0xFF062E5D),
+    danger: AppColors.danger,
+    onDanger: Colors.white,
+    dangerContainer: Color(0xFFFCE4E5),
+    onDangerContainer: Color(0xFF5E0E14),
   );
 
   static const AppSemanticColors dark = AppSemanticColors(
@@ -62,6 +75,10 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     onInfo: Color(0xFF042948),
     infoContainer: Color(0xFF12385F),
     onInfoContainer: Color(0xFFD8EBFF),
+    danger: Color(0xFFFF8D9A),
+    onDanger: Color(0xFF4A0A10),
+    dangerContainer: Color(0xFF5A1A21),
+    onDangerContainer: Color(0xFFFFDDE0),
   );
 
   static AppSemanticColors fallback(Brightness brightness) =>
@@ -81,6 +98,10 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     Color? onInfo,
     Color? infoContainer,
     Color? onInfoContainer,
+    Color? danger,
+    Color? onDanger,
+    Color? dangerContainer,
+    Color? onDangerContainer,
   }) {
     return AppSemanticColors(
       success: success ?? this.success,
@@ -95,6 +116,10 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       onInfo: onInfo ?? this.onInfo,
       infoContainer: infoContainer ?? this.infoContainer,
       onInfoContainer: onInfoContainer ?? this.onInfoContainer,
+      danger: danger ?? this.danger,
+      onDanger: onDanger ?? this.onDanger,
+      dangerContainer: dangerContainer ?? this.dangerContainer,
+      onDangerContainer: onDangerContainer ?? this.onDangerContainer,
     );
   }
 
@@ -128,8 +153,25 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       onInfoContainer:
           Color.lerp(onInfoContainer, other.onInfoContainer, t) ??
           onInfoContainer,
+      danger: Color.lerp(danger, other.danger, t) ?? danger,
+      onDanger: Color.lerp(onDanger, other.onDanger, t) ?? onDanger,
+      dangerContainer:
+          Color.lerp(dangerContainer, other.dangerContainer, t) ??
+          dangerContainer,
+      onDangerContainer:
+          Color.lerp(onDangerContainer, other.onDangerContainer, t) ??
+          onDangerContainer,
     );
   }
+
+  Color get successTint => successContainer;
+  Color get onSuccessTint => onSuccessContainer;
+  Color get warningTint => warningContainer;
+  Color get onWarningTint => onWarningContainer;
+  Color get infoTint => infoContainer;
+  Color get onInfoTint => onInfoContainer;
+  Color get dangerTint => dangerContainer;
+  Color get onDangerTint => onDangerContainer;
 }
 
 extension AppThemeDataExtension on ThemeData {
@@ -138,5 +180,6 @@ extension AppThemeDataExtension on ThemeData {
 }
 
 extension AppBuildContextThemeExtension on BuildContext {
+  AppSemanticColors get colors => Theme.of(this).semanticColors;
   AppSemanticColors get semanticColors => Theme.of(this).semanticColors;
 }

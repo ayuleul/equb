@@ -9,11 +9,11 @@ import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../features/auth/auth_controller.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/utils/date_formatter.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
-import '../../../shared/widgets/primary_button.dart';
 import '../../cycles/cycle_detail_provider.dart';
 import '../../groups/group_detail_controller.dart';
 import '../cycle_payout_provider.dart';
@@ -65,9 +65,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(nextError)));
+        KitToast.error(context, nextError);
       }
     });
 
@@ -121,130 +119,115 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
             .length ??
         0;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Payout'),
-        automaticallyImplyLeading: false,
-        leading: context.canPop() ? const BackButton() : null,
-      ),
-      body: SafeArea(
-        child: groupAsync.when(
-          loading: () => const LoadingView(message: 'Loading payout...'),
-          error: (error, _) => ErrorView(
-            message: error.toString(),
-            onRetry: () => ref
-                .read(groupDetailControllerProvider)
-                .refreshAll(widget.groupId),
-          ),
-          data: (_) {
-            return cycleAsync.when(
-              loading: () => const LoadingView(message: 'Loading cycle...'),
-              error: (error, _) => ErrorView(
-                message: error.toString(),
-                onRetry: () => ref.invalidate(
-                  cycleDetailProvider((
-                    groupId: widget.groupId,
-                    cycleId: widget.cycleId,
-                  )),
-                ),
-              ),
-              data: (cycleData) {
-                return payoutAsync.when(
-                  loading: () =>
-                      const LoadingView(message: 'Loading payout...'),
-                  error: (error, _) => ErrorView(
-                    message: error.toString(),
-                    onRetry: () =>
-                        ref.invalidate(cyclePayoutProvider(widget.cycleId)),
-                  ),
-                  data: (payout) => RefreshIndicator(
-                    onRefresh: onRefresh,
-                    child: ListView(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      children: [
-                        _CycleHeaderCard(cycle: cycleData),
-                        const SizedBox(height: AppSpacing.md),
-                        _PayoutStatusCard(
-                          payout: payout,
-                          onViewProof: (proofFileKey) =>
-                              _viewProof(context, ref, proofFileKey),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        _PayoutTimelineCard(cycle: cycleData, payout: payout),
-                        const SizedBox(height: AppSpacing.md),
-                        if (payout == null)
-                          _CreatePayoutSection(
-                            isAdmin: isAdmin,
-                            defaultAmount:
-                                (group?.contributionAmount ?? 0) *
-                                (activeMembersCount > 0
-                                    ? activeMembersCount
-                                    : 1),
-                            isLoading: actionState.isLoading,
-                            onCreatePressed: isAdmin
-                                ? () => _showCreatePayoutDialog(
-                                    context: context,
-                                    defaultAmount:
-                                        (group?.contributionAmount ?? 0) *
-                                        (activeMembersCount > 0
-                                            ? activeMembersCount
-                                            : 1),
-                                    onSubmit:
-                                        ({
-                                          required amount,
-                                          paymentRef,
-                                          note,
-                                        }) async {
-                                          final success = await ref
-                                              .read(
-                                                payoutActionControllerProvider(
-                                                  args,
-                                                ).notifier,
-                                              )
-                                              .createPayout(
-                                                amount: amount,
-                                                paymentRef: paymentRef,
-                                                note: note,
-                                              );
-
-                                          if (!context.mounted) {
-                                            return;
-                                          }
-
-                                          if (success) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Payout created.',
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                  )
-                                : null,
-                          ),
-                        if (payout != null)
-                          _PayoutActionsSection(
-                            args: args,
-                            cycle: cycleData,
-                            payout: payout,
-                            isAdmin: isAdmin,
-                            actionState: actionState,
-                            confirmPaymentRefController:
-                                _confirmPaymentRefController,
-                            confirmNoteController: _confirmNoteController,
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+    return KitScaffold(
+      title: 'Payout',
+      child: groupAsync.when(
+        loading: () => const LoadingView(message: 'Loading payout...'),
+        error: (error, _) => ErrorView(
+          message: error.toString(),
+          onRetry: () => ref
+              .read(groupDetailControllerProvider)
+              .refreshAll(widget.groupId),
         ),
+        data: (_) {
+          return cycleAsync.when(
+            loading: () => const LoadingView(message: 'Loading cycle...'),
+            error: (error, _) => ErrorView(
+              message: error.toString(),
+              onRetry: () => ref.invalidate(
+                cycleDetailProvider((
+                  groupId: widget.groupId,
+                  cycleId: widget.cycleId,
+                )),
+              ),
+            ),
+            data: (cycleData) {
+              return payoutAsync.when(
+                loading: () => const LoadingView(message: 'Loading payout...'),
+                error: (error, _) => ErrorView(
+                  message: error.toString(),
+                  onRetry: () =>
+                      ref.invalidate(cyclePayoutProvider(widget.cycleId)),
+                ),
+                data: (payout) => RefreshIndicator(
+                  onRefresh: onRefresh,
+                  child: ListView(
+                    children: [
+                      _CycleHeaderCard(cycle: cycleData),
+                      const SizedBox(height: AppSpacing.md),
+                      _PayoutStatusCard(
+                        payout: payout,
+                        onViewProof: (proofFileKey) =>
+                            _viewProof(context, ref, proofFileKey),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      _PayoutTimelineCard(cycle: cycleData, payout: payout),
+                      const SizedBox(height: AppSpacing.md),
+                      if (payout == null)
+                        _CreatePayoutSection(
+                          isAdmin: isAdmin,
+                          defaultAmount:
+                              (group?.contributionAmount ?? 0) *
+                              (activeMembersCount > 0 ? activeMembersCount : 1),
+                          isLoading: actionState.isLoading,
+                          onCreatePressed: isAdmin
+                              ? () => _showCreatePayoutDialog(
+                                  context: context,
+                                  defaultAmount:
+                                      (group?.contributionAmount ?? 0) *
+                                      (activeMembersCount > 0
+                                          ? activeMembersCount
+                                          : 1),
+                                  onSubmit:
+                                      ({
+                                        required amount,
+                                        paymentRef,
+                                        note,
+                                      }) async {
+                                        final success = await ref
+                                            .read(
+                                              payoutActionControllerProvider(
+                                                args,
+                                              ).notifier,
+                                            )
+                                            .createPayout(
+                                              amount: amount,
+                                              paymentRef: paymentRef,
+                                              note: note,
+                                            );
+
+                                        if (!context.mounted) {
+                                          return;
+                                        }
+
+                                        if (success) {
+                                          KitToast.success(
+                                            context,
+                                            'Payout created.',
+                                          );
+                                        }
+                                      },
+                                )
+                              : null,
+                        ),
+                      if (payout != null)
+                        _PayoutActionsSection(
+                          args: args,
+                          cycle: cycleData,
+                          payout: payout,
+                          isAdmin: isAdmin,
+                          actionState: actionState,
+                          confirmPaymentRefController:
+                              _confirmPaymentRefController,
+                          confirmNoteController: _confirmNoteController,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -263,24 +246,21 @@ class _CycleHeaderCard extends StatelessWidget {
       CycleStatusModel.unknown => 'UNKNOWN',
     };
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Cycle #${cycle.cycleNo}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Recipient: ${_cycleRecipientLabel(cycle)}'),
-            const SizedBox(height: AppSpacing.xs),
-            Chip(label: Text(statusLabel)),
-          ],
-        ),
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cycle #${cycle.cycleNo}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Recipient: ${_cycleRecipientLabel(cycle)}'),
+          const SizedBox(height: AppSpacing.xs),
+          StatusPill.fromLabel(statusLabel),
+        ],
       ),
     );
   }
@@ -295,13 +275,10 @@ class _PayoutStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (payout == null) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Text(
-            'Payout not recorded yet.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+      return KitCard(
+        child: Text(
+          'Payout not recorded yet.',
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }
@@ -312,55 +289,53 @@ class _PayoutStatusCard extends StatelessWidget {
       PayoutStatusModel.unknown => 'UNKNOWN',
     };
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Payout status',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const Spacer(),
-                Chip(label: Text(statusLabel)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Amount: ${payout!.amount}'),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Recipient: ${payout!.recipientLabel}'),
-            if (payout!.paymentRef != null &&
-                payout!.paymentRef!.trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: Text('Payment ref: ${payout!.paymentRef}'),
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Payout status',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-            if (payout!.note != null && payout!.note!.trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: Text('Note: ${payout!.note}'),
-              ),
-            if (payout!.confirmedAt != null)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: Text(
-                  'Confirmed: ${formatFriendlyDate(payout!.confirmedAt!)}',
-                ),
-              ),
-            if (payout!.proofFileKey != null &&
-                payout!.proofFileKey!.trim().isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: () => onViewProof(payout!.proofFileKey!),
-                icon: const Icon(Icons.receipt_long),
-                label: const Text('View proof'),
-              ),
+              const Spacer(),
+              StatusPill.fromLabel(statusLabel),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text('Amount: ${payout!.amount}'),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Recipient: ${payout!.recipientLabel}'),
+          if (payout!.paymentRef != null &&
+              payout!.paymentRef!.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text('Payment ref: ${payout!.paymentRef}'),
+            ),
+          if (payout!.note != null && payout!.note!.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text('Note: ${payout!.note}'),
+            ),
+          if (payout!.confirmedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                'Confirmed: ${formatFriendlyDate(payout!.confirmedAt!)}',
+              ),
+            ),
+          if (payout!.proofFileKey != null &&
+              payout!.proofFileKey!.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            KitSecondaryButton(
+              onPressed: () => onViewProof(payout!.proofFileKey!),
+              icon: Icons.receipt_long,
+              label: 'View proof',
+              expand: false,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -378,34 +353,31 @@ class _PayoutTimelineCard extends StatelessWidget {
     final isConfirmed = payout?.status == PayoutStatusModel.confirmed;
     final isClosed = cycle.status == CycleStatusModel.closed;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Payout timeline',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _TimelineRow(
-              label: 'Payout created',
-              done: isCreated,
-              detail: isCreated ? 'Recorded by admin' : 'Pending',
-            ),
-            _TimelineRow(
-              label: 'Payout confirmed',
-              done: isConfirmed,
-              detail: isConfirmed ? 'Confirmed and locked' : 'Pending',
-            ),
-            _TimelineRow(
-              label: 'Cycle closed',
-              done: isClosed,
-              detail: isClosed ? 'Cycle completed' : 'Pending',
-            ),
-          ],
-        ),
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Payout timeline',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _TimelineRow(
+            label: 'Payout created',
+            done: isCreated,
+            detail: isCreated ? 'Recorded by admin' : 'Pending',
+          ),
+          _TimelineRow(
+            label: 'Payout confirmed',
+            done: isConfirmed,
+            detail: isConfirmed ? 'Confirmed and locked' : 'Pending',
+          ),
+          _TimelineRow(
+            label: 'Cycle closed',
+            done: isClosed,
+            detail: isClosed ? 'Cycle completed' : 'Pending',
+          ),
+        ],
       ),
     );
   }
@@ -471,39 +443,33 @@ class _CreatePayoutSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isAdmin) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Text(
-            'Waiting for admin to record payout.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+      return KitCard(
+        child: Text(
+          'Waiting for admin to record payout.',
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'No payout exists yet.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Suggested amount: $defaultAmount'),
-            const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              label: 'Create payout',
-              isLoading: isLoading,
-              onPressed: isLoading || onCreatePressed == null
-                  ? null
-                  : () => onCreatePressed!(),
-            ),
-          ],
-        ),
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'No payout exists yet.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Suggested amount: $defaultAmount'),
+          const SizedBox(height: AppSpacing.md),
+          KitPrimaryButton(
+            label: 'Create payout',
+            isLoading: isLoading,
+            onPressed: isLoading || onCreatePressed == null
+                ? null
+                : () => onCreatePressed!(),
+          ),
+        ],
       ),
     );
   }
@@ -532,24 +498,18 @@ class _PayoutActionsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!isAdmin) {
       if (payout.status == PayoutStatusModel.confirmed) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Text(
-              'Payout is confirmed.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+        return KitCard(
+          child: Text(
+            'Payout is confirmed.',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         );
       }
 
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Text(
-            'Waiting for admin confirmation.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+      return KitCard(
+        child: Text(
+          'Waiting for admin confirmation.',
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }
@@ -562,36 +522,64 @@ class _PayoutActionsSection extends ConsumerWidget {
     return Column(
       children: [
         if (canConfirm)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Confirm payout',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: confirmPaymentRefController,
-                    decoration: const InputDecoration(
-                      labelText: 'Payment ref (optional)',
+          KitCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Admin actions',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                KitTextField(
+                  controller: confirmPaymentRefController,
+                  label: 'Payment ref (optional)',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                KitTextArea(
+                  controller: confirmNoteController,
+                  label: 'Note (optional)',
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    KitSecondaryButton(
+                      onPressed: actionState.isLoading
+                          ? null
+                          : () {
+                              ref
+                                  .read(
+                                    payoutActionControllerProvider(
+                                      args,
+                                    ).notifier,
+                                  )
+                                  .pickProofFromCamera();
+                            },
+                      icon: Icons.photo_camera,
+                      label: 'Camera proof',
+                      expand: false,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: confirmNoteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Note (optional)',
+                    KitSecondaryButton(
+                      onPressed: actionState.isLoading
+                          ? null
+                          : () {
+                              ref
+                                  .read(
+                                    payoutActionControllerProvider(
+                                      args,
+                                    ).notifier,
+                                  )
+                                  .pickProofFromGallery();
+                            },
+                      icon: Icons.photo_library,
+                      label: 'Gallery proof',
+                      expand: false,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      OutlinedButton.icon(
+                    if (actionState.hasProof)
+                      KitTertiaryButton(
                         onPressed: actionState.isLoading
                             ? null
                             : () {
@@ -601,204 +589,145 @@ class _PayoutActionsSection extends ConsumerWidget {
                                         args,
                                       ).notifier,
                                     )
-                                    .pickProofFromCamera();
+                                    .clearProof();
                               },
-                        icon: const Icon(Icons.photo_camera),
-                        label: const Text('Camera proof'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: actionState.isLoading
-                            ? null
-                            : () {
-                                ref
-                                    .read(
-                                      payoutActionControllerProvider(
-                                        args,
-                                      ).notifier,
-                                    )
-                                    .pickProofFromGallery();
-                              },
-                        icon: const Icon(Icons.photo_library),
-                        label: const Text('Gallery proof'),
-                      ),
-                      if (actionState.hasProof)
-                        TextButton(
-                          onPressed: actionState.isLoading
-                              ? null
-                              : () {
-                                  ref
-                                      .read(
-                                        payoutActionControllerProvider(
-                                          args,
-                                        ).notifier,
-                                      )
-                                      .clearProof();
-                                },
-                          child: const Text('Remove proof'),
-                        ),
-                    ],
-                  ),
-                  if (actionState.proofImage != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    ClipRRect(
-                      borderRadius: AppRadius.mdRounded,
-                      child: Image.memory(
-                        actionState.proofImage!.bytes,
-                        height: 180,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ],
-                  if (actionState.actionType ==
-                          PayoutActionType.uploadingProof ||
-                      actionState.actionType ==
-                          PayoutActionType.confirming) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    LinearProgressIndicator(value: actionState.uploadProgress),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      actionState.actionType == PayoutActionType.uploadingProof
-                          ? 'Uploading payout proof...'
-                          : 'Confirming payout...',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                  if (actionState.errorMessage != null &&
-                      actionState.errorMessage!.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      actionState.errorMessage!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                    if (actionState.errorMessage!.toLowerCase().contains(
-                      'review contributions',
-                    ))
-                      TextButton(
-                        onPressed: () => context.push(
-                          AppRoutePaths.groupCycleContributions(
-                            args.groupId,
-                            args.cycleId,
-                          ),
-                        ),
-                        child: const Text('View contributions'),
+                        label: 'Remove proof',
                       ),
                   ],
-                  const SizedBox(height: AppSpacing.md),
-                  PrimaryButton(
-                    label: 'Confirm payout',
-                    isLoading: actionState.isLoading,
-                    onPressed: actionState.isLoading
-                        ? null
-                        : () async {
-                            final success = await ref
-                                .read(
-                                  payoutActionControllerProvider(args).notifier,
-                                )
-                                .confirmPayout(
-                                  payoutId: payout.id,
-                                  paymentRef: confirmPaymentRefController.text,
-                                  note: confirmNoteController.text,
-                                );
-
-                            if (!context.mounted) {
-                              return;
-                            }
-
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Payout confirmed.'),
-                                ),
-                              );
-                            }
-                          },
+                ),
+                if (actionState.proofImage != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  ClipRRect(
+                    borderRadius: AppRadius.inputRounded,
+                    child: Image.memory(
+                      actionState.proofImage!.bytes,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ],
-              ),
+                if (actionState.actionType == PayoutActionType.uploadingProof ||
+                    actionState.actionType == PayoutActionType.confirming) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  LinearProgressIndicator(value: actionState.uploadProgress),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    actionState.actionType == PayoutActionType.uploadingProof
+                        ? 'Uploading payout proof...'
+                        : 'Confirming payout...',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                if (actionState.errorMessage != null &&
+                    actionState.errorMessage!.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    actionState.errorMessage!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  if (actionState.errorMessage!.toLowerCase().contains(
+                    'review contributions',
+                  ))
+                    KitTertiaryButton(
+                      onPressed: () => context.push(
+                        AppRoutePaths.groupCycleContributions(
+                          args.groupId,
+                          args.cycleId,
+                        ),
+                      ),
+                      label: 'View contributions',
+                    ),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                KitPrimaryButton(
+                  label: 'Confirm payout',
+                  isLoading: actionState.isLoading,
+                  onPressed: actionState.isLoading
+                      ? null
+                      : () async {
+                          final success = await ref
+                              .read(
+                                payoutActionControllerProvider(args).notifier,
+                              )
+                              .confirmPayout(
+                                payoutId: payout.id,
+                                paymentRef: confirmPaymentRefController.text,
+                                note: confirmNoteController.text,
+                              );
+
+                          if (!context.mounted) {
+                            return;
+                          }
+
+                          if (success) {
+                            KitToast.success(context, 'Payout confirmed.');
+                          }
+                        },
+                ),
+              ],
             ),
           ),
         if (canClose)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Close cycle',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Payout is confirmed. You can close this cycle now.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  PrimaryButton(
-                    label: 'Close cycle',
-                    isLoading:
-                        actionState.isLoading &&
-                        actionState.actionType == PayoutActionType.closing,
-                    onPressed: actionState.isLoading
-                        ? null
-                        : () async {
-                            final shouldClose = await showDialog<bool>(
-                              context: context,
-                              builder: (dialogContext) {
-                                return AlertDialog(
-                                  title: const Text('Close this cycle?'),
-                                  content: const Text(
-                                    'This will mark the cycle as CLOSED. This action cannot be undone.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(
-                                        dialogContext,
-                                      ).pop(false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          Navigator.of(dialogContext).pop(true),
-                                      child: const Text('Close'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
+          KitCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Close cycle',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Payout is confirmed. You can close this cycle now.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                KitPrimaryButton(
+                  label: 'Close cycle',
+                  isLoading:
+                      actionState.isLoading &&
+                      actionState.actionType == PayoutActionType.closing,
+                  onPressed: actionState.isLoading
+                      ? null
+                      : () async {
+                          final shouldClose = await KitDialog.confirm(
+                            context: context,
+                            title: 'Close this cycle?',
+                            message:
+                                'This will mark the cycle as CLOSED. This action cannot be undone.',
+                            confirmLabel: 'Close',
+                            isDestructive: true,
+                          );
 
-                            if (shouldClose != true) {
-                              return;
+                          if (shouldClose != true) {
+                            return;
+                          }
+
+                          final success = await ref
+                              .read(
+                                payoutActionControllerProvider(args).notifier,
+                              )
+                              .closeCycle();
+
+                          if (!context.mounted) {
+                            return;
+                          }
+
+                          if (success) {
+                            KitToast.success(context, 'Cycle closed.');
+                            if (context.canPop()) {
+                              context.pop();
                             }
-
-                            final success = await ref
-                                .read(
-                                  payoutActionControllerProvider(args).notifier,
-                                )
-                                .closeCycle();
-
-                            if (!context.mounted) {
-                              return;
+                            if (context.canPop()) {
+                              context.pop();
                             }
-
-                            if (success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Cycle closed.')),
-                              );
-                              if (context.canPop()) {
-                                context.pop();
-                              }
-                              if (context.canPop()) {
-                                context.pop();
-                              }
-                            }
-                          },
-                  ),
-                ],
-              ),
+                          }
+                        },
+                ),
+              ],
             ),
           ),
       ],
@@ -834,24 +763,17 @@ Future<void> _showCreatePayoutDialog({
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Amount'),
-                  ),
+                  KitNumberField(controller: amountController, label: 'Amount'),
                   const SizedBox(height: AppSpacing.md),
-                  TextField(
+                  KitTextField(
                     controller: paymentRefController,
-                    decoration: const InputDecoration(
-                      labelText: 'Payment ref (optional)',
-                    ),
+                    label: 'Payment ref (optional)',
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  TextField(
+                  KitTextArea(
                     controller: noteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Note (optional)',
-                    ),
+                    label: 'Note (optional)',
+                    maxLines: 2,
                   ),
                   if (validationError != null) ...[
                     const SizedBox(height: AppSpacing.sm),
@@ -960,9 +882,7 @@ Future<void> _viewProof(BuildContext context, WidgetRef ref, String key) async {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mapApiErrorToMessage(error))));
+    KitToast.error(context, mapApiErrorToMessage(error));
   }
 }
 

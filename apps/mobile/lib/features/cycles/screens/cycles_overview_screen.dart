@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -25,13 +26,12 @@ class CyclesOverviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Cycles',
-      subtitle: 'Current and recent payout cycles',
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () =>
               ref.read(groupDetailControllerProvider).refreshGroup(groupId),
         ),
@@ -91,24 +91,21 @@ class _CyclesOverviewBody extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           if (isAdmin)
-            FilledButton.icon(
+            KitPrimaryButton(
               onPressed: () =>
                   context.push(AppRoutePaths.groupCyclesGenerate(group.id)),
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Generate next cycle'),
+              icon: Icons.add_circle_outline,
+              label: 'Generate next cycle',
             ),
           if (isAdmin) const SizedBox(height: AppSpacing.md),
-          SectionHeader(title: 'Recent cycles'),
+          const KitSectionHeader(title: 'Past cycles'),
           cyclesAsync.when(
-            loading: () => Column(
-              children: const [
-                EqubCard(child: SkeletonBox(height: 72)),
-                SizedBox(height: AppSpacing.sm),
-                EqubCard(child: SkeletonBox(height: 72)),
-              ],
+            loading: () => const SizedBox(
+              height: 300,
+              child: KitSkeletonList(itemCount: 3),
             ),
             error: (error, _) => ErrorView(
-              message: error.toString(),
+              message: mapFriendlyError(error),
               onRetry: () {
                 ref
                     .read(cyclesRepositoryProvider)
@@ -150,14 +147,14 @@ class _CurrentCycleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EqubCard(
+    return KitCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Current cycle', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.sm),
           currentCycleAsync.when(
-            loading: () => const SkeletonBox(height: 72),
+            loading: () => const KitSkeletonBox(height: 72),
             error: (error, _) => Text(error.toString()),
             data: (cycle) {
               if (cycle == null) {
@@ -179,11 +176,12 @@ class _CurrentCycleCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  OutlinedButton(
+                  KitSecondaryButton(
                     onPressed: () => context.push(
                       AppRoutePaths.groupCycleDetail(groupId, cycle.id),
                     ),
-                    child: const Text('View current cycle'),
+                    label: 'View current cycle',
+                    expand: false,
                   ),
                 ],
               );
@@ -203,7 +201,7 @@ class _EmptyCyclesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmptyState(
+    return KitEmptyState(
       icon: Icons.timelapse_outlined,
       title: 'No cycles generated',
       message: isAdmin
@@ -231,14 +229,14 @@ class _CycleListTile extends StatelessWidget {
       CycleStatusModel.unknown => 'UNKNOWN',
     };
 
-    return EqubCard(
+    return KitCard(
       child: EqubListTile(
         title: 'Cycle #${cycle.cycleNo}',
         subtitle:
             'Due ${formatDate(cycle.dueDate)} • ${_recipientLabel(cycle)}',
         onTap: () =>
             context.push(AppRoutePaths.groupCycleDetail(groupId, cycle.id)),
-        trailing: StatusBadge.fromLabel(statusLabel),
+        trailing: StatusPill.fromLabel(statusLabel),
       ),
     );
   }

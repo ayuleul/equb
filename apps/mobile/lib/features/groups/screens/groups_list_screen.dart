@@ -5,15 +5,30 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../groups_list_controller.dart';
 
-class GroupsListScreen extends ConsumerWidget {
+class GroupsListScreen extends ConsumerStatefulWidget {
   const GroupsListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupsListScreen> createState() => _GroupsListScreenState();
+}
+
+class _GroupsListScreenState extends ConsumerState<GroupsListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(groupsListProvider);
 
     ref.listen(groupsListProvider, (previous, next) {
@@ -30,9 +45,8 @@ class GroupsListScreen extends ConsumerWidget {
       return ref.read(groupsListProvider.notifier).refresh();
     }
 
-    return AppScaffold(
-      title: 'Groups',
-      subtitle: 'Track your Equb groups and payment cycles',
+    return KitScaffold(
+      title: 'Equbs',
       actions: [
         IconButton(
           tooltip: 'Notifications',
@@ -43,19 +57,27 @@ class GroupsListScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          KitSearchBar(
+            controller: _searchController,
+            hintText: 'Search Equbs',
+            onChanged: (value) => setState(() => _query = value.trim()),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
             children: [
-              FilledButton.icon(
+              KitPrimaryButton(
                 onPressed: () => context.push(AppRoutePaths.groupsCreate),
-                icon: const Icon(Icons.add),
-                label: const Text('Create group'),
+                expand: false,
+                icon: Icons.add,
+                label: 'Create',
               ),
-              OutlinedButton.icon(
+              KitSecondaryButton(
                 onPressed: () => context.push(AppRoutePaths.groupsJoin),
-                icon: const Icon(Icons.group_add_outlined),
-                label: const Text('Join'),
+                expand: false,
+                icon: Icons.group_add_outlined,
+                label: 'Join',
               ),
             ],
           ),
@@ -63,6 +85,7 @@ class GroupsListScreen extends ConsumerWidget {
           Expanded(
             child: _GroupsBody(
               state: state,
+              query: _query,
               onRetry: () => ref.read(groupsListProvider.notifier).load(),
               onRefresh: onRefresh,
             ),
@@ -76,31 +99,20 @@ class GroupsListScreen extends ConsumerWidget {
 class _GroupsBody extends StatelessWidget {
   const _GroupsBody({
     required this.state,
+    required this.query,
     required this.onRetry,
     required this.onRefresh,
   });
 
   final GroupsListState state;
+  final String query;
   final VoidCallback onRetry;
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     if (state.isLoading && !state.hasData) {
-      return ListView.separated(
-        itemCount: 4,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) => const EqubCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SkeletonBox(height: 18, width: 180),
-              SizedBox(height: AppSpacing.sm),
-              SkeletonBox(height: 14, width: 120),
-            ],
-          ),
-        ),
-      );
+      return const KitSkeletonList(itemCount: 4);
     }
 
     if (state.errorMessage != null && !state.hasData) {
@@ -108,7 +120,7 @@ class _GroupsBody extends StatelessWidget {
     }
 
     if (!state.hasData) {
-      return EmptyState(
+      return KitEmptyState(
         icon: Icons.groups_2_outlined,
         title: 'No groups yet',
         message: 'Create a group or join one with an invite code.',
@@ -117,12 +129,29 @@ class _GroupsBody extends StatelessWidget {
       );
     }
 
+    final normalizedQuery = query.toLowerCase();
+    final filtered = normalizedQuery.isEmpty
+        ? state.items
+        : state.items
+              .where(
+                (group) => group.name.toLowerCase().contains(normalizedQuery),
+              )
+              .toList(growable: false);
+
+    if (filtered.isEmpty) {
+      return const KitEmptyState(
+        icon: Icons.search_off_outlined,
+        title: 'No matching groups',
+        message: 'Try a different name or clear the search.',
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
-        itemCount: state.items.length,
+        itemCount: filtered.length,
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) => _GroupCard(group: state.items[index]),
+        itemBuilder: (context, index) => _GroupCard(group: filtered[index]),
       ),
     );
   }
@@ -140,8 +169,13 @@ class _GroupCard extends StatelessWidget {
       GroupFrequencyModel.monthly => 'MONTHLY',
       GroupFrequencyModel.unknown => 'UNKNOWN',
     };
+    final role = switch (group.membership?.role) {
+      MemberRoleModel.admin => 'ADMIN',
+      MemberRoleModel.member => 'MEMBER',
+      _ => 'MEMBER',
+    };
 
-    return EqubCard(
+    return KitCard(
       onTap: () => context.push(AppRoutePaths.groupDetail(group.id)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,13 +188,21 @@ class _GroupCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              StatusBadge.fromLabel(frequency),
+              StatusPill.fromLabel(role),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
           AmountText(
             amount: group.contributionAmount,
             currency: group.currency,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              StatusPill.fromLabel(frequency),
+              const SizedBox(width: AppSpacing.xs),
+              StatusPill.fromLabel(group.status.name.toUpperCase()),
+            ],
           ),
         ],
       ),

@@ -9,11 +9,9 @@ import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../features/auth/auth_controller.dart';
-import '../../../shared/ui/ui.dart';
-import '../../../shared/utils/api_error_mapper.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
-import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/cycle_detail_provider.dart';
 import '../../groups/group_detail_controller.dart';
 import '../admin_contribution_actions_controller.dart';
@@ -65,7 +63,7 @@ class _ContributionsListScreenState
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        AppSnackbars.error(context, nextError);
+        KitToast.error(context, nextError);
       }
     });
 
@@ -84,7 +82,7 @@ class _ContributionsListScreenState
       ]);
     }
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Contributions',
       actions: [
         IconButton(
@@ -94,9 +92,10 @@ class _ContributionsListScreenState
         ),
       ],
       child: contributionsAsync.when(
-        loading: () => const LoadingView(message: 'Loading contributions...'),
+        loading: () =>
+            const SizedBox(height: 360, child: KitSkeletonList(itemCount: 4)),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () => ref.invalidate(cycleContributionsProvider(args)),
         ),
         data: (contributionList) {
@@ -135,7 +134,7 @@ class _ContributionsListScreenState
                 ),
                 const SizedBox(height: AppSpacing.md),
                 if (canSubmit)
-                  FilledButton.icon(
+                  KitPrimaryButton(
                     onPressed: () {
                       context.push(
                         AppRoutePaths.groupCycleContributionsSubmit(
@@ -144,16 +143,14 @@ class _ContributionsListScreenState
                         ),
                       );
                     },
-                    icon: const Icon(Icons.upload_file),
-                    label: Text(
-                      myContribution == null
-                          ? 'Submit payment proof'
-                          : 'Update payment proof',
-                    ),
+                    icon: Icons.upload_file,
+                    label: myContribution == null
+                        ? 'Submit proof'
+                        : 'Update proof',
                   ),
                 if (canSubmit) const SizedBox(height: AppSpacing.md),
                 if (filteredItems.isEmpty)
-                  const EmptyState(
+                  const KitEmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'No contributions',
                     message:
@@ -197,7 +194,7 @@ class _SummarySegmentedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EqubCard(
+    return KitCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -270,9 +267,9 @@ class _CycleHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EqubCard(
+    return KitCard(
       child: cycleAsync.when(
-        loading: () => const SkeletonBox(height: 72),
+        loading: () => const KitSkeletonBox(height: 72),
         error: (error, _) => Text(error.toString()),
         data: (cycle) {
           final statusLabel = switch (cycle.status) {
@@ -293,7 +290,7 @@ class _CycleHeaderCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               Text('Recipient: ${_recipientLabel(cycle)}'),
               const SizedBox(height: AppSpacing.xs),
-              StatusBadge.fromLabel(statusLabel),
+              StatusPill.fromLabel(statusLabel),
             ],
           );
         },
@@ -332,19 +329,21 @@ class _ContributionCard extends ConsumerWidget {
         adminState.activeContributionId == contribution.id;
     final hasProof = contribution.proofFileKey?.trim().isNotEmpty == true;
 
-    return EqubCard(
+    return KitCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              KitAvatar(name: contribution.displayName),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   contribution.displayName,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              StatusBadge.fromLabel(statusLabel),
+              StatusPill.fromLabel(statusLabel),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -365,19 +364,22 @@ class _ContributionCard extends ConsumerWidget {
               contribution.rejectReason!.trim().isNotEmpty)
             Text('Reason: ${contribution.rejectReason}'),
           const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
+          Row(
             children: [
               if (hasProof)
-                OutlinedButton.icon(
+                KitSecondaryButton(
                   onPressed: () => onViewProof(contribution.proofFileKey!),
-                  icon: const Icon(Icons.receipt_long),
-                  label: const Text('View proof'),
+                  icon: Icons.receipt_long,
+                  label: 'View proof',
+                  expand: false,
                 ),
+              if (hasProof &&
+                  isAdmin &&
+                  contribution.status == ContributionStatusModel.submitted)
+                const SizedBox(width: AppSpacing.sm),
               if (isAdmin &&
                   contribution.status == ContributionStatusModel.submitted)
-                FilledButton.tonalIcon(
+                KitTertiaryButton(
                   onPressed: isActionLoading
                       ? null
                       : () => _showAdminActionsSheet(
@@ -386,8 +388,8 @@ class _ContributionCard extends ConsumerWidget {
                           args,
                           contribution,
                         ),
-                  icon: const Icon(Icons.manage_accounts_outlined),
-                  label: const Text('Admin actions'),
+                  icon: Icons.more_horiz,
+                  label: 'Admin actions',
                 ),
             ],
           ),
@@ -403,64 +405,46 @@ Future<void> _showAdminActionsSheet(
   CycleContributionsArgs args,
   ContributionModel contribution,
 ) async {
-  await showModalBottomSheet<void>(
+  await KitActionSheet.show(
     context: context,
-    builder: (sheetContext) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.check_circle_outline),
-                title: const Text('Confirm contribution'),
-                onTap: () async {
-                  Navigator.of(sheetContext).pop();
-                  final success = await ref
-                      .read(
-                        adminContributionActionsControllerProvider(
-                          args,
-                        ).notifier,
-                      )
-                      .confirm(contribution.id);
-                  if (!context.mounted) {
-                    return;
-                  }
-                  if (success) {
-                    AppSnackbars.success(context, 'Contribution confirmed');
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cancel_outlined),
-                title: const Text('Reject contribution'),
-                onTap: () async {
-                  Navigator.of(sheetContext).pop();
-                  final reason = await _promptRejectReason(context);
-                  if (!context.mounted || reason == null) {
-                    return;
-                  }
-                  final success = await ref
-                      .read(
-                        adminContributionActionsControllerProvider(
-                          args,
-                        ).notifier,
-                      )
-                      .reject(contribution.id, reason);
-                  if (!context.mounted) {
-                    return;
-                  }
-                  if (success) {
-                    AppSnackbars.success(context, 'Contribution rejected');
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-    },
+    title: 'Admin actions',
+    actions: [
+      KitActionSheetItem(
+        label: 'Confirm contribution',
+        icon: Icons.check_circle_outline,
+        onPressed: () async {
+          final success = await ref
+              .read(adminContributionActionsControllerProvider(args).notifier)
+              .confirm(contribution.id);
+          if (!context.mounted) {
+            return;
+          }
+          if (success) {
+            KitToast.success(context, 'Contribution confirmed');
+          }
+        },
+      ),
+      KitActionSheetItem(
+        label: 'Reject contribution',
+        icon: Icons.cancel_outlined,
+        isDestructive: true,
+        onPressed: () async {
+          final reason = await _promptRejectReason(context);
+          if (!context.mounted || reason == null) {
+            return;
+          }
+          final success = await ref
+              .read(adminContributionActionsControllerProvider(args).notifier)
+              .reject(contribution.id, reason);
+          if (!context.mounted) {
+            return;
+          }
+          if (success) {
+            KitToast.success(context, 'Contribution rejected');
+          }
+        },
+      ),
+    ],
   );
 }
 
@@ -494,41 +478,12 @@ String _recipientLabel(CycleModel cycle) {
 }
 
 Future<String?> _promptRejectReason(BuildContext context) async {
-  final controller = TextEditingController();
-
-  return showDialog<String>(
+  return promptText(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Reject contribution'),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Reason',
-            hintText: 'Explain what should be corrected',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final reason = controller.text.trim();
-              if (reason.isEmpty) {
-                AppSnackbars.error(dialogContext, 'Reason is required.');
-                return;
-              }
-
-              Navigator.of(dialogContext).pop(reason);
-            },
-            child: const Text('Reject'),
-          ),
-        ],
-      );
-    },
+    title: 'Reject contribution',
+    label: 'Reason',
+    hint: 'Explain what should be corrected',
+    submitLabel: 'Reject',
   );
 }
 
@@ -591,6 +546,6 @@ Future<void> _viewProof(BuildContext context, WidgetRef ref, String key) async {
       return;
     }
 
-    AppSnackbars.error(context, mapApiErrorToMessage(error));
+    KitToast.error(context, mapFriendlyError(error));
   }
 }

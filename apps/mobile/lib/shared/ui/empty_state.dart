@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_spacing.dart';
+import '../kit/kit.dart';
 
 class EmptyState extends StatelessWidget {
   const EmptyState({
@@ -20,37 +20,12 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 42, color: colorScheme.primary),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              if (ctaLabel != null && onCtaPressed != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                FilledButton(onPressed: onCtaPressed, child: Text(ctaLabel!)),
-              ],
-            ],
-          ),
-        ),
-      ),
+    return KitEmptyState(
+      icon: icon,
+      title: title,
+      message: message,
+      ctaLabel: ctaLabel,
+      onCtaPressed: onCtaPressed,
     );
   }
 }

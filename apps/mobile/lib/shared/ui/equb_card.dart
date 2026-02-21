@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_spacing.dart';
+import '../kit/kit.dart';
 
 class EqubCard extends StatelessWidget {
   const EqubCard({
@@ -18,20 +19,11 @@ class EqubCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Padding(
-      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
-      child: child,
-    );
-
-    return Card(
+    return KitCard(
       margin: margin,
-      child: onTap == null
-          ? content
-          : InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.mdRounded,
-              child: content,
-            ),
+      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
+      onTap: onTap,
+      child: child,
     );
   }
 }

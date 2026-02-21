@@ -57,7 +57,10 @@
 ## Theming rules
 - Theme tokens in `lib/app/theme/` are the single source of truth for app styling.
 - Do not hardcode colors in feature/shared UI files; use `Theme.of(context).colorScheme` or theme extensions.
+- No feature screen should use raw `Colors.*`; use theme tokens/extensions only.
+- All pills/badges must use semantic tint palettes from `AppSemanticColors` (`context.colors`).
 - Spacing and corner radii must use `AppSpacing` and `AppRadius` tokens.
+- Standard content padding is `16` (`AppSpacing.md`) unless a component explicitly defines otherwise.
 
 ## Auth rules
 - Token refresh is attempted at most once per failing request (`401`) before surfacing an auth error.
@@ -98,6 +101,7 @@
 ## Polish & Navigation rules
 - Main app sections must live under shell navigation with bottom tabs (`/home`, `/groups`, `/settings`); logout action belongs in Settings.
 - Use `context.push` for drill-down/detail routes and `context.go` only for root section switches or auth roots.
+- In tabbed flows, use `go()` only for root tab switches (`/home`, `/groups`, `/settings`) and `push()` for in-tab drill-down routes.
 - App bars must render an explicit back button (`leading: BackButton()`) when `context.canPop()` is true.
 - Shared UI under `lib/shared/ui/` is the default for layout and repeated visuals (cards, list rows, badges, empty/loading feedback, snackbars).
 - Standard content padding is `16` horizontal (`AppSpacing.md`); section spacing should stay within `12-16` (`AppSpacing.sm` to `AppSpacing.md`).
@@ -105,6 +109,7 @@
 ## Tab architecture rules
 - Bottom tabs are implemented with `StatefulShellRoute.indexedStack` using separate navigator keys (`home`, `groups`, `settings`) so each tab preserves its own navigation stack.
 - Notifications are not a tab; `/notifications` is a root overlay route (`parentNavigatorKey: root`) opened from app-bar bell actions.
+- Notifications must always open as an overlay on the root navigator, independent of active tab stack.
 - Notification/deeplink navigation into groups must use centralized helper flow: switch to `/groups` first, then push the target group route.
 
 ## DX commands

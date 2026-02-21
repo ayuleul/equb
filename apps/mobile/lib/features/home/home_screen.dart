@@ -6,6 +6,7 @@ import '../../app/router.dart';
 import '../../app/theme/app_spacing.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/notification_model.dart';
+import '../../shared/kit/kit.dart';
 import '../../shared/ui/ui.dart';
 import '../../shared/utils/formatters.dart';
 import '../groups/groups_list_controller.dart';
@@ -34,10 +35,12 @@ class HomeScreen extends ConsumerWidget {
         )
         .length;
     final upcomingGroup = _resolveUpcomingGroup(groupsState.items);
+    final nextDueLabel = upcomingGroup == null
+        ? 'No due date'
+        : formatDate(upcomingGroup.startDate);
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Home',
-      subtitle: 'Welcome back, $displayName',
       actions: [
         IconButton(
           tooltip: 'Notifications',
@@ -49,6 +52,23 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () => ref.read(groupsListProvider.notifier).refresh(),
         child: ListView(
           children: [
+            KitCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hi, $displayName',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Your Equb dashboard at a glance.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 Expanded(
@@ -68,25 +88,31 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
+            _StatCard(
+              label: 'Next due',
+              value: nextDueLabel,
+              icon: Icons.event_note_outlined,
+            ),
             const SizedBox(height: AppSpacing.md),
-            SectionHeader(
+            KitSectionHeader(
               title: 'Upcoming due cycle',
               actionLabel: 'View equbs',
               onActionPressed: () => context.go(AppRoutePaths.groups),
             ),
             if (groupsState.isLoading && groupsState.items.isEmpty)
-              const EqubCard(
+              const KitCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SkeletonBox(height: 18, width: 180),
+                    KitSkeletonBox(height: 18, width: 180),
                     SizedBox(height: AppSpacing.sm),
-                    SkeletonBox(height: 14, width: 120),
+                    KitSkeletonBox(height: 14, width: 120),
                   ],
                 ),
               )
             else if (upcomingGroup != null)
-              EqubCard(
+              KitCard(
                 onTap: () =>
                     context.push(AppRoutePaths.groupDetail(upcomingGroup.id)),
                 child: Column(
@@ -110,21 +136,21 @@ class HomeScreen extends ConsumerWidget {
                 ),
               )
             else
-              const EqubCard(
+              const KitCard(
                 child: Text(
                   'No cycle data yet. Create or join an equb to see upcoming cycles.',
                 ),
               ),
             const SizedBox(height: AppSpacing.md),
-            const SectionHeader(title: 'Recent activity'),
-            const EqubCard(
+            const KitSectionHeader(title: 'Recent activity'),
+            const KitCard(
               child: Text(
                 'Activity feed will appear here as members contribute and payouts are confirmed.',
               ),
             ),
             const SizedBox(height: AppSpacing.md),
             if (groupsState.items.isEmpty && !groupsState.isLoading)
-              EmptyState(
+              KitEmptyState(
                 icon: Icons.dashboard_outlined,
                 title: 'No equbs yet',
                 message: 'Create a new equb or join one with an invite code.',
@@ -132,12 +158,9 @@ class HomeScreen extends ConsumerWidget {
                 onCtaPressed: () => context.go(AppRoutePaths.groups),
               )
             else
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => context.go(AppRoutePaths.groups),
-                  child: const Text('Go to My Equbs'),
-                ),
+              KitPrimaryButton(
+                label: 'Go to My Equbs',
+                onPressed: () => context.go(AppRoutePaths.groups),
               ),
           ],
         ),
@@ -187,7 +210,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EqubCard(
+    return KitCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

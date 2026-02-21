@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
-import '../../../shared/ui/ui.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
@@ -27,7 +27,7 @@ class CycleDetailScreen extends ConsumerWidget {
       cycleDetailProvider((groupId: groupId, cycleId: cycleId)),
     );
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Cycle detail',
       child: cycleAsync.when(
         loading: () => const LoadingView(message: 'Loading cycle...'),
@@ -65,7 +65,7 @@ class _CycleDetailBody extends StatelessWidget {
 
     return ListView(
       children: [
-        EqubCard(
+        KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -77,7 +77,7 @@ class _CycleDetailBody extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
-                  StatusBadge.fromLabel(statusLabel),
+                  StatusPill.fromLabel(statusLabel),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -88,21 +88,25 @@ class _CycleDetailBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        SectionHeader(title: 'Quick actions'),
-        EqubCard(
+        const KitSectionHeader(title: 'Quick actions'),
+        KitCard(
           child: Column(
             children: [
-              EqubListTile(
-                title: 'Contributions',
-                subtitle: 'View submissions and statuses',
+              ListTile(
+                title: const Text('Contributions'),
+                subtitle: const Text('View submissions and statuses'),
+                trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.push(
                   AppRoutePaths.groupCycleContributions(groupId, cycleId),
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              EqubListTile(
-                title: 'Payout',
-                subtitle: 'Track payout confirmation and cycle closure',
+              ListTile(
+                title: const Text('Payout'),
+                subtitle: const Text(
+                  'Track payout confirmation and cycle closure',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.push(
                   AppRoutePaths.groupCyclePayout(groupId, cycleId),
                 ),

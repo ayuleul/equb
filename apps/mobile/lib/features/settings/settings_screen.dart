@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/theme/app_spacing.dart';
-import '../../shared/ui/ui.dart';
+import '../../shared/kit/kit.dart';
 import '../auth/auth_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -14,10 +14,10 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
+    final user = ref.watch(currentUserProvider);
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Settings',
-      subtitle: 'Account and app preferences',
       actions: [
         IconButton(
           tooltip: 'Notifications',
@@ -27,21 +27,49 @@ class SettingsScreen extends ConsumerWidget {
       ],
       child: ListView(
         children: [
-          EqubCard(
+          KitCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Account', style: Theme.of(context).textTheme.titleMedium),
+                Text('Profile', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.sm),
-                FilledButton.icon(
+                Text(
+                  user?.fullName?.trim().isNotEmpty == true
+                      ? user!.fullName!
+                      : 'Equb member',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  user?.phone ?? 'No phone available',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                KitSecondaryButton(
                   onPressed: authState.isLoggingOut
                       ? null
-                      : () =>
-                            ref.read(authControllerProvider.notifier).logout(),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: Text(
-                    authState.isLoggingOut ? 'Logging out...' : 'Logout',
-                  ),
+                      : () async {
+                          final shouldLogout = await KitDialog.confirm(
+                            context: context,
+                            title: 'Logout?',
+                            message:
+                                'You will need OTP verification again next time you sign in.',
+                            confirmLabel: 'Logout',
+                            isDestructive: true,
+                          );
+                          if (shouldLogout != true) {
+                            return;
+                          }
+                          if (!context.mounted) {
+                            return;
+                          }
+                          await ref
+                              .read(authControllerProvider.notifier)
+                              .logout();
+                        },
+                  icon: Icons.logout_rounded,
+                  label: authState.isLoggingOut ? 'Logging out...' : 'Logout',
+                  isLoading: authState.isLoggingOut,
                 ),
               ],
             ),
@@ -51,7 +79,7 @@ class SettingsScreen extends ConsumerWidget {
             onLongPress: kDebugMode
                 ? () => context.push(AppRoutePaths.debugTheme)
                 : null,
-            child: EqubCard(
+            child: KitCard(
               child: Text(
                 kDebugMode
                     ? 'Build: Debug (long-press to open Theme Preview)'

@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../shared/ui/ui.dart';
+import '../../../shared/kit/kit.dart';
 import '../auth_controller.dart';
 import '../auth_state.dart';
 
@@ -76,7 +76,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final code = _otpController.text.trim();
     if (code.length != 6) {
       setState(() => _validationError = 'Enter the 6-digit OTP code.');
-      AppSnackbars.error(context, 'Enter the 6-digit OTP code.');
+      KitToast.error(context, 'Enter the 6-digit OTP code.');
       return;
     }
 
@@ -97,7 +97,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     final message = ref.read(authControllerProvider).errorMessage;
     if (message != null && message.isNotEmpty) {
-      AppSnackbars.error(context, message);
+      KitToast.error(context, message);
     }
   }
 
@@ -112,12 +112,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (!success) {
       final message = ref.read(authControllerProvider).errorMessage;
       if (message != null && message.isNotEmpty) {
-        AppSnackbars.error(context, message);
+        KitToast.error(context, message);
       }
       return;
     }
 
-    AppSnackbars.success(context, 'A new OTP code has been sent.');
+    KitToast.success(context, 'A new OTP code has been sent.');
     _startCooldown();
   }
 
@@ -135,14 +135,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (nextError != null &&
           nextError.isNotEmpty &&
           previousError != nextError) {
-        AppSnackbars.error(context, nextError);
+        KitToast.error(context, nextError);
       }
     });
 
     if (phone == null || phone.isEmpty) {
-      return AppScaffold(
+      return KitScaffold(
         title: 'OTP verification',
-        child: EmptyState(
+        child: KitEmptyState(
           icon: Icons.sms_failed_outlined,
           title: 'Phone number missing',
           message: 'Request a new OTP to continue.',
@@ -155,94 +155,90 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final canResend = _remainingSeconds == 0 && !authState.isRequestingOtp;
     final otpValue = _otpController.text.trim();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('OTP verification'),
-        automaticallyImplyLeading: false,
-        leading: context.canPop() ? const BackButton() : null,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: EqubCard(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return KitScaffold(
+      title: 'OTP verification',
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: KitCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Enter verification code',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Code sent to $phone',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                GestureDetector(
+                  onTap: () => _otpFocusNode.requestFocus(),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List<Widget>.generate(
+                      6,
+                      (index) => _OtpDigitBox(
+                        value: index < otpValue.length ? otpValue[index] : '',
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 0,
+                  width: 0,
+                  child: TextField(
+                    controller: _otpController,
+                    focusNode: _otpFocusNode,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    autofocus: true,
+                    onChanged: (_) {
+                      setState(() => _validationError = null);
+                    },
+                  ),
+                ),
+                if (_validationError != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    _validationError!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                KitPrimaryButton(
+                  label: authState.isVerifyingOtp
+                      ? 'Verifying...'
+                      : 'Verify OTP',
+                  onPressed: authState.isVerifyingOtp
+                      ? null
+                      : () => _verify(phone),
+                  isLoading: authState.isVerifyingOtp,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
                   children: [
-                    Text(
-                      'Enter verification code',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text('Code sent to $phone'),
-                    const SizedBox(height: AppSpacing.md),
-                    GestureDetector(
-                      onTap: () => _otpFocusNode.requestFocus(),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List<Widget>.generate(
-                          6,
-                          (index) => _OtpDigitBox(
-                            value: index < otpValue.length
-                                ? otpValue[index]
-                                : '',
-                          ),
-                        ),
-                      ),
-                    ),
-                    Opacity(
-                      opacity: 0.01,
-                      child: TextField(
-                        controller: _otpController,
-                        focusNode: _otpFocusNode,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        autofocus: true,
-                        onChanged: (_) {
-                          setState(() {
-                            _validationError = null;
-                          });
-                        },
-                      ),
-                    ),
-                    if (_validationError != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        _validationError!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: authState.isVerifyingOtp
-                            ? null
-                            : () => _verify(phone),
-                        child: Text(
-                          authState.isVerifyingOtp
-                              ? 'Verifying...'
-                              : 'Verify OTP',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    TextButton(
+                    KitTertiaryButton(
+                      label: 'Resend OTP',
                       onPressed: canResend ? () => _resend(phone) : null,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
                       child: Text(
                         canResend
-                            ? 'Resend OTP'
-                            : 'Resend OTP in ${_remainingSeconds}s',
+                            ? 'You can request a new code now.'
+                            : 'Retry in ${_remainingSeconds}s',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -258,13 +254,15 @@ class _OtpDigitBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: 44,
       height: 52,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        color: colorScheme.surface,
+        borderRadius: AppRadius.inputRounded,
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Text(value, style: Theme.of(context).textTheme.titleLarge),
     );

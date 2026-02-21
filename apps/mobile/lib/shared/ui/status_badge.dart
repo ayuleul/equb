@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme_extensions.dart';
+import '../kit/kit.dart';
 
 enum StatusBadgeTone { neutral, info, success, warning, error }
 
@@ -41,43 +41,13 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final semantic = Theme.of(context).semanticColors;
-    final palette = switch (tone) {
-      StatusBadgeTone.neutral => (
-        background: colorScheme.surfaceContainerHighest,
-        foreground: colorScheme.onSurfaceVariant,
-      ),
-      StatusBadgeTone.info => (
-        background: semantic.infoContainer,
-        foreground: semantic.onInfoContainer,
-      ),
-      StatusBadgeTone.success => (
-        background: semantic.successContainer,
-        foreground: semantic.onSuccessContainer,
-      ),
-      StatusBadgeTone.warning => (
-        background: semantic.warningContainer,
-        foreground: semantic.onWarningContainer,
-      ),
-      StatusBadgeTone.error => (
-        background: colorScheme.errorContainer,
-        foreground: colorScheme.onErrorContainer,
-      ),
+    final kitTone = switch (tone) {
+      StatusBadgeTone.neutral => KitBadgeTone.neutral,
+      StatusBadgeTone.info => KitBadgeTone.info,
+      StatusBadgeTone.success => KitBadgeTone.success,
+      StatusBadgeTone.warning => KitBadgeTone.warning,
+      StatusBadgeTone.error => KitBadgeTone.danger,
     };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: palette.background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(color: palette.foreground),
-      ),
-    );
+    return KitBadge(label: label, tone: kitTone);
   }
 }

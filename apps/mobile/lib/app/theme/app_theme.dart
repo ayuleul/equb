@@ -19,16 +19,25 @@ class AppTheme {
           brightness: brightness,
         ).copyWith(
           primary: AppColors.primary,
+          onPrimary: Colors.white,
           surface: isDark ? AppColors.darkSurface : AppColors.lightSurface,
           surfaceContainer: isDark
               ? AppColors.darkSurfaceAlt
               : AppColors.lightSurfaceAlt,
+          surfaceContainerLow: isDark
+              ? const Color(0xFF1F2C3A)
+              : const Color(0xFFFBFCFD),
           surfaceContainerHigh: isDark
               ? const Color(0xFF223040)
-              : const Color(0xFFE2EAF3),
+              : const Color(0xFFEEF1F5),
           surfaceContainerHighest: isDark
               ? const Color(0xFF29394A)
-              : const Color(0xFFD9E3ED),
+              : const Color(0xFFE6EAF0),
+          outline: isDark ? const Color(0xFF3D4D5F) : AppColors.lightOutline,
+          outlineVariant: isDark
+              ? const Color(0xFF324252)
+              : AppColors.lightOutlineVariant,
+          shadow: Colors.black.withValues(alpha: isDark ? 0.20 : 0.08),
         );
 
     final textTheme = AppTypography.textTheme(colorScheme);
@@ -40,6 +49,7 @@ class AppTheme {
       scaffoldBackgroundColor: isDark
           ? AppColors.darkBackground
           : AppColors.lightBackground,
+      canvasColor: isDark ? AppColors.darkSurface : AppColors.lightBackground,
       textTheme: textTheme,
       appBarTheme: AppComponents.appBarTheme(colorScheme, textTheme),
       elevatedButtonTheme: AppComponents.elevatedButtonTheme(
@@ -65,6 +75,20 @@ class AppTheme {
       snackBarTheme: AppComponents.snackBarTheme(colorScheme),
       dividerTheme: AppComponents.dividerTheme(colorScheme),
       progressIndicatorTheme: AppComponents.progressIndicatorTheme(colorScheme),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
+        elevation: 1,
+        shadowColor: colorScheme.shadow.withValues(alpha: 0.08),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return textTheme.labelMedium?.copyWith(
+            color: selected
+                ? colorScheme.primary
+                : colorScheme.onSurfaceVariant,
+          );
+        }),
+      ),
       extensions: <ThemeExtension<dynamic>>[
         isDark ? AppSemanticColors.dark : AppSemanticColors.light,
       ],

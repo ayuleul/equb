@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
-import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/cycle_detail_provider.dart';
@@ -76,9 +76,8 @@ class _SubmitContributionScreenState
       _amountController.text = group.contributionAmount.toString();
     }
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Submit contribution',
-      subtitle: 'Upload receipt and submit payment details',
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -181,7 +180,7 @@ class _SubmitForm extends ConsumerWidget {
 
     return ListView(
       children: [
-        EqubCard(
+        KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -201,35 +200,37 @@ class _SubmitForm extends ConsumerWidget {
         ),
         if (!isCycleOpen) ...[
           const SizedBox(height: AppSpacing.md),
-          const EmptyState(
+          const KitEmptyState(
             icon: Icons.lock_clock_outlined,
             title: 'Cycle is closed',
             message: 'You cannot submit new contributions for a closed cycle.',
           ),
         ],
         const SizedBox(height: AppSpacing.md),
-        EqubCard(
+        KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SectionHeader(title: '1) Upload receipt'),
+              const KitSectionHeader(title: '1) Upload proof'),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  OutlinedButton.icon(
+                  KitSecondaryButton(
                     onPressed: submitState.isBusy || !isCycleOpen
                         ? null
                         : controller.pickFromCamera,
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Camera'),
+                    icon: Icons.photo_camera_outlined,
+                    label: 'Camera',
+                    expand: false,
                   ),
-                  OutlinedButton.icon(
+                  KitSecondaryButton(
                     onPressed: submitState.isBusy || !isCycleOpen
                         ? null
                         : controller.pickFromGallery,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Gallery'),
+                    icon: Icons.photo_library_outlined,
+                    label: 'Gallery',
+                    expand: false,
                   ),
                 ],
               ),
@@ -249,44 +250,60 @@ class _SubmitForm extends ConsumerWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
+              ] else ...[
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  height: 180,
+                  width: double.infinity,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.cardRounded,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Text(
+                    'No proof selected yet',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
               ],
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        EqubCard(
+        KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SectionHeader(title: '2) Add details'),
-              AppTextField(
+              const KitSectionHeader(title: '2) Payment details'),
+              KitNumberField(
                 controller: amountController,
                 label: 'Amount',
-                hint: group.contributionAmount.toString(),
-                keyboardType: TextInputType.number,
+                placeholder: group.contributionAmount.toString(),
                 onChanged: (_) => onFormErrorChanged(null),
               ),
               const SizedBox(height: AppSpacing.md),
-              AppTextField(
+              KitTextField(
                 controller: paymentRefController,
                 label: 'Payment reference (optional)',
-                hint: 'Transaction ID',
+                placeholder: 'Transaction ID',
               ),
               const SizedBox(height: AppSpacing.md),
-              AppTextField(
+              KitTextArea(
                 controller: noteController,
                 label: 'Note (optional)',
-                hint: 'Any details for admins',
+                placeholder: 'Any details for admins',
               ),
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        EqubCard(
+        KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SectionHeader(title: '3) Submit'),
+              const KitSectionHeader(title: '3) Submit'),
               if (submitState.isBusy) ...[
                 LinearProgressIndicator(value: submitState.uploadProgress),
                 const SizedBox(height: AppSpacing.xs),
@@ -296,9 +313,10 @@ class _SubmitForm extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
-              FilledButton(
+              KitPrimaryButton(
                 onPressed: submitState.isBusy || !isCycleOpen ? null : submit,
-                child: Text(submitState.isBusy ? 'Submitting...' : 'Submit'),
+                label: submitState.isBusy ? 'Submitting...' : 'Submit proof',
+                isLoading: submitState.isBusy,
               ),
             ],
           ),

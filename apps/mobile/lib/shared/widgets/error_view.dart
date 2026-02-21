@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../ui/empty_state.dart';
+import '../kit/kit.dart';
 
 class ErrorView extends StatelessWidget {
   const ErrorView({super.key, required this.message, this.onRetry});
@@ -10,7 +10,7 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmptyState(
+    return KitEmptyState(
       icon: Icons.error_outline,
       title: 'Something went wrong',
       message: message,

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
@@ -20,7 +21,7 @@ class GroupDetailScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
 
-    return AppScaffold(
+    return KitScaffold(
       title: 'Group detail',
       actions: [
         IconButton(
@@ -68,7 +69,7 @@ class _GroupDetailContent extends StatelessWidget {
 
     return ListView(
       children: [
-        EqubCard(
+        KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -80,7 +81,7 @@ class _GroupDetailContent extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
-                  StatusBadge.fromLabel(roleLabel),
+                  StatusPill.fromLabel(roleLabel),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
@@ -107,7 +108,7 @@ class _GroupDetailContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        SectionHeader(title: 'Actions'),
+        const KitSectionHeader(title: 'Actions'),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -154,25 +155,23 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 110),
+    return KitCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+      child: SizedBox(
+        width: 110,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          child,
-        ],
+            const SizedBox(height: AppSpacing.xs),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -191,7 +190,7 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EqubCard(
+    return KitCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Row(
