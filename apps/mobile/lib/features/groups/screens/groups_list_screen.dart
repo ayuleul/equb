@@ -46,17 +46,19 @@ class _GroupsListScreenState extends ConsumerState<GroupsListScreen> {
     }
 
     return KitScaffold(
-      title: 'Equbs',
-      actions: [
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: () => context.push(AppRoutePaths.notifications),
-          icon: const Icon(Icons.notifications_outlined),
-        ),
-      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                tooltip: 'Notifications',
+                onPressed: () => context.push(AppRoutePaths.notifications),
+                icon: const Icon(Icons.notifications_outlined),
+              ),
+            ],
+          ),
           KitSearchBar(
             controller: _searchController,
             hintText: 'Search Equbs',

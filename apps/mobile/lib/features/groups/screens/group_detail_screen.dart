@@ -22,15 +22,17 @@ class GroupDetailScreen extends ConsumerWidget {
     final membersAsync = ref.watch(groupMembersProvider(groupId));
 
     return KitScaffold(
-      title: 'Group detail',
-      actions: [
-        IconButton(
-          tooltip: 'Refresh',
-          onPressed: () =>
-              ref.read(groupDetailControllerProvider).refreshAll(groupId),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
+      appBar: KitAppBar(
+        title: 'Group detail',
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () =>
+                ref.read(groupDetailControllerProvider).refreshAll(groupId),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(

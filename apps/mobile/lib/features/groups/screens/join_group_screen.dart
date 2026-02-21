@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/widgets/app_text_field.dart';
@@ -78,9 +79,11 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Join group',
-      subtitle: 'Use an invite code from your group admin',
+    return KitScaffold(
+      appBar: const KitAppBar(
+        title: 'Join group',
+        subtitle: 'Use an invite code from your group admin',
+      ),
       child: ListView(
         children: [
           EqubCard(

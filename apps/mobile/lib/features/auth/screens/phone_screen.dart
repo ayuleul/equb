@@ -77,7 +77,6 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
     });
 
     return KitScaffold(
-      title: 'Login',
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),

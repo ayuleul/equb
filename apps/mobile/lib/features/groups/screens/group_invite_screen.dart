@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
@@ -31,9 +32,11 @@ class GroupInviteScreen extends ConsumerWidget {
       }
     });
 
-    return AppScaffold(
-      title: 'Invite members',
-      subtitle: 'Generate a join code for this group',
+    return KitScaffold(
+      appBar: const KitAppBar(
+        title: 'Invite members',
+        subtitle: 'Generate a join code for this group',
+      ),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(

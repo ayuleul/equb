@@ -77,7 +77,7 @@ class _SubmitContributionScreenState
     }
 
     return KitScaffold(
-      title: 'Submit contribution',
+      appBar: const KitAppBar(title: 'Submit contribution'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(

@@ -99,8 +99,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           OtpScreen(phone: state.uri.queryParameters['phone']),
     ),
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) =>
-          AppShell(navigationShell: navigationShell),
+      builder: (context, state, navigationShell) => AppShell(
+        navigationShell: navigationShell,
+        currentLocation: state.uri.path,
+      ),
       branches: [
         StatefulShellBranch(
           navigatorKey: _homeNavigatorKey,

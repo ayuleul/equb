@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/member_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
@@ -18,8 +19,8 @@ class GroupMembersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(groupMembersProvider(groupId));
 
-    return AppScaffold(
-      title: 'Members',
+    return KitScaffold(
+      appBar: const KitAppBar(title: 'Members'),
       child: membersAsync.when(
         loading: () => const LoadingView(message: 'Loading members...'),
         error: (error, _) => ErrorView(

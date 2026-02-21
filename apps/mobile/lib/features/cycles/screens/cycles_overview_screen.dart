@@ -27,7 +27,7 @@ class CyclesOverviewScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
 
     return KitScaffold(
-      title: 'Cycles',
+      appBar: const KitAppBar(title: 'Cycles'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(

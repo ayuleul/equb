@@ -77,15 +77,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         : state.items;
 
     return KitScaffold(
-      title: 'Notifications',
-      actions: [
-        IconButton(
-          tooltip: 'Refresh',
-          onPressed: () =>
-              ref.read(notificationsListProvider.notifier).refresh(),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
+      appBar: KitAppBar(
+        title: 'Notifications',
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () =>
+                ref.read(notificationsListProvider.notifier).refresh(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       child: _NotificationsBody(
         state: state,
         actionsState: actionsState,

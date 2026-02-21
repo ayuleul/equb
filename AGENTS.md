@@ -178,3 +178,4 @@
   - `API_BASE_URL` is required and must fail-fast if missing
 - Never hardcode API URLs or secrets in Flutter source.
 - Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.
+- Default in-app back navigation UI must use the shared rounded-square chevron style (`KitBackButton` in `shared/kit/kit_app_bar.dart`) unless a screen has an explicit product exception.

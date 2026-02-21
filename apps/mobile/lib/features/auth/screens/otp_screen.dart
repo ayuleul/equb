@@ -141,7 +141,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     if (phone == null || phone.isEmpty) {
       return KitScaffold(
-        title: 'OTP verification',
         child: KitEmptyState(
           icon: Icons.sms_failed_outlined,
           title: 'Phone number missing',
@@ -156,7 +155,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final otpValue = _otpController.text.trim();
 
     return KitScaffold(
-      title: 'OTP verification',
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),

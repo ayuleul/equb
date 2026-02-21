@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
@@ -18,8 +19,8 @@ class GenerateCycleScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
 
-    return AppScaffold(
-      title: 'Generate cycles',
+    return KitScaffold(
+      appBar: const KitAppBar(title: 'Generate cycles'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(

@@ -40,18 +40,20 @@ class HomeScreen extends ConsumerWidget {
         : formatDate(upcomingGroup.startDate);
 
     return KitScaffold(
-      title: 'Home',
-      actions: [
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: () => context.push(AppRoutePaths.notifications),
-          icon: const Icon(Icons.notifications_outlined),
-        ),
-      ],
       child: RefreshIndicator(
         onRefresh: () => ref.read(groupsListProvider.notifier).refresh(),
         child: ListView(
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: 'Notifications',
+                  onPressed: () => context.push(AppRoutePaths.notifications),
+                  icon: const Icon(Icons.notifications_outlined),
+                ),
+              ],
+            ),
             KitCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

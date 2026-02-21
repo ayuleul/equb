@@ -17,16 +17,18 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return KitScaffold(
-      title: 'Settings',
-      actions: [
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: () => context.push(AppRoutePaths.notifications),
-          icon: const Icon(Icons.notifications_outlined),
-        ),
-      ],
       child: ListView(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                tooltip: 'Notifications',
+                onPressed: () => context.push(AppRoutePaths.notifications),
+                icon: const Icon(Icons.notifications_outlined),
+              ),
+            ],
+          ),
           KitCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

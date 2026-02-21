@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_spacing.dart';
 import '../../app/theme/app_theme_extensions.dart';
+import '../../shared/kit/kit.dart';
 
 class ThemePreviewScreen extends StatelessWidget {
   const ThemePreviewScreen({super.key});
@@ -12,9 +13,10 @@ class ThemePreviewScreen extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final semantic = context.semanticColors;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Theme Preview')),
-      body: ListView(
+    return KitScaffold(
+      appBar: const KitAppBar(title: 'Theme Preview'),
+      padding: EdgeInsets.zero,
+      child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           Text('Colors', style: theme.textTheme.titleLarge),

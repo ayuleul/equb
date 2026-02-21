@@ -106,11 +106,24 @@
 - Shared UI under `lib/shared/ui/` is the default for layout and repeated visuals (cards, list rows, badges, empty/loading feedback, snackbars).
 - Standard content padding is `16` horizontal (`AppSpacing.md`); section spacing should stay within `12-16` (`AppSpacing.sm` to `AppSpacing.md`).
 
+## Header rules
+- Feature pages must use `KitScaffold(appBar: KitAppBar(...))` instead of defining custom `AppBar` widgets.
+- `KitAppBar` is the single header primitive: centered title, optional subtitle, optional leading override, optional right actions, and auto-back when route can pop.
+- Root tab pages (`/home`, `/groups`, `/settings`) must force `showBackButton: false`.
+- Pushed/detail pages rely on `KitAppBar` default back behavior (`context.canPop()`).
+- Headerless exceptions are allowed for auth screens (`/login`, `/otp`) and root tab pages (`/home`, `/groups`, `/settings`) when the product design calls for immersive top content.
+
 ## Tab architecture rules
 - Bottom tabs are implemented with `StatefulShellRoute.indexedStack` using separate navigator keys (`home`, `groups`, `settings`) so each tab preserves its own navigation stack.
 - Notifications are not a tab; `/notifications` is a root overlay route (`parentNavigatorKey: root`) opened from app-bar bell actions.
 - Notifications must always open as an overlay on the root navigator, independent of active tab stack.
 - Notification/deeplink navigation into groups must use centralized helper flow: switch to `/groups` first, then push the target group route.
+
+## Bottom nav visibility rules
+- Bottom nav is visible only on exact root tab paths: `/home`, `/groups`, `/settings`.
+- Bottom nav must be hidden for all pushed/detail and overlay paths (for example: `/groups/create`, `/groups/join`, `/groups/:id/...`, `/notifications`).
+- In `AppShell`, tab bar visibility is determined from current location exact-match checks against root tab paths.
+- Detail navigation must use `context.push(...)` to preserve per-tab history stacks; tab switching uses shell branch switching (`goBranch`) or root `go(...)`.
 
 ## DX commands
 - Install deps: `flutter pub get`

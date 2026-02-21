@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/create_group_request.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/utils/formatters.dart';
@@ -129,9 +130,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Create group',
-      subtitle: 'Set up a new Equb group',
+    return KitScaffold(
+      appBar: const KitAppBar(
+        title: 'Create group',
+        subtitle: 'Set up a new Equb group',
+      ),
       child: ListView(
         children: [
           EqubCard(

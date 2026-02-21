@@ -83,14 +83,16 @@ class _ContributionsListScreenState
     }
 
     return KitScaffold(
-      title: 'Contributions',
-      actions: [
-        IconButton(
-          tooltip: 'Refresh',
-          onPressed: () => onRefresh(),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
+      appBar: KitAppBar(
+        title: 'Contributions',
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () => onRefresh(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       child: contributionsAsync.when(
         loading: () =>
             const SizedBox(height: 360, child: KitSkeletonList(itemCount: 4)),

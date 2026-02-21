@@ -120,7 +120,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
         0;
 
     return KitScaffold(
-      title: 'Payout',
+      appBar: const KitAppBar(title: 'Payout'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading payout...'),
         error: (error, _) => ErrorView(

@@ -28,7 +28,7 @@ class CycleDetailScreen extends ConsumerWidget {
     );
 
     return KitScaffold(
-      title: 'Cycle detail',
+      appBar: const KitAppBar(title: 'Cycle detail'),
       child: cycleAsync.when(
         loading: () => const LoadingView(message: 'Loading cycle...'),
         error: (error, _) => ErrorView(
