@@ -9,15 +9,15 @@ class AppSpacing {
   static const double md = 16;
   static const double lg = 20;
   static const double xl = 24;
-  static const double xxl = 32;
+  static const double xxl = 30;
   static const double xxxl = 40;
 }
 
 class AppRadius {
   const AppRadius._();
 
-  static const double input = 12;
-  static const double card = 16;
+  static const double input = 13;
+  static const double card = 18;
   static const double sm = 10;
   static const double md = input;
   static const double lg = card;

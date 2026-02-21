@@ -21,18 +21,29 @@ class KitEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: colorScheme.surface.withValues(alpha: 0.92),
+            borderRadius: AppRadius.cardRounded,
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 44,
-                color: Theme.of(context).colorScheme.primary,
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 34, color: colorScheme.primary),
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -47,7 +58,7 @@ class KitEmptyState extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               if (ctaLabel != null && onCtaPressed != null) ...[
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
                 KitPrimaryButton(
                   label: ctaLabel!,
                   onPressed: onCtaPressed,

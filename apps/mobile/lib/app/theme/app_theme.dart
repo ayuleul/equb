@@ -13,32 +13,35 @@ class AppTheme {
 
   static ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final colorScheme =
-        ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          brightness: brightness,
-        ).copyWith(
-          primary: AppColors.primary,
-          onPrimary: Colors.white,
-          surface: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-          surfaceContainer: isDark
-              ? AppColors.darkSurfaceAlt
-              : AppColors.lightSurfaceAlt,
-          surfaceContainerLow: isDark
-              ? const Color(0xFF1F2C3A)
-              : const Color(0xFFFBFCFD),
-          surfaceContainerHigh: isDark
-              ? const Color(0xFF223040)
-              : const Color(0xFFEEF1F5),
-          surfaceContainerHighest: isDark
-              ? const Color(0xFF29394A)
-              : const Color(0xFFE6EAF0),
-          outline: isDark ? const Color(0xFF3D4D5F) : AppColors.lightOutline,
-          outlineVariant: isDark
-              ? const Color(0xFF324252)
-              : AppColors.lightOutlineVariant,
-          shadow: Colors.black.withValues(alpha: isDark ? 0.20 : 0.08),
-        );
+    final baseScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: brightness,
+    );
+    final colorScheme = baseScheme.copyWith(
+      primary: AppColors.primary,
+      onPrimary: Colors.white,
+      secondary: isDark ? const Color(0xFFFFBE78) : AppColors.secondary,
+      onSecondary: isDark ? const Color(0xFF341F00) : Colors.white,
+      surface: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      surfaceContainer: isDark
+          ? AppColors.darkSurfaceAlt
+          : AppColors.lightSurfaceAlt,
+      surfaceContainerLow: isDark
+          ? const Color(0xFF162434)
+          : const Color(0xFFF8FBFF),
+      surfaceContainerHigh: isDark
+          ? const Color(0xFF1B2B3D)
+          : const Color(0xFFEFF4FA),
+      surfaceContainerHighest: isDark
+          ? const Color(0xFF223244)
+          : const Color(0xFFE5ECF4),
+      outline: isDark ? const Color(0xFF3A4E62) : AppColors.lightOutline,
+      outlineVariant: isDark
+          ? const Color(0xFF314457)
+          : AppColors.lightOutlineVariant,
+      shadow: Colors.black.withValues(alpha: isDark ? 0.28 : 0.10),
+      scrim: Colors.black.withValues(alpha: isDark ? 0.56 : 0.42),
+    );
 
     final textTheme = AppTypography.textTheme(colorScheme);
 
@@ -65,16 +68,19 @@ class AppTheme {
         textTheme,
       ),
       textButtonTheme: AppComponents.textButtonTheme(colorScheme, textTheme),
+      iconButtonTheme: AppComponents.iconButtonTheme(colorScheme),
       inputDecorationTheme: AppComponents.inputDecorationTheme(
         colorScheme,
         textTheme,
       ),
       cardTheme: AppComponents.cardTheme(colorScheme),
+      listTileTheme: AppComponents.listTileTheme(colorScheme, textTheme),
       chipTheme: AppComponents.chipTheme(colorScheme, textTheme),
       bottomSheetTheme: AppComponents.bottomSheetTheme(colorScheme),
       snackBarTheme: AppComponents.snackBarTheme(colorScheme),
       dividerTheme: AppComponents.dividerTheme(colorScheme),
       progressIndicatorTheme: AppComponents.progressIndicatorTheme(colorScheme),
+      splashFactory: InkRipple.splashFactory,
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
@@ -91,6 +97,7 @@ class AppTheme {
       ),
       extensions: <ThemeExtension<dynamic>>[
         isDark ? AppSemanticColors.dark : AppSemanticColors.light,
+        isDark ? AppBrandDecor.dark : AppBrandDecor.light,
       ],
     );
   }

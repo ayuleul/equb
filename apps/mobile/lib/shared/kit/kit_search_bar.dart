@@ -17,26 +17,36 @@ class KitSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      style: textTheme.bodyLarge,
       decoration: InputDecoration(
         hintText: hintText,
-        prefixIcon: const Icon(Icons.search),
+        hintStyle: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: colorScheme.surfaceContainerLow,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
+          vertical: 14,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadius.inputRounded,
+          borderRadius: AppRadius.pillRounded,
           borderSide: BorderSide(color: colorScheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: AppRadius.inputRounded,
-          borderSide: BorderSide(color: colorScheme.primary),
+          borderRadius: AppRadius.pillRounded,
+          borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
         ),
       ),
     );

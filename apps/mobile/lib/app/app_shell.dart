@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import 'theme/app_spacing.dart';
 import 'router.dart';
 
 class AppShell extends StatelessWidget {
@@ -85,14 +86,26 @@ class _AppBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    const contentHeight = 72.0;
+    const contentHeight = 76.0;
 
     return DecoratedBox(
       decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [colorScheme.surface, colorScheme.surfaceContainerLow],
+        ),
         border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
+          ),
+        ],
       ),
       child: Material(
-        color: colorScheme.surface,
+        color: Colors.transparent,
         child: SizedBox(
           height: contentHeight + bottomInset,
           child: Padding(
@@ -131,13 +144,12 @@ class _BottomTabButton extends StatelessWidget {
   final _BottomTabItem item;
   final bool selected;
   final VoidCallback onPressed;
-  static const double _selectedSize = 52;
-  static const double _unselectedSize = 48;
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final inactiveColor = colorScheme.outline;
+    final inactiveColor = colorScheme.onSurfaceVariant;
 
     return Semantics(
       button: true,
@@ -150,24 +162,52 @@ class _BottomTabButton extends StatelessWidget {
             HapticFeedback.selectionClick();
             onPressed();
           },
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: AppRadius.mdRounded,
           splashColor: Colors.transparent,
           highlightColor: colorScheme.primary.withValues(alpha: 0.05),
-          child: Center(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              curve: Curves.easeOut,
-              width: selected ? _selectedSize : _unselectedSize,
-              height: selected ? _selectedSize : _unselectedSize,
-              decoration: BoxDecoration(
-                color: selected ? colorScheme.primary : Colors.transparent,
-                shape: BoxShape.circle,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.mdRounded,
+              color: selected
+                  ? colorScheme.primary.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              border: Border.all(
+                color: selected
+                    ? colorScheme.primary.withValues(alpha: 0.35)
+                    : Colors.transparent,
               ),
-              child: Icon(
-                selected ? item.selectedIcon : item.icon,
-                size: selected ? 28 : 30,
-                color: selected ? colorScheme.onPrimary : inactiveColor,
-              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedScale(
+                  scale: selected ? 1 : 0.94,
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOutCubic,
+                  child: Icon(
+                    selected ? item.selectedIcon : item.icon,
+                    size: selected ? 23 : 22,
+                    color: selected ? colorScheme.primary : inactiveColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: selected ? colorScheme.primary : inactiveColor,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

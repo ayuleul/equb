@@ -174,12 +174,101 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   Color get onDangerTint => onDangerContainer;
 }
 
+@immutable
+class AppBrandDecor extends ThemeExtension<AppBrandDecor> {
+  const AppBrandDecor({
+    required this.heroTop,
+    required this.heroBottom,
+    required this.glowPrimary,
+    required this.glowSecondary,
+    required this.meshLine,
+    required this.cardAccentStart,
+    required this.cardAccentEnd,
+  });
+
+  final Color heroTop;
+  final Color heroBottom;
+  final Color glowPrimary;
+  final Color glowSecondary;
+  final Color meshLine;
+  final Color cardAccentStart;
+  final Color cardAccentEnd;
+
+  static const AppBrandDecor light = AppBrandDecor(
+    heroTop: Color(0xFFF8FAFD),
+    heroBottom: Color(0xFFF6F9FC),
+    glowPrimary: Color(0x111B8BA8),
+    glowSecondary: Color(0x0CB46918),
+    meshLine: Color(0x080E7490),
+    cardAccentStart: Color(0xFF0E7490),
+    cardAccentEnd: Color(0xFFB46918),
+  );
+
+  static const AppBrandDecor dark = AppBrandDecor(
+    heroTop: Color(0xFF101A25),
+    heroBottom: Color(0xFF111B27),
+    glowPrimary: Color(0x1632A6C4),
+    glowSecondary: Color(0x128E612D),
+    meshLine: Color(0x1277BFD4),
+    cardAccentStart: Color(0xFF47B4CF),
+    cardAccentEnd: Color(0xFFE4A55D),
+  );
+
+  static AppBrandDecor fallback(Brightness brightness) =>
+      brightness == Brightness.dark ? dark : light;
+
+  @override
+  AppBrandDecor copyWith({
+    Color? heroTop,
+    Color? heroBottom,
+    Color? glowPrimary,
+    Color? glowSecondary,
+    Color? meshLine,
+    Color? cardAccentStart,
+    Color? cardAccentEnd,
+  }) {
+    return AppBrandDecor(
+      heroTop: heroTop ?? this.heroTop,
+      heroBottom: heroBottom ?? this.heroBottom,
+      glowPrimary: glowPrimary ?? this.glowPrimary,
+      glowSecondary: glowSecondary ?? this.glowSecondary,
+      meshLine: meshLine ?? this.meshLine,
+      cardAccentStart: cardAccentStart ?? this.cardAccentStart,
+      cardAccentEnd: cardAccentEnd ?? this.cardAccentEnd,
+    );
+  }
+
+  @override
+  AppBrandDecor lerp(ThemeExtension<AppBrandDecor>? other, double t) {
+    if (other is! AppBrandDecor) {
+      return this;
+    }
+
+    return AppBrandDecor(
+      heroTop: Color.lerp(heroTop, other.heroTop, t) ?? heroTop,
+      heroBottom: Color.lerp(heroBottom, other.heroBottom, t) ?? heroBottom,
+      glowPrimary: Color.lerp(glowPrimary, other.glowPrimary, t) ?? glowPrimary,
+      glowSecondary:
+          Color.lerp(glowSecondary, other.glowSecondary, t) ?? glowSecondary,
+      meshLine: Color.lerp(meshLine, other.meshLine, t) ?? meshLine,
+      cardAccentStart:
+          Color.lerp(cardAccentStart, other.cardAccentStart, t) ??
+          cardAccentStart,
+      cardAccentEnd:
+          Color.lerp(cardAccentEnd, other.cardAccentEnd, t) ?? cardAccentEnd,
+    );
+  }
+}
+
 extension AppThemeDataExtension on ThemeData {
   AppSemanticColors get semanticColors =>
       extension<AppSemanticColors>() ?? AppSemanticColors.fallback(brightness);
+  AppBrandDecor get brandDecor =>
+      extension<AppBrandDecor>() ?? AppBrandDecor.fallback(brightness);
 }
 
 extension AppBuildContextThemeExtension on BuildContext {
   AppSemanticColors get colors => Theme.of(this).semanticColors;
   AppSemanticColors get semanticColors => Theme.of(this).semanticColors;
+  AppBrandDecor get brand => Theme.of(this).brandDecor;
 }

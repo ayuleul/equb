@@ -18,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     final user = ref.watch(currentUserProvider);
     final groupsState = ref.watch(groupsListProvider);
     final notificationsState = ref.watch(notificationsListProvider);
@@ -42,30 +43,67 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () => ref.read(groupsListProvider.notifier).refresh(),
         child: ListView(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  tooltip: 'Notifications',
-                  onPressed: () => context.push(AppRoutePaths.notifications),
-                  icon: const Icon(Icons.notifications_outlined),
-                ),
-              ],
+            KitSectionHeader(
+              title: 'Dashboard',
+              kicker: 'Overview',
+              subtitle: 'Track your groups, contributions, and due dates.',
+              action: IconButton(
+                tooltip: 'Notifications',
+                onPressed: () => context.push(AppRoutePaths.notifications),
+                icon: const Icon(Icons.notifications_outlined),
+              ),
             ),
             KitCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hi, $displayName',
-                    style: Theme.of(context).textTheme.headlineSmall,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.primary.withValues(alpha: 0.05),
+                      colorScheme.secondary.withValues(alpha: 0.04),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Your Equb dashboard at a glance.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+                  borderRadius: AppRadius.inputRounded,
+                ),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hi, $displayName',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'Your Equb dashboard at a glance.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(alpha: 0.8),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.primary.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: colorScheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -97,6 +135,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             KitSectionHeader(
               title: 'Upcoming due cycle',
+              kicker: 'Next',
               actionLabel: 'View equbs',
               onActionPressed: () => context.go(AppRoutePaths.groups),
             ),
@@ -142,7 +181,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: AppSpacing.md),
-            const KitSectionHeader(title: 'Recent activity'),
+            const KitSectionHeader(title: 'Recent activity', kicker: 'Feed'),
             const KitCard(
               child: Text(
                 'Activity feed will appear here as members contribute and payouts are confirmed.',
@@ -210,13 +249,23 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return KitCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: colorScheme.primary),
+          ),
           const SizedBox(height: AppSpacing.xs),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
+          Text(value, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: AppSpacing.xs),
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
         ],

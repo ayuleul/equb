@@ -6,10 +6,16 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
 import '../../../shared/kit/kit.dart';
-import '../../../shared/ui/ui.dart';
+import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../group_detail_controller.dart';
+import '../widgets/group_cycles_tab.dart';
+import '../widgets/group_detail_header_cards.dart';
+import '../widgets/group_detail_tab_bar.dart';
+import '../widgets/group_members_tab.dart';
+import '../widgets/group_more_actions_button.dart';
+import '../widgets/group_payout_order_tab.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({super.key, required this.groupId});
@@ -20,17 +26,24 @@ class GroupDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final group = groupAsync.valueOrNull;
+    final statusText = _groupStatusLabel(group?.status);
+    final isAdmin = group?.membership?.role == MemberRoleModel.admin;
 
     return KitScaffold(
       appBar: KitAppBar(
-        title: 'Group detail',
+        title: group?.name ?? 'Group detail',
+        subtitle: group == null ? null : statusText,
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () =>
-                ref.read(groupDetailControllerProvider).refreshAll(groupId),
-            icon: const Icon(Icons.refresh),
-          ),
+          if (group != null)
+            GroupMoreActionsButton(groupName: group.name, isAdmin: isAdmin),
+          if (group == null)
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: () =>
+                  ref.read(groupDetailControllerProvider).refreshAll(groupId),
+              icon: const Icon(Icons.refresh),
+            ),
         ],
       ),
       child: groupAsync.when(
@@ -49,159 +62,90 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 }
 
-class _GroupDetailContent extends StatelessWidget {
+class _GroupDetailContent extends StatefulWidget {
   const _GroupDetailContent({required this.group, this.memberCount});
 
   final GroupModel group;
   final int? memberCount;
 
   @override
+  State<_GroupDetailContent> createState() => _GroupDetailContentState();
+}
+
+class _GroupDetailContentState extends State<_GroupDetailContent> {
+  var _selectedTab = GroupDetailTab.members;
+
+  @override
   Widget build(BuildContext context) {
+    final group = widget.group;
     final isAdmin = group.membership?.role == MemberRoleModel.admin;
-    final roleLabel = switch (group.membership?.role) {
-      MemberRoleModel.admin => 'ADMIN',
-      MemberRoleModel.member => 'MEMBER',
-      _ => 'UNKNOWN',
-    };
-    final frequency = switch (group.frequency) {
+    final statusLabel = _groupStatusLabel(group.status);
+    final frequencyLabel = switch (group.frequency) {
       GroupFrequencyModel.weekly => 'WEEKLY',
       GroupFrequencyModel.monthly => 'MONTHLY',
       GroupFrequencyModel.unknown => 'UNKNOWN',
     };
+    final overviewText =
+        'This group runs on a ${frequencyLabel.toLowerCase()} schedule. '
+        'Each member contributes ${formatCurrency(group.contributionAmount, group.currency)}.';
 
     return ListView(
       children: [
-        KitCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      group.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                  StatusPill.fromLabel(roleLabel),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  _StatItem(
-                    label: 'Contribution',
-                    child: AmountText(
-                      amount: group.contributionAmount,
-                      currency: group.currency,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  _StatItem(label: 'Frequency', child: Text(frequency)),
-                  _StatItem(
-                    label: 'Members',
-                    child: Text(memberCount == null ? '-' : '$memberCount'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        GroupInviteBannerCard(
+          isAdmin: isAdmin,
+          onInviteTap: () => context.push(AppRoutePaths.groupInvite(group.id)),
         ),
         const SizedBox(height: AppSpacing.md),
-        const KitSectionHeader(title: 'Actions'),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppSpacing.sm,
-          crossAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.9,
-          children: [
-            _ActionTile(
-              icon: Icons.people_outline,
-              label: 'Members',
-              onTap: () => context.push(AppRoutePaths.groupMembers(group.id)),
-            ),
-            _ActionTile(
-              icon: Icons.timelapse_outlined,
-              label: 'Cycles',
-              onTap: () => context.push(AppRoutePaths.groupCycles(group.id)),
-            ),
-            if (isAdmin)
-              _ActionTile(
-                icon: Icons.share_outlined,
-                label: 'Invite',
-                onTap: () => context.push(AppRoutePaths.groupInvite(group.id)),
-              ),
-            if (isAdmin)
-              _ActionTile(
-                icon: Icons.swap_vert_rounded,
-                label: 'Payout order',
-                onTap: () =>
-                    context.push(AppRoutePaths.groupPayoutOrder(group.id)),
-              ),
-          ],
+        GroupOverviewCard(
+          statusLabel: statusLabel,
+          frequencyLabel: frequencyLabel,
+          memberCount: widget.memberCount ?? 0,
+          overviewText: overviewText,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        GroupDetailTabBar(
+          selectedTab: _selectedTab,
+          isAdmin: isAdmin,
+          onSelected: _selectTab,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: _tabContent(groupId: group.id, isAdmin: isAdmin),
         ),
       ],
     );
   }
-}
 
-class _StatItem extends StatelessWidget {
-  const _StatItem({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return KitCard(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: SizedBox(
-        width: 110,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            child,
-          ],
+  Widget _tabContent({required String groupId, required bool isAdmin}) {
+    return KeyedSubtree(
+      key: ValueKey(_selectedTab.name),
+      child: switch (_selectedTab) {
+        GroupDetailTab.members => GroupMembersTab(groupId: groupId),
+        GroupDetailTab.cycles => GroupCyclesTab(
+          groupId: groupId,
+          isAdmin: isAdmin,
         ),
-      ),
+        GroupDetailTab.payoutOrder => GroupPayoutOrderTab(
+          groupId: groupId,
+          isAdmin: isAdmin,
+        ),
+      },
     );
+  }
+
+  void _selectTab(GroupDetailTab tab) {
+    if (_selectedTab == tab) {
+      return;
+    }
+    setState(() => _selectedTab = tab);
   }
 }
 
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return KitCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Row(
-        children: [
-          Icon(icon),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(label)),
-        ],
-      ),
-    );
-  }
+String _groupStatusLabel(GroupStatusModel? status) {
+  return switch (status) {
+    GroupStatusModel.active => 'Active',
+    GroupStatusModel.archived => 'Archived',
+    _ => 'Unknown',
+  };
 }

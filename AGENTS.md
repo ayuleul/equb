@@ -187,5 +187,23 @@
 - Never hardcode API URLs or secrets in Flutter source.
 - Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.
 - Default in-app back navigation UI must use the shared rounded-square chevron style (`KitBackButton` in `shared/kit/kit_app_bar.dart`) unless a screen has an explicit product exception.
+- Shared `KitAppBar` should use the profile-style hierarchy (avatar + title + optional status/subtitle) app-wide, while preserving the existing `KitBackButton` visual style.
+- Group detail screen is the canonical group landing page; avoid creating parallel group profile pages unless a product requirement explicitly adds one.
+- Group detail content must render real Equb domain data (group/member fields and valid actions) and should avoid placeholder-only sections that are not backed by app data.
+- Group detail headers should be implemented via `appBar` (sticky) instead of placing header rows inside scrollable content.
+- Header "more actions" controls for group context should use the rounded-square popup menu style (`GroupMoreActionsButton`) with contextual actions (for example report/boost/leave).
+- Group header/dropdown actions should include `Edit group` for admins.
+- Group UI status labels must reflect `GroupStatusModel` values (for example `ACTIVE`/`ARCHIVED`) and should not use chat-presence wording such as "online".
+- Group detail pages should present core actions (`Members`, `Cycles`, `Payout`) as segmented in-page tabs instead of navigating to separate top-level screens by default.
+- Group invite actions should be exposed via the invite banner/CTA and menu actions, not as a default segmented tab.
+- Group detail segmented tab controls must remain compact-width and text-scale safe (no `RenderFlex` overflow under high accessibility text scales).
+- Group detail metadata badges and invite summary blocks must adapt to compact widths (horizontal scroll and/or stacked layout) so no `RenderFlex` overflow occurs on narrow devices.
+- Feature screens should use `KitScaffold` + `KitCard` as the default page/surface primitives so gradient background treatment, width constraints, spacing rhythm, and card styling stay consistent app-wide.
+- Root tab screens should start with a `KitSectionHeader` title/subtitle row and place top-right utility actions (for example notifications) in the header `action` slot for consistent page chrome.
+- Decorative/motif colors should come from `AppBrandDecor` theme extension (`app/theme/app_theme_extensions.dart`) rather than hardcoded values in widgets.
+- Decorative backgrounds must remain low-contrast with surfaces (subtle motif lines/glows and near-surface gradients) so content cards and form controls remain the visual focus.
+- Default expanded CTA buttons in shared kit should be width-capped (not full-bleed on wide layouts) to keep action controls compact and readable.
+- Shared kit buttons must clamp text to one line with ellipsis in icon+label rows to avoid `RenderFlex` overflow under high accessibility text scales.
+- Notification bootstrap must not access `FirebaseMessaging.instance` before Firebase app initialization; push setup should degrade gracefully when Firebase config is unavailable.
 - Bottom tab navigation must be docked to the bottom edge (no floating/lift), span left-to-right, and use the app primary color for the active tab state (`app/app_shell.dart`) unless a product requirement explicitly overrides it.
 - Bottom tab taps should use subtle motion (reduced size delta and short animation) plus light haptic feedback (`HapticFeedback.selectionClick`) in `app/app_shell.dart`.

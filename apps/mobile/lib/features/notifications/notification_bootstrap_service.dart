@@ -38,10 +38,10 @@ class NotificationBootstrapService implements NotificationBootstrap {
     required AppLogger logger,
     FirebaseMessaging? messaging,
   }) : _logger = logger,
-       _messaging = messaging ?? FirebaseMessaging.instance;
+       _messaging = messaging;
 
   final AppLogger _logger;
-  final FirebaseMessaging _messaging;
+  FirebaseMessaging? _messaging;
 
   bool _firebaseChecked = false;
   bool _firebaseAvailable = false;
@@ -70,13 +70,14 @@ class NotificationBootstrapService implements NotificationBootstrap {
     }
 
     final available = await _ensureFirebaseAvailable();
-    if (!available) {
+    final messaging = _messaging;
+    if (!available || messaging == null) {
       return;
     }
 
     try {
-      await _messaging.requestPermission();
-      await _messaging.setForegroundNotificationPresentationOptions(
+      await messaging.requestPermission();
+      await messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
@@ -107,7 +108,7 @@ class NotificationBootstrapService implements NotificationBootstrap {
       _onPayloadOpened?.call(_payloadFromMessage(message));
     });
 
-    _onTokenRefreshSubscription = _messaging.onTokenRefresh.listen((token) {
+    _onTokenRefreshSubscription = messaging.onTokenRefresh.listen((token) {
       final normalized = token.trim();
       if (normalized.isEmpty) {
         return;
@@ -119,7 +120,7 @@ class NotificationBootstrapService implements NotificationBootstrap {
       }
     });
 
-    final initialMessage = await _messaging.getInitialMessage();
+    final initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
       Future<void>.microtask(
         () => _onPayloadOpened?.call(_payloadFromMessage(initialMessage)),
@@ -132,12 +133,13 @@ class NotificationBootstrapService implements NotificationBootstrap {
   @override
   Future<String?> getDeviceToken() async {
     final available = await _ensureFirebaseAvailable();
-    if (!available) {
+    final messaging = _messaging;
+    if (!available || messaging == null) {
       return null;
     }
 
     try {
-      final token = await _messaging.getToken();
+      final token = await messaging.getToken();
       final normalized = token?.trim();
       if (normalized == null || normalized.isEmpty) {
         return null;
@@ -170,6 +172,7 @@ class NotificationBootstrapService implements NotificationBootstrap {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp();
       }
+      _messaging ??= FirebaseMessaging.instance;
       _firebaseAvailable = true;
     } catch (error, stackTrace) {
       _firebaseAvailable = false;

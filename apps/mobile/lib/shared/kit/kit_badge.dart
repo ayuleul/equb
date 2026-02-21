@@ -93,6 +93,7 @@ class KitBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: palette.bg,
         borderRadius: AppRadius.pillRounded,
+        border: Border.all(color: palette.fg.withValues(alpha: 0.18)),
       ),
       child: child,
     );

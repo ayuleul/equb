@@ -49,15 +49,15 @@ class _GroupsListScreenState extends ConsumerState<GroupsListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                tooltip: 'Notifications',
-                onPressed: () => context.push(AppRoutePaths.notifications),
-                icon: const Icon(Icons.notifications_outlined),
-              ),
-            ],
+          KitSectionHeader(
+            title: 'My Equbs',
+            kicker: 'Groups',
+            subtitle: 'Manage active groups and create new ones.',
+            action: IconButton(
+              tooltip: 'Notifications',
+              onPressed: () => context.push(AppRoutePaths.notifications),
+              icon: const Icon(Icons.notifications_outlined),
+            ),
           ),
           KitSearchBar(
             controller: _searchController,
@@ -166,6 +166,7 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final frequency = switch (group.frequency) {
       GroupFrequencyModel.weekly => 'WEEKLY',
       GroupFrequencyModel.monthly => 'MONTHLY',
@@ -184,6 +185,20 @@ class _GroupCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.groups_2_outlined,
+                  size: 18,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   group.name,
@@ -204,6 +219,12 @@ class _GroupCard extends StatelessWidget {
               StatusPill.fromLabel(frequency),
               const SizedBox(width: AppSpacing.xs),
               StatusPill.fromLabel(group.status.name.toUpperCase()),
+              const Spacer(),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ],
