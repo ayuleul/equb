@@ -21,9 +21,7 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final groupsState = ref.watch(groupsListProvider);
     final notificationsState = ref.watch(notificationsListProvider);
-    final displayName = user?.fullName?.trim().isNotEmpty == true
-        ? user!.fullName!.trim()
-        : (user?.phone ?? 'there');
+    final displayName = user?.firstName ?? user?.phone ?? 'there';
     final activeGroupsCount = groupsState.items
         .where((group) => group.status == GroupStatusModel.active)
         .length;

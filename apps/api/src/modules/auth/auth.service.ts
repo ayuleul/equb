@@ -12,6 +12,7 @@ import { randomInt, randomUUID } from 'crypto';
 import { StringValue } from 'ms';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { isProfileComplete } from '../../common/profile/profile.utils';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
@@ -22,6 +23,16 @@ import type { SmsProvider } from './interfaces/sms-provider.interface';
 interface TokenPair {
   accessToken: string;
   refreshToken: string;
+}
+
+interface AuthUserPayload {
+  id: string;
+  phone: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  fullName: string | null;
+  profileComplete: boolean;
 }
 
 interface RefreshTokenPayload {
@@ -65,7 +76,9 @@ export class AuthService {
     return { message: 'OTP sent' };
   }
 
-  async verifyOtp(dto: VerifyOtpDto): Promise<TokenPair & { user: User }> {
+  async verifyOtp(
+    dto: VerifyOtpDto,
+  ): Promise<TokenPair & { user: AuthUserPayload }> {
     const normalizedPhone = this.normalizePhone(dto.phone);
 
     const otpRecord = await this.prisma.otpCode.findFirst({
@@ -115,13 +128,13 @@ export class AuthService {
 
     return {
       ...tokens,
-      user,
+      user: this.toAuthUser(user),
     };
   }
 
   async refresh({
     refreshToken,
-  }: RefreshTokenDto): Promise<TokenPair & { user: User }> {
+  }: RefreshTokenDto): Promise<TokenPair & { user: AuthUserPayload }> {
     const parsedToken = await this.verifyRefreshToken(refreshToken);
     const existingToken = await this.prisma.refreshToken.findUnique({
       where: { id: parsedToken.tokenId },
@@ -169,7 +182,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: existingToken.user,
+      user: this.toAuthUser(existingToken.user),
     };
   }
 
@@ -318,5 +331,22 @@ export class AuthService {
     return Number(
       this.configService.get<string>('JWT_REFRESH_TTL_DAYS') ?? '30',
     );
+  }
+
+  private toAuthUser(
+    user: Pick<
+      User,
+      'id' | 'phone' | 'firstName' | 'middleName' | 'lastName' | 'fullName'
+    >,
+  ): AuthUserPayload {
+    return {
+      id: user.id,
+      phone: user.phone,
+      firstName: user.firstName,
+      middleName: user.middleName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      profileComplete: isProfileComplete(user),
+    };
   }
 }

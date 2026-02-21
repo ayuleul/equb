@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserModel {
 
- String get id; String get phone; String? get fullName;
+ String get id; String get phone; String? get firstName; String? get middleName; String? get lastName; String? get fullName; bool? get profileComplete;
 /// Create a copy of UserModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $UserModelCopyWith<UserModel> get copyWith => _$UserModelCopyWithImpl<UserModel>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.fullName, fullName) || other.fullName == fullName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.firstName, firstName) || other.firstName == firstName)&&(identical(other.middleName, middleName) || other.middleName == middleName)&&(identical(other.lastName, lastName) || other.lastName == lastName)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.profileComplete, profileComplete) || other.profileComplete == profileComplete));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,phone,fullName);
+int get hashCode => Object.hash(runtimeType,id,phone,firstName,middleName,lastName,fullName,profileComplete);
 
 @override
 String toString() {
-  return 'UserModel(id: $id, phone: $phone, fullName: $fullName)';
+  return 'UserModel(id: $id, phone: $phone, firstName: $firstName, middleName: $middleName, lastName: $lastName, fullName: $fullName, profileComplete: $profileComplete)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $UserModelCopyWith<$Res>  {
   factory $UserModelCopyWith(UserModel value, $Res Function(UserModel) _then) = _$UserModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String phone, String? fullName
+ String id, String phone, String? firstName, String? middleName, String? lastName, String? fullName, bool? profileComplete
 });
 
 
@@ -65,12 +65,16 @@ class _$UserModelCopyWithImpl<$Res>
 
 /// Create a copy of UserModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? phone = null,Object? fullName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? phone = null,Object? firstName = freezed,Object? middleName = freezed,Object? lastName = freezed,Object? fullName = freezed,Object? profileComplete = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,phone: null == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
-as String,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,firstName: freezed == firstName ? _self.firstName : firstName // ignore: cast_nullable_to_non_nullable
+as String?,middleName: freezed == middleName ? _self.middleName : middleName // ignore: cast_nullable_to_non_nullable
+as String?,lastName: freezed == lastName ? _self.lastName : lastName // ignore: cast_nullable_to_non_nullable
+as String?,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
+as String?,profileComplete: freezed == profileComplete ? _self.profileComplete : profileComplete // ignore: cast_nullable_to_non_nullable
+as bool?,
   ));
 }
 
@@ -152,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String phone,  String? fullName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String phone,  String? firstName,  String? middleName,  String? lastName,  String? fullName,  bool? profileComplete)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserModel() when $default != null:
-return $default(_that.id,_that.phone,_that.fullName);case _:
+return $default(_that.id,_that.phone,_that.firstName,_that.middleName,_that.lastName,_that.fullName,_that.profileComplete);case _:
   return orElse();
 
 }
@@ -173,10 +177,10 @@ return $default(_that.id,_that.phone,_that.fullName);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String phone,  String? fullName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String phone,  String? firstName,  String? middleName,  String? lastName,  String? fullName,  bool? profileComplete)  $default,) {final _that = this;
 switch (_that) {
 case _UserModel():
-return $default(_that.id,_that.phone,_that.fullName);}
+return $default(_that.id,_that.phone,_that.firstName,_that.middleName,_that.lastName,_that.fullName,_that.profileComplete);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -190,10 +194,10 @@ return $default(_that.id,_that.phone,_that.fullName);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String phone,  String? fullName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String phone,  String? firstName,  String? middleName,  String? lastName,  String? fullName,  bool? profileComplete)?  $default,) {final _that = this;
 switch (_that) {
 case _UserModel() when $default != null:
-return $default(_that.id,_that.phone,_that.fullName);case _:
+return $default(_that.id,_that.phone,_that.firstName,_that.middleName,_that.lastName,_that.fullName,_that.profileComplete);case _:
   return null;
 
 }
@@ -204,13 +208,17 @@ return $default(_that.id,_that.phone,_that.fullName);case _:
 /// @nodoc
 @JsonSerializable()
 
-class _UserModel implements UserModel {
-  const _UserModel({required this.id, required this.phone, this.fullName});
+class _UserModel extends UserModel {
+  const _UserModel({required this.id, required this.phone, this.firstName, this.middleName, this.lastName, this.fullName, this.profileComplete}): super._();
   factory _UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
 
 @override final  String id;
 @override final  String phone;
+@override final  String? firstName;
+@override final  String? middleName;
+@override final  String? lastName;
 @override final  String? fullName;
+@override final  bool? profileComplete;
 
 /// Create a copy of UserModel
 /// with the given fields replaced by the non-null parameter values.
@@ -225,16 +233,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.fullName, fullName) || other.fullName == fullName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.firstName, firstName) || other.firstName == firstName)&&(identical(other.middleName, middleName) || other.middleName == middleName)&&(identical(other.lastName, lastName) || other.lastName == lastName)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.profileComplete, profileComplete) || other.profileComplete == profileComplete));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,phone,fullName);
+int get hashCode => Object.hash(runtimeType,id,phone,firstName,middleName,lastName,fullName,profileComplete);
 
 @override
 String toString() {
-  return 'UserModel(id: $id, phone: $phone, fullName: $fullName)';
+  return 'UserModel(id: $id, phone: $phone, firstName: $firstName, middleName: $middleName, lastName: $lastName, fullName: $fullName, profileComplete: $profileComplete)';
 }
 
 
@@ -245,7 +253,7 @@ abstract mixin class _$UserModelCopyWith<$Res> implements $UserModelCopyWith<$Re
   factory _$UserModelCopyWith(_UserModel value, $Res Function(_UserModel) _then) = __$UserModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String phone, String? fullName
+ String id, String phone, String? firstName, String? middleName, String? lastName, String? fullName, bool? profileComplete
 });
 
 
@@ -262,12 +270,16 @@ class __$UserModelCopyWithImpl<$Res>
 
 /// Create a copy of UserModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? phone = null,Object? fullName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? phone = null,Object? firstName = freezed,Object? middleName = freezed,Object? lastName = freezed,Object? fullName = freezed,Object? profileComplete = freezed,}) {
   return _then(_UserModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,phone: null == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
-as String,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,firstName: freezed == firstName ? _self.firstName : firstName // ignore: cast_nullable_to_non_nullable
+as String?,middleName: freezed == middleName ? _self.middleName : middleName // ignore: cast_nullable_to_non_nullable
+as String?,lastName: freezed == lastName ? _self.lastName : lastName // ignore: cast_nullable_to_non_nullable
+as String?,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
+as String?,profileComplete: freezed == profileComplete ? _self.profileComplete : profileComplete // ignore: cast_nullable_to_non_nullable
+as bool?,
   ));
 }
 

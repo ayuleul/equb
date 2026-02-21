@@ -40,6 +40,7 @@ async function bootstrap() {
       .setVersion('1.0.0')
       .addBearerAuth()
       .addTag('Auth')
+      .addTag('Users')
       .addTag('Groups')
       .addTag('Members')
       .addTag('Cycles')

@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ContributionsModule } from './modules/contributions/contributions.module';
 import { FilesModule } from './modules/files/files.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { MeModule } from './modules/me/me.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { SystemModule } from './modules/system/system.module';
@@ -37,6 +38,7 @@ import { SystemModule } from './modules/system/system.module';
     NotificationsModule,
     SystemModule,
     AuthModule,
+    MeModule,
     GroupsModule,
     FilesModule,
     ContributionsModule,

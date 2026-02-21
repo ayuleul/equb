@@ -25,8 +25,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Login'), findsOneWidget);
     expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.text('Request OTP'), findsOneWidget);
   });
 }
 

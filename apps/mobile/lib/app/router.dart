@@ -23,6 +23,7 @@ import '../features/cycles/screens/payout_order_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/submit_contribution_screen.dart';
 import '../features/payouts/screens/payout_screen.dart';
+import '../features/profile/screens/complete_profile_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/splash/splash_screen.dart';
@@ -33,6 +34,7 @@ class AppRoutePaths {
   static const splash = '/splash';
   static const login = '/login';
   static const otp = '/otp';
+  static const onboardingProfile = '/onboarding/profile';
   static const home = '/home';
   static const groups = '/groups';
   static const notifications = '/notifications';
@@ -97,6 +99,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       path: AppRoutePaths.otp,
       builder: (context, state) =>
           OtpScreen(phone: state.uri.queryParameters['phone']),
+    ),
+    GoRoute(
+      path: AppRoutePaths.onboardingProfile,
+      builder: (context, state) => const CompleteProfileScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => AppShell(
@@ -279,6 +285,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSplash = location == AppRoutePaths.splash;
       final isLogin = location == AppRoutePaths.login;
       final isOtp = location == AppRoutePaths.otp;
+      final isOnboardingProfile = location == AppRoutePaths.onboardingProfile;
       final isHomeRoute = location.startsWith(AppRoutePaths.home);
       final isGroupsRoute = location.startsWith(AppRoutePaths.groups);
       final isNotificationsRoute = location.startsWith(
@@ -290,7 +297,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           isHomeRoute ||
           isGroupsRoute ||
           isNotificationsRoute ||
-          isSettingsRoute;
+          isSettingsRoute ||
+          isOnboardingProfile;
 
       if (kDebugMode && isDebugTheme) {
         return null;
@@ -307,16 +315,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       final isAuthenticated = authState.isAuthenticated;
+      final requiresProfileCompletion =
+          isAuthenticated &&
+          authState.user != null &&
+          !authState.user!.hasCompleteProfile;
       if (isSplash) {
-        return isAuthenticated ? AppRoutePaths.home : AppRoutePaths.login;
+        if (!isAuthenticated) {
+          return AppRoutePaths.login;
+        }
+
+        return requiresProfileCompletion
+            ? AppRoutePaths.onboardingProfile
+            : AppRoutePaths.home;
       }
 
       if (!isAuthenticated && isProtectedRoute) {
         return AppRoutePaths.login;
       }
 
-      if (isAuthenticated && (isLogin || isOtp)) {
+      if (isAuthenticated &&
+          requiresProfileCompletion &&
+          !isOnboardingProfile) {
+        return AppRoutePaths.onboardingProfile;
+      }
+
+      if (isAuthenticated &&
+          !requiresProfileCompletion &&
+          isOnboardingProfile) {
         return AppRoutePaths.home;
+      }
+
+      if (isAuthenticated && (isLogin || isOtp)) {
+        return requiresProfileCompletion
+            ? AppRoutePaths.onboardingProfile
+            : AppRoutePaths.home;
       }
 
       return null;

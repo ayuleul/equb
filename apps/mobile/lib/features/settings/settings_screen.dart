@@ -36,9 +36,7 @@ class SettingsScreen extends ConsumerWidget {
                 Text('Profile', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  user?.fullName?.trim().isNotEmpty == true
-                      ? user!.fullName!
-                      : 'Equb member',
+                  user?.displayName ?? 'Equb member',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: AppSpacing.xs),

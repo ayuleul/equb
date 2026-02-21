@@ -37,6 +37,7 @@ class TokenStore {
   static const String accessTokenKey = 'auth_access_token';
   static const String refreshTokenKey = 'auth_refresh_token';
   static const String userIdKey = 'auth_user_id';
+  static const String userJsonKey = 'auth_user_json';
   static const String issuedAtKey = 'auth_issued_at';
 
   final SecureKeyValueStore _store;
@@ -46,6 +47,8 @@ class TokenStore {
   Future<String?> getRefreshToken() => _store.read(refreshTokenKey);
 
   Future<String?> getUserId() => _store.read(userIdKey);
+
+  Future<String?> getUserJson() => _store.read(userJsonKey);
 
   Future<DateTime?> getIssuedAt() async {
     final raw = await _store.read(issuedAtKey);
@@ -68,6 +71,10 @@ class TokenStore {
     await _writeOrDelete(userIdKey, userId);
   }
 
+  Future<void> setUserJson(String? userJson) async {
+    await _writeOrDelete(userJsonKey, userJson);
+  }
+
   Future<void> setIssuedAt(DateTime? issuedAt) async {
     await _writeOrDelete(issuedAtKey, issuedAt?.toIso8601String());
   }
@@ -76,11 +83,13 @@ class TokenStore {
     required String accessToken,
     required String refreshToken,
     String? userId,
+    String? userJson,
     DateTime? issuedAt,
   }) async {
     await setAccessToken(accessToken);
     await setRefreshToken(refreshToken);
     await setUserId(userId);
+    await setUserJson(userJson);
     await setIssuedAt(issuedAt ?? DateTime.now().toUtc());
   }
 
@@ -88,6 +97,7 @@ class TokenStore {
     await _store.delete(accessTokenKey);
     await _store.delete(refreshTokenKey);
     await _store.delete(userIdKey);
+    await _store.delete(userJsonKey);
     await _store.delete(issuedAtKey);
   }
 

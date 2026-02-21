@@ -71,6 +71,12 @@
   - unauthenticated users -> `/login` for protected routes; `/otp` is allowed and must handle missing phone gracefully in-screen
   - authenticated users cannot navigate back to `/login` or `/otp`
 
+## Profile onboarding rules
+- Ethiopian naming is mandatory: `First Name`, `Father's Name`, and `Grandfather's Name` are all required profile fields.
+- Profile completion status gates access to main tab routes (`/home`, `/groups`, `/settings`); incomplete profiles must be routed to `/onboarding/profile`.
+- Onboarding/profile-completion screens must not render bottom navigation and must be non-back-navigable until completion succeeds.
+- UI labels must be Ethiopia-friendly; never use `Middle Name` wording in user-facing screens.
+
 ## Groups rules
 - Authenticated landing route is locked to `/home`.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.

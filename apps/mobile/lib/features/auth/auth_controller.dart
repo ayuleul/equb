@@ -77,6 +77,12 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(clearError: true);
   }
 
+  Future<void> setAuthenticatedUser(UserModel user) async {
+    await _authRepository.cacheUser(user);
+    _ref.read(sessionExpiredProvider.notifier).state = false;
+    state = AuthState.authenticated(user);
+  }
+
   Future<bool> requestOtp(String phone) async {
     final normalizedPhone = phone.trim();
     if (normalizedPhone.isEmpty) {

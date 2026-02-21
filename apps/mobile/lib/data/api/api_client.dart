@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
@@ -318,11 +319,20 @@ class AuthRefreshInterceptor extends Interceptor {
       final user = data?['user'];
 
       String? userId;
+      String? userJson;
       if (user is Map<String, dynamic>) {
         final id = user['id'];
         if (id is String && id.isNotEmpty) {
           userId = id;
         }
+        userJson = jsonEncode(user);
+      } else if (user is Map) {
+        final castedUser = Map<String, dynamic>.from(user);
+        final id = castedUser['id'];
+        if (id is String && id.isNotEmpty) {
+          userId = id;
+        }
+        userJson = jsonEncode(castedUser);
       }
 
       if (accessToken is! String || rotatedRefreshToken is! String) {
@@ -334,6 +344,7 @@ class AuthRefreshInterceptor extends Interceptor {
         accessToken: accessToken,
         refreshToken: rotatedRefreshToken,
         userId: userId,
+        userJson: userJson,
         issuedAt: DateTime.now().toUtc(),
       );
 

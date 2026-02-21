@@ -46,6 +46,14 @@
 - Use rate limiting on OTP endpoints.
 - Group role/status transitions must never leave a group with zero ACTIVE admins.
 
+## Profile completion rules
+- Ethiopian-style legal profile names are mandatory before main app access:
+  - `firstName` (First Name)
+  - `middleName` (Father's Name)
+  - `lastName` (Grandfather's Name)
+- `profileComplete` is true only when `firstName`, `middleName`, and `lastName` are all non-empty after trim/whitespace normalization.
+- Auth flows (`verify-otp`, session bootstrap, and refresh-backed user payloads) must expose the latest name fields and `profileComplete` so clients can enforce profile gating.
+
 ## Testing rules
 - Add unit tests for services that implement business rules.
 - Add e2e tests for auth and 1 critical group/cycle flow.

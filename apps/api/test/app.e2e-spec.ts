@@ -3,11 +3,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { SMS_PROVIDER } from '../src/modules/auth/interfaces/sms-provider.interface';
+import { MeController } from '../src/modules/me/me.controller';
 import { AppModule } from '../src/app.module';
 
 type UserRecord = {
   id: string;
   phone: string;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
   fullName: string | null;
   createdAt: Date;
 };
@@ -49,6 +53,7 @@ class FakeSmsProvider {
 
 describe('Auth (e2e)', () => {
   let authController: AuthController;
+  let meController: MeController;
 
   const users: UserRecord[] = [];
   const otpCodes: OtpRecord[] = [];
@@ -142,11 +147,108 @@ describe('Auth (e2e)', () => {
           const user: UserRecord = {
             id: `user_${users.length + 1}`,
             phone: create.phone,
+            firstName: null,
+            middleName: null,
+            lastName: null,
             fullName: null,
             createdAt: new Date(),
           };
           users.push(user);
           return user;
+        },
+      ),
+      findUnique: jest.fn(
+        ({
+          where,
+          select,
+        }: {
+          where: { id?: string; phone?: string };
+          select?: {
+            id?: boolean;
+            phone?: boolean;
+            firstName?: boolean;
+            middleName?: boolean;
+            lastName?: boolean;
+            fullName?: boolean;
+          };
+        }) => {
+          const user =
+            users.find(
+              (item) =>
+                (where.id ? item.id === where.id : true) &&
+                (where.phone ? item.phone === where.phone : true),
+            ) ?? null;
+
+          if (!user) {
+            return null;
+          }
+
+          if (!select) {
+            return user;
+          }
+
+          return {
+            ...(select.id ? { id: user.id } : {}),
+            ...(select.phone ? { phone: user.phone } : {}),
+            ...(select.firstName ? { firstName: user.firstName } : {}),
+            ...(select.middleName ? { middleName: user.middleName } : {}),
+            ...(select.lastName ? { lastName: user.lastName } : {}),
+            ...(select.fullName ? { fullName: user.fullName } : {}),
+          };
+        },
+      ),
+      update: jest.fn(
+        ({
+          where,
+          data,
+          select,
+        }: {
+          where: { id: string };
+          data: {
+            firstName?: string;
+            middleName?: string;
+            lastName?: string;
+            fullName?: string;
+          };
+          select?: {
+            id?: boolean;
+            phone?: boolean;
+            firstName?: boolean;
+            middleName?: boolean;
+            lastName?: boolean;
+            fullName?: boolean;
+          };
+        }) => {
+          const user = users.find((item) => item.id === where.id);
+          if (!user) {
+            throw new Error('User not found');
+          }
+
+          if (typeof data.firstName === 'string') {
+            user.firstName = data.firstName;
+          }
+          if (typeof data.middleName === 'string') {
+            user.middleName = data.middleName;
+          }
+          if (typeof data.lastName === 'string') {
+            user.lastName = data.lastName;
+          }
+          if (typeof data.fullName === 'string') {
+            user.fullName = data.fullName;
+          }
+
+          if (!select) {
+            return user;
+          }
+
+          return {
+            ...(select.id ? { id: user.id } : {}),
+            ...(select.phone ? { phone: user.phone } : {}),
+            ...(select.firstName ? { firstName: user.firstName } : {}),
+            ...(select.middleName ? { middleName: user.middleName } : {}),
+            ...(select.lastName ? { lastName: user.lastName } : {}),
+            ...(select.fullName ? { fullName: user.fullName } : {}),
+          };
         },
       ),
     },
@@ -273,6 +375,7 @@ describe('Auth (e2e)', () => {
       .compile();
 
     authController = moduleFixture.get<AuthController>(AuthController);
+    meController = moduleFixture.get<MeController>(MeController);
   });
 
   beforeEach(() => {
@@ -283,7 +386,7 @@ describe('Auth (e2e)', () => {
     jest.clearAllMocks();
   });
 
-  it('request-otp + verify-otp happy path', async () => {
+  it('verify-otp returns profileComplete=false for first-time users missing names', async () => {
     const phone = '+251911223344';
 
     await expect(authController.requestOtp({ phone })).resolves.toEqual({
@@ -301,5 +404,88 @@ describe('Auth (e2e)', () => {
     expect(response).toHaveProperty('accessToken');
     expect(response).toHaveProperty('refreshToken');
     expect(response.user.phone).toBe(phone);
+    expect(response.user.firstName).toBeNull();
+    expect(response.user.middleName).toBeNull();
+    expect(response.user.lastName).toBeNull();
+    expect(response.user.fullName).toBeNull();
+    expect(response.user.profileComplete).toBe(false);
+  });
+
+  it('patch /me/profile updates names and returns profileComplete=true', async () => {
+    const phone = '+251911223355';
+
+    await authController.requestOtp({ phone });
+    const otpCode = fakeSmsProvider.getCode(phone);
+    expect(otpCode).toBeDefined();
+
+    const authResponse = await authController.verifyOtp({
+      phone,
+      code: otpCode as string,
+    });
+
+    const updated = await meController.updateProfile(
+      {
+        id: authResponse.user.id,
+        phone,
+      },
+      {
+        firstName: '  Abebe  ',
+        middleName: 'Kebede',
+        lastName: '  Bekele ',
+      },
+    );
+
+    expect(updated.firstName).toBe('Abebe');
+    expect(updated.middleName).toBe('Kebede');
+    expect(updated.lastName).toBe('Bekele');
+    expect(updated.fullName).toBe('Abebe Kebede Bekele');
+    expect(updated.profileComplete).toBe(true);
+
+    const me = await meController.getMe({
+      id: authResponse.user.id,
+      phone,
+    });
+    expect(me.fullName).toBe('Abebe Kebede Bekele');
+    expect(me.profileComplete).toBe(true);
+  });
+
+  it('subsequent verify-otp returns previously saved names', async () => {
+    const phone = '+251911223366';
+
+    await authController.requestOtp({ phone });
+    const initialOtp = fakeSmsProvider.getCode(phone);
+    expect(initialOtp).toBeDefined();
+
+    const firstAuthResponse = await authController.verifyOtp({
+      phone,
+      code: initialOtp as string,
+    });
+
+    await meController.updateProfile(
+      {
+        id: firstAuthResponse.user.id,
+        phone,
+      },
+      {
+        firstName: 'Marta',
+        middleName: 'Solomon',
+        lastName: 'Tadesse',
+      },
+    );
+
+    await authController.requestOtp({ phone });
+    const secondOtp = fakeSmsProvider.getCode(phone);
+    expect(secondOtp).toBeDefined();
+
+    const secondAuthResponse = await authController.verifyOtp({
+      phone,
+      code: secondOtp as string,
+    });
+
+    expect(secondAuthResponse.user.firstName).toBe('Marta');
+    expect(secondAuthResponse.user.middleName).toBe('Solomon');
+    expect(secondAuthResponse.user.lastName).toBe('Tadesse');
+    expect(secondAuthResponse.user.fullName).toBe('Marta Solomon Tadesse');
+    expect(secondAuthResponse.user.profileComplete).toBe(true);
   });
 });

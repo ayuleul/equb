@@ -20,6 +20,8 @@ import '../data/notifications/notifications_api.dart';
 import '../data/notifications/notifications_repository.dart';
 import '../data/payouts/payouts_api.dart';
 import '../data/payouts/payouts_repository.dart';
+import '../data/profile/profile_api.dart';
+import '../data/profile/profile_repository.dart';
 import '../data/auth/token_store.dart';
 import '../shared/utils/app_logger.dart';
 
@@ -116,8 +118,23 @@ final authApiProvider = Provider<AuthApi>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final authApi = ref.watch(authApiProvider);
+  final profileApi = ref.watch(profileApiProvider);
   final tokenStore = ref.watch(tokenStoreProvider);
-  return AuthRepository(authApi: authApi, tokenStore: tokenStore);
+  return AuthRepository(
+    authApi: authApi,
+    profileApi: profileApi,
+    tokenStore: tokenStore,
+  );
+});
+
+final profileApiProvider = Provider<ProfileApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioProfileApi(apiClient);
+});
+
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  final profileApi = ref.watch(profileApiProvider);
+  return ProfileRepository(profileApi);
 });
 
 final groupsApiProvider = Provider<GroupsApi>((ref) {
