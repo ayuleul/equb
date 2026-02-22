@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuctionStatus, CycleStatus, MemberRole, MemberStatus } from '@prisma/client';
+import {
+  AuctionStatus,
+  CycleStatus,
+  MemberRole,
+  MemberStatus,
+} from '@prisma/client';
 
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
@@ -128,7 +133,9 @@ describe('Auctions (e2e)', () => {
             ...(select.id ? { id: cycle.id } : {}),
             ...(select.groupId ? { groupId: cycle.groupId } : {}),
             ...(select.status ? { status: cycle.status } : {}),
-            ...(select.auctionStatus ? { auctionStatus: cycle.auctionStatus } : {}),
+            ...(select.auctionStatus
+              ? { auctionStatus: cycle.auctionStatus }
+              : {}),
             ...(select.scheduledPayoutUserId
               ? { scheduledPayoutUserId: cycle.scheduledPayoutUserId }
               : {}),
@@ -161,7 +168,9 @@ describe('Auctions (e2e)', () => {
           Object.assign(cycle, data);
           return {
             ...(select.id ? { id: cycle.id } : {}),
-            ...(select.auctionStatus ? { auctionStatus: cycle.auctionStatus } : {}),
+            ...(select.auctionStatus
+              ? { auctionStatus: cycle.auctionStatus }
+              : {}),
             ...(select.scheduledPayoutUserId
               ? { scheduledPayoutUserId: cycle.scheduledPayoutUserId }
               : {}),
@@ -254,7 +263,9 @@ describe('Auctions (e2e)', () => {
           where: { cycleId: string };
           data: { status: AuctionStatus; closedAt: Date };
         }) => {
-          const auction = auctions.find((item) => item.cycleId === where.cycleId);
+          const auction = auctions.find(
+            (item) => item.cycleId === where.cycleId,
+          );
           if (!auction) {
             throw new Error('Auction not found');
           }
@@ -325,7 +336,10 @@ describe('Auctions (e2e)', () => {
               select: { id: true; phone: true; fullName: true };
             };
           };
-          orderBy: Array<{ amount?: 'asc' | 'desc'; createdAt?: 'asc' | 'desc' }>;
+          orderBy: Array<{
+            amount?: 'asc' | 'desc';
+            createdAt?: 'asc' | 'desc';
+          }>;
           take?: number;
         }) => {
           let filtered = bids.filter(
@@ -377,7 +391,8 @@ describe('Auctions (e2e)', () => {
       .useValue(prismaMock)
       .compile();
 
-    auctionsController = moduleFixture.get<AuctionsController>(AuctionsController);
+    auctionsController =
+      moduleFixture.get<AuctionsController>(AuctionsController);
   });
 
   beforeEach(() => {
@@ -421,8 +436,12 @@ describe('Auctions (e2e)', () => {
     );
 
     expect(closed.auctionStatus).toBe(AuctionStatus.CLOSED);
-    expect(closed.finalPayoutUserId).toBe('00000000-0000-0000-0000-000000000033');
-    expect(closed.winningBidUserId).toBe('00000000-0000-0000-0000-000000000033');
+    expect(closed.finalPayoutUserId).toBe(
+      '00000000-0000-0000-0000-000000000033',
+    );
+    expect(closed.winningBidUserId).toBe(
+      '00000000-0000-0000-0000-000000000033',
+    );
     expect(closed.winningBidAmount).toBe(650);
   });
 });

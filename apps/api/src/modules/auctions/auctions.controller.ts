@@ -75,7 +75,9 @@ export class AuctionsController {
 
   @Post(':cycleId/bids')
   @ApiTags('Bids')
-  @ApiOperation({ summary: 'Submit or update your bid for an open cycle auction' })
+  @ApiOperation({
+    summary: 'Submit or update your bid for an open cycle auction',
+  })
   @ApiOkResponse({ type: CycleBidResponseDto })
   @ApiBadRequestResponse({
     description: 'Cycle is closed or auction is not open',

@@ -11,7 +11,12 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { formatUrl } from '@aws-sdk/util-format-url';
+import {
+  getSignedUrl,
+  S3RequestPresigner,
+} from '@aws-sdk/s3-request-presigner';
+import { HttpRequest } from '@smithy/protocol-http';
 import { randomUUID } from 'crypto';
 
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -35,8 +40,9 @@ export class FilesService {
   ) {
     this.s3Client = new S3Client({
       region: this.s3Region,
-      endpoint: this.s3Endpoint,
+      endpoint: this.s3PublicEndpoint,
       forcePathStyle: this.s3ForcePathStyle,
+      requestChecksumCalculation: 'WHEN_REQUIRED',
       credentials: {
         accessKeyId: this.s3AccessKey,
         secretAccessKey: this.s3SecretKey,
@@ -102,9 +108,13 @@ export class FilesService {
       ContentType: dto.contentType,
     });
 
-    const uploadUrl = await getSignedUrl(this.s3Client, command, {
+    let uploadUrl = await getSignedUrl(this.s3Client, command, {
       expiresIn: this.signedUrlExpiresInSeconds,
     });
+
+    if (this.hasChecksumQueryParams(uploadUrl)) {
+      uploadUrl = await this.createChecksumlessSignedUploadUrl(key);
+    }
 
     return {
       key,
@@ -158,6 +168,12 @@ export class FilesService {
     return this.configService.get<string>('S3_ENDPOINT') ?? 'http://minio:9000';
   }
 
+  private get s3PublicEndpoint(): string {
+    return (
+      this.configService.get<string>('S3_PUBLIC_ENDPOINT') ?? this.s3Endpoint
+    );
+  }
+
   private get s3Region(): string {
     return this.configService.get<string>('S3_REGION') ?? 'us-east-1';
   }
@@ -186,5 +202,48 @@ export class FilesService {
     );
 
     return Number.isFinite(value) && value > 0 ? value : 900;
+  }
+
+  private hasChecksumQueryParams(url: string): boolean {
+    const params = new URL(url).searchParams;
+    return (
+      params.has('x-amz-sdk-checksum-algorithm') ||
+      params.has('x-amz-checksum-crc32')
+    );
+  }
+
+  private async createChecksumlessSignedUploadUrl(
+    key: string,
+  ): Promise<string> {
+    const endpoint = new URL(this.s3PublicEndpoint);
+    const basePath = endpoint.pathname.replace(/\/+$/, '');
+    const encodedBucket = encodeURIComponent(this.s3Bucket);
+    const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+    const path = `${basePath}/${encodedBucket}/${encodedKey}`.replace(
+      /^([^/])/,
+      '/$1',
+    );
+
+    const request = new HttpRequest({
+      protocol: endpoint.protocol,
+      hostname: endpoint.hostname,
+      port: endpoint.port ? Number(endpoint.port) : undefined,
+      method: 'PUT',
+      path,
+      headers: {
+        host: endpoint.host,
+      },
+    });
+
+    const presigner = new S3RequestPresigner({
+      ...this.s3Client.config,
+      applyChecksum: false,
+    });
+
+    const presigned = await presigner.presign(request, {
+      expiresIn: this.signedUrlExpiresInSeconds,
+    });
+
+    return formatUrl(presigned);
   }
 }

@@ -88,6 +88,8 @@
 - Contribution proof object key format is locked to:
   - `groups/<groupId>/cycles/<cycleId>/users/<userId>/<uuid>_<sanitizedFileName>`
 - Proof file keys must match the submitting member's `groupId/cycleId/userId` scope.
+- Presigned `PutObject` upload URLs must be generated without flexible-checksum query params for MinIO compatibility (set S3 client `requestChecksumCalculation` to `WHEN_REQUIRED`).
+- Upload signing must defensively re-presign via `S3RequestPresigner` when checksum query params are detected, to guarantee MinIO-compatible `PUT` URLs.
 - Contribution state transitions:
   - submit/resubmit: `PENDING|REJECTED|SUBMITTED -> SUBMITTED`
   - confirm: `SUBMITTED -> CONFIRMED`
@@ -172,6 +174,8 @@
 - Stop dependencies: `docker compose down`
 - Reset DB (dev only): `docker compose down -v` (wipes volumes)
 - If API runs on host (not in Docker), use `localhost` for DATABASE_URL/REDIS_URL/S3 endpoint hosts; Docker service names (`postgres`, `redis`, `minio`) are for container-to-container networking.
+- MinIO upload buckets are not auto-created by the base `minio` image; ensure `S3_BUCKET` (default `equb-dev`) exists before signed `PUT` uploads, especially after `docker compose down -v`.
+- Signed file URLs must use a client-reachable host via `S3_PUBLIC_ENDPOINT` (for Android emulator use `http://10.0.2.2:9000`; `localhost` is not reachable from emulator apps).
 
 ## Required files
 - `docker-compose.yml` at repo root (or `/infra/docker/docker-compose.yml` but must be documented here)
@@ -184,6 +188,7 @@
   - DRAW_SEED_ENC_KEY
   - OTP_TTL_SECONDS
   - S3_ENDPOINT
+  - S3_PUBLIC_ENDPOINT
   - S3_BUCKET
   - S3_ACCESS_KEY
   - S3_SECRET_KEY

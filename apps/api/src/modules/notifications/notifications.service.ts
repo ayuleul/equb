@@ -182,9 +182,7 @@ export class NotificationsService {
       }
 
       const queued = await this.bullMqService.enqueueNotification(jobData, {
-        jobId: dedupKey
-          ? `notification:${dedupKey}`
-          : undefined,
+        jobId: dedupKey ? `notification:${dedupKey}` : undefined,
       });
 
       if (!queued) {
@@ -291,11 +289,7 @@ export class NotificationsService {
 
     if (
       dedupKey &&
-      (await this.existsForDedup(
-        jobData.userId,
-        jobData.type,
-        dedupKey,
-      ))
+      (await this.existsForDedup(jobData.userId, jobData.type, dedupKey))
     ) {
       return;
     }

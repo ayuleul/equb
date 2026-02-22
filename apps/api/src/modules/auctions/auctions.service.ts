@@ -63,7 +63,9 @@ export class AuctionsService {
     }
 
     if (cycle.status !== CycleStatus.OPEN) {
-      throw new BadRequestException('Auction can only be opened for open cycle');
+      throw new BadRequestException(
+        'Auction can only be opened for open cycle',
+      );
     }
 
     if (cycle.auctionStatus !== AuctionStatus.NONE) {
@@ -199,7 +201,8 @@ export class AuctionsService {
     }
 
     const isAdmin = await this.isActiveAdmin(cycle.groupId, currentUser.id);
-    const canSeeAllBids = isAdmin || currentUser.id === cycle.scheduledPayoutUserId;
+    const canSeeAllBids =
+      isAdmin || currentUser.id === cycle.scheduledPayoutUserId;
 
     const bids = await this.prisma.cycleBid.findMany({
       where: canSeeAllBids
@@ -240,7 +243,9 @@ export class AuctionsService {
     }
 
     if (cycle.status !== CycleStatus.OPEN) {
-      throw new BadRequestException('Auction can only be closed for open cycle');
+      throw new BadRequestException(
+        'Auction can only be closed for open cycle',
+      );
     }
 
     if (cycle.auctionStatus !== AuctionStatus.OPEN) {
@@ -334,7 +339,10 @@ export class AuctionsService {
     return this.toAuctionStateResponse(updatedCycle);
   }
 
-  private async isActiveAdmin(groupId: string, userId: string): Promise<boolean> {
+  private async isActiveAdmin(
+    groupId: string,
+    userId: string,
+  ): Promise<boolean> {
     const membership = await this.prisma.equbMember.findUnique({
       where: {
         groupId_userId: {
