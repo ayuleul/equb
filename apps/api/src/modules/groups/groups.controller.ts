@@ -13,6 +13,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -201,19 +202,22 @@ export class GroupsController {
   @Post(':id/cycles/generate')
   @UseGuards(GroupAdminGuard)
   @ApiTags('Cycles')
-  @ApiOperation({ summary: 'Generate next cycle(s) based on payout order' })
+  @ApiOperation({ summary: 'Generate next cycle (sequential only)' })
   @ApiBody({ type: GenerateCyclesDto, required: false })
-  @ApiOkResponse({ type: GroupCycleResponseDto, isArray: true })
+  @ApiOkResponse({ type: GroupCycleResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
   @ApiBadRequestResponse({
     description: 'Cycle generation constraints not satisfied',
+  })
+  @ApiConflictResponse({
+    description: 'Open cycle already exists or round is completed',
   })
   @ApiNotFoundResponse({ description: 'Group not found' })
   generateCycles(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
     @Body() dto: GenerateCyclesDto,
-  ): Promise<GroupCycleResponseDto[]> {
+  ): Promise<GroupCycleResponseDto> {
     return this.groupsService.generateCycles(currentUser, groupId, dto);
   }
 

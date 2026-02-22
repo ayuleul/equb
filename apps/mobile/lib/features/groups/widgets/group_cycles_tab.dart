@@ -31,14 +31,15 @@ class GroupCyclesTab extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isAdmin)
+          if (isAdmin && currentCycleAsync.valueOrNull == null)
             KitPrimaryButton(
               label: 'Generate next cycle',
               icon: Icons.add_circle_outline,
               onPressed: () =>
                   context.push(AppRoutePaths.groupCyclesGenerate(groupId)),
             ),
-          if (isAdmin) const SizedBox(height: AppSpacing.md),
+          if (isAdmin && currentCycleAsync.valueOrNull == null)
+            const SizedBox(height: AppSpacing.md),
           Text(
             'Current cycle',
             style: Theme.of(

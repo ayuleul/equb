@@ -4,30 +4,29 @@ import '../../app/bootstrap.dart';
 import '../../data/cycles/cycles_repository.dart';
 import '../../data/models/cycle_model.dart';
 import '../../shared/utils/api_error_mapper.dart';
+import '../groups/group_detail_controller.dart';
 import 'current_cycle_provider.dart';
 import 'cycles_list_provider.dart';
 
 class GenerateCycleState {
-  const GenerateCycleState({
-    required this.count,
-    required this.isSubmitting,
-    this.errorMessage,
-  });
+  const GenerateCycleState({required this.isSubmitting, this.errorMessage});
 
-  const GenerateCycleState.initial() : this(count: 1, isSubmitting: false);
+  const GenerateCycleState.initial() : this(isSubmitting: false);
 
-  final int count;
   final bool isSubmitting;
   final String? errorMessage;
 
+  bool get isRoundCompleted {
+    final message = errorMessage?.toLowerCase() ?? '';
+    return message.contains('round completed');
+  }
+
   GenerateCycleState copyWith({
-    int? count,
     bool? isSubmitting,
     String? errorMessage,
     bool clearError = false,
   }) {
     return GenerateCycleState(
-      count: count ?? this.count,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -61,43 +60,16 @@ class GenerateCycleController extends StateNotifier<GenerateCycleState> {
   final String groupId;
   final CyclesRepository _repository;
 
-  void setCount(int value) {
-    final clamped = value.clamp(1, 12);
-    state = state.copyWith(count: clamped, clearError: true);
-  }
-
-  Future<List<CycleModel>?> generate() async {
+  Future<CycleModel?> generateNextCycle() async {
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     try {
-      List<CycleModel> generated;
-      try {
-        generated = await _repository.generateCycles(
-          groupId,
-          count: state.count,
-        );
-      } catch (error) {
-        if (!_requiresActiveRound(error)) {
-          rethrow;
-        }
-
-        try {
-          await _repository.startRound(groupId);
-        } catch (roundError) {
-          if (!_activeRoundAlreadyExists(roundError)) {
-            rethrow;
-          }
-        }
-
-        generated = await _repository.generateCycles(
-          groupId,
-          count: state.count,
-        );
-      }
+      final generated = await _repository.generateNextCycle(groupId);
 
       _repository.invalidateGroupCache(groupId);
       _ref.invalidate(currentCycleProvider(groupId));
       _ref.invalidate(cyclesListProvider(groupId));
+      _ref.invalidate(groupDetailProvider(groupId));
 
       state = state.copyWith(isSubmitting: false, clearError: true);
       return generated;
@@ -108,15 +80,5 @@ class GenerateCycleController extends StateNotifier<GenerateCycleState> {
       );
       return null;
     }
-  }
-
-  bool _requiresActiveRound(Object error) {
-    final message = mapApiErrorToMessage(error).toLowerCase();
-    return message.contains('active round is required');
-  }
-
-  bool _activeRoundAlreadyExists(Object error) {
-    final message = mapApiErrorToMessage(error).toLowerCase();
-    return message.contains('active round already exists');
   }
 }

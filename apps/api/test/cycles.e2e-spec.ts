@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   AuctionStatus,
@@ -250,6 +250,7 @@ describe('Cycles (e2e)', () => {
           where: {
             groupId: string;
             closedAt?: Date | null;
+            payoutMode?: PayoutMode;
           };
           select?: { id?: boolean; roundNo?: boolean };
           include?: {
@@ -260,6 +261,11 @@ describe('Cycles (e2e)', () => {
           orderBy?: { roundNo: 'asc' | 'desc' };
         }) => {
           let filtered = rounds.filter((round) => round.groupId === where.groupId);
+          if (where.payoutMode) {
+            filtered = filtered.filter(
+              (round) => round.payoutMode === where.payoutMode,
+            );
+          }
           if (Object.prototype.hasOwnProperty.call(where, 'closedAt')) {
             filtered = filtered.filter((round) =>
               where.closedAt === null ? round.closedAt === null : true,
@@ -380,7 +386,8 @@ describe('Cycles (e2e)', () => {
           orderBy,
         }: {
           where: {
-            groupId: string;
+            groupId?: string;
+            roundId?: string;
             status?: CycleStatus;
           };
           include?: {
@@ -396,7 +403,13 @@ describe('Cycles (e2e)', () => {
           };
           orderBy?: Array<{ dueDate?: 'asc' | 'desc'; createdAt?: 'asc' | 'desc' }> | { cycleNo: 'asc' | 'desc' };
         }) => {
-          let filtered = cycles.filter((cycle) => cycle.groupId === where.groupId);
+          let filtered = cycles;
+          if (where.groupId) {
+            filtered = filtered.filter((cycle) => cycle.groupId === where.groupId);
+          }
+          if (where.roundId) {
+            filtered = filtered.filter((cycle) => cycle.roundId === where.roundId);
+          }
           if (where.status) {
             filtered = filtered.filter((cycle) => cycle.status === where.status);
           }
@@ -577,16 +590,16 @@ describe('Cycles (e2e)', () => {
     expect(round.payoutMode).toBe(PayoutMode.RANDOM_DRAW);
     expect(round.schedule).toHaveLength(2);
 
-    const generatedCycles = await groupsController.generateCycles(
+    const generatedCycle = await groupsController.generateCycles(
       adminUser,
       group.id,
-      { count: 1 },
+      {},
     );
 
-    expect(generatedCycles[0].scheduledPayoutUserId).toBe(
-      generatedCycles[0].finalPayoutUserId,
+    expect(generatedCycle.scheduledPayoutUserId).toBe(
+      generatedCycle.finalPayoutUserId,
     );
-    expect(generatedCycles[0].auctionStatus).toBe(AuctionStatus.NONE);
+    expect(generatedCycle.auctionStatus).toBe(AuctionStatus.NONE);
 
     const currentCycle = await groupsController.getCurrentCycle(group.id);
     expect(currentCycle).not.toBeNull();
@@ -617,7 +630,114 @@ describe('Cycles (e2e)', () => {
     });
 
     await expect(
-      groupsController.generateCycles(adminUser, group.id, { count: 1 }),
+      groupsController.generateCycles(adminUser, group.id, {}),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects generation when an open cycle already exists', async () => {
+    const group = await groupsController.createGroup(adminUser, {
+      name: 'Open Cycle Guard Group',
+      contributionAmount: 700,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-01',
+      currency: 'ETB',
+    });
+
+    members.push({
+      id: 'member_2',
+      groupId: group.id,
+      userId: 'user_member',
+      role: MemberRole.MEMBER,
+      status: MemberStatus.ACTIVE,
+      payoutPosition: null,
+      joinedAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    await groupsController.startRound(adminUser, group.id);
+    await groupsController.generateCycles(adminUser, group.id, {});
+
+    await expect(
+      groupsController.generateCycles(adminUser, group.id, {}),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('generates the next sequential cycle after current cycle is closed', async () => {
+    const group = await groupsController.createGroup(adminUser, {
+      name: 'Sequential Group',
+      contributionAmount: 700,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-01',
+      currency: 'ETB',
+    });
+
+    members.push({
+      id: 'member_2',
+      groupId: group.id,
+      userId: 'user_member',
+      role: MemberRole.MEMBER,
+      status: MemberStatus.ACTIVE,
+      payoutPosition: null,
+      joinedAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    await groupsController.startRound(adminUser, group.id);
+    const firstCycle = await groupsController.generateCycles(adminUser, group.id, {});
+
+    const firstCycleRecord = cycles.find((entry) => entry.id === firstCycle.id);
+    if (firstCycleRecord) {
+      firstCycleRecord.status = CycleStatus.CLOSED;
+    }
+
+    const secondCycle = await groupsController.generateCycles(
+      adminUser,
+      group.id,
+      {},
+    );
+
+    expect(secondCycle.cycleNo).toBe(firstCycle.cycleNo + 1);
+  });
+
+  it('returns conflict when active round schedule is completed', async () => {
+    const group = await groupsController.createGroup(adminUser, {
+      name: 'Round Completion Group',
+      contributionAmount: 700,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-01',
+      currency: 'ETB',
+    });
+
+    members.push({
+      id: 'member_2',
+      groupId: group.id,
+      userId: 'user_member',
+      role: MemberRole.MEMBER,
+      status: MemberStatus.ACTIVE,
+      payoutPosition: null,
+      joinedAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    await groupsController.startRound(adminUser, group.id);
+    const firstCycle = await groupsController.generateCycles(adminUser, group.id, {});
+    const firstCycleRecord = cycles.find((entry) => entry.id === firstCycle.id);
+    if (firstCycleRecord) {
+      firstCycleRecord.status = CycleStatus.CLOSED;
+    }
+
+    const secondCycle = await groupsController.generateCycles(
+      adminUser,
+      group.id,
+      {},
+    );
+    const secondCycleRecord = cycles.find((entry) => entry.id === secondCycle.id);
+    if (secondCycleRecord) {
+      secondCycleRecord.status = CycleStatus.CLOSED;
+    }
+
+    await expect(
+      groupsController.generateCycles(adminUser, group.id, {}),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

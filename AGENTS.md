@@ -69,7 +69,7 @@
 ## Cycle rules
 - Random-draw rounds use an immutable per-round schedule; manual payout order is not required for cycle generation in random mode.
 - Only one `OPEN` cycle is allowed per group at any time.
-- When generating multiple cycles in one request, earlier generated cycles are marked `CLOSED` and only the last generated cycle is `OPEN`.
+- Cycle generation is sequential only: each request generates exactly one next cycle; never generate future cycles in bulk.
 - Due-date progression rules:
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)

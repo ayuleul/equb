@@ -91,6 +91,7 @@
 ## Cycles rules
 - Payout order positions are always saved as contiguous `1..N` after reorder; the UI order is the source of truth.
 - Admin-only cycle actions (set payout order, generate cycles) must only be shown when `membership.role == ADMIN`.
+- No batch cycle generation in UI; cycle generation is always a single "Generate next cycle" action.
 - After cycle mutations (`setPayoutOrder`, `generateCycles`), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
 - Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); it must not mutate the scheduled recipient or round order.
 - Scheduled recipient (and admins) can open/close cycle auction; non-admin, non-scheduled members can only submit bids while auction is open.

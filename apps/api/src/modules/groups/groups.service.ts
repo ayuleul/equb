@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -42,6 +43,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class GroupsService {
+  private readonly logger = new Logger(GroupsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
@@ -902,14 +905,14 @@ export class GroupsService {
     currentUser: AuthenticatedUser,
     groupId: string,
     dto: GenerateCyclesDto,
-  ): Promise<GroupCycleResponseDto[]> {
-    const count = dto?.count ?? 1;
-
-    if (count < 1 || count > 12) {
-      throw new BadRequestException('count must be between 1 and 12');
+  ): Promise<GroupCycleResponseDto> {
+    if (dto?.count != null) {
+      this.logger.warn(
+        `Deprecated generate count payload ignored for groupId=${groupId}`,
+      );
     }
 
-    const createdCycles = await this.prisma.$transaction(async (tx) => {
+    const createdCycle = await this.prisma.$transaction(async (tx) => {
       const group = await tx.equbGroup.findUnique({
         where: {
           id: groupId,
@@ -941,7 +944,7 @@ export class GroupsService {
       });
 
       if (existingOpenCycle) {
-        throw new BadRequestException(
+        throw new ConflictException(
           'An open cycle already exists for this group',
         );
       }
@@ -950,6 +953,7 @@ export class GroupsService {
         where: {
           groupId,
           closedAt: null,
+          payoutMode: PayoutMode.RANDOM_DRAW,
         },
         include: {
           schedules: {
@@ -972,25 +976,22 @@ export class GroupsService {
         );
       }
 
-      const existingRoundCycleCount = await tx.equbCycle.count({
+      const latestRoundCycle = await tx.equbCycle.findFirst({
         where: {
           roundId: activeRound.id,
         },
+        orderBy: {
+          cycleNo: 'desc',
+        },
       });
 
-      const remainingRoundPositions =
-        activeRound.schedules.length - existingRoundCycleCount;
-
-      if (remainingRoundPositions <= 0) {
-        throw new BadRequestException(
-          'Active round schedule is exhausted. Start a new round',
-        );
-      }
-
-      if (count > remainingRoundPositions) {
-        throw new BadRequestException(
-          `Only ${remainingRoundPositions} cycle(s) can be generated for the active round`,
-        );
+      const nextCycleNo = (latestRoundCycle?.cycleNo ?? 0) + 1;
+      if (nextCycleNo > activeRound.schedules.length) {
+        await tx.equbRound.update({
+          where: { id: activeRound.id },
+          data: { closedAt: new Date() },
+        });
+        throw new ConflictException('Round completed');
       }
 
       const latestCycle = await tx.equbCycle.findFirst({
@@ -998,8 +999,7 @@ export class GroupsService {
         orderBy: [{ dueDate: 'desc' }, { createdAt: 'desc' }],
       });
 
-      let roundCycleNo = existingRoundCycleCount + 1;
-      let dueDate = latestCycle
+      const dueDate = latestCycle
         ? this.dateService.advanceDueDate(
             latestCycle.dueDate,
             group.frequency,
@@ -1007,124 +1007,68 @@ export class GroupsService {
           )
         : this.dateService.normalizeGroupDate(group.startDate, group.timezone);
 
-      const generatedCycles: Array<{
-        id: string;
-        groupId: string;
-        roundId: string;
-        cycleNo: number;
-        dueDate: Date;
-        scheduledPayoutUserId: string;
-        finalPayoutUserId: string;
-        auctionStatus: AuctionStatus;
-        winningBidAmount: number | null;
-        winningBidUserId: string | null;
-        status: CycleStatus;
-        createdByUserId: string;
-        createdAt: Date;
-        scheduledPayoutUser: {
-          id: string;
-          phone: string;
-          fullName: string | null;
-        };
-        finalPayoutUser: {
-          id: string;
-          phone: string;
-          fullName: string | null;
-        };
-        winningBidUser: {
-          id: string;
-          phone: string;
-          fullName: string | null;
-        } | null;
-      }> = [];
-
-      for (let index = 0; index < count; index += 1) {
-        const scheduledEntry = activeRound.schedules.find(
-          (entry) => entry.position === roundCycleNo,
+      const scheduledEntry = activeRound.schedules.find(
+        (entry) => entry.position === nextCycleNo,
+      );
+      if (!scheduledEntry) {
+        throw new BadRequestException(
+          `No scheduled payout member found for position=${nextCycleNo}`,
         );
+      }
 
-        if (!scheduledEntry) {
-          throw new BadRequestException(
-            `No scheduled payout member found for position=${roundCycleNo}`,
-          );
-        }
-
-        const status =
-          index === count - 1 ? CycleStatus.OPEN : CycleStatus.CLOSED;
-
-        const createdCycle = await tx.equbCycle.create({
-          data: {
-            groupId,
-            roundId: activeRound.id,
-            cycleNo: roundCycleNo,
-            dueDate,
-            scheduledPayoutUserId: scheduledEntry.userId,
-            finalPayoutUserId: scheduledEntry.userId,
-            auctionStatus: AuctionStatus.NONE,
-            status,
-            createdByUserId: currentUser.id,
-          },
-          include: {
-            scheduledPayoutUser: {
-              select: {
-                id: true,
-                phone: true,
-                fullName: true,
-              },
-            },
-            finalPayoutUser: {
-              select: {
-                id: true,
-                phone: true,
-                fullName: true,
-              },
-            },
-            winningBidUser: {
-              select: {
-                id: true,
-                phone: true,
-                fullName: true,
-              },
-            },
-          },
-        });
-
-        generatedCycles.push(createdCycle);
-        roundCycleNo += 1;
-        dueDate = this.dateService.advanceDueDate(
+      return tx.equbCycle.create({
+        data: {
+          groupId,
+          roundId: activeRound.id,
+          cycleNo: nextCycleNo,
           dueDate,
-          group.frequency,
-          group.timezone,
-        );
-      }
-
-      if (roundCycleNo > activeRound.schedules.length) {
-        await tx.equbRound.update({
-          where: { id: activeRound.id },
-          data: { closedAt: new Date() },
-        });
-      }
-
-      return generatedCycles;
+          scheduledPayoutUserId: scheduledEntry.userId,
+          finalPayoutUserId: scheduledEntry.userId,
+          auctionStatus: AuctionStatus.NONE,
+          status: CycleStatus.OPEN,
+          createdByUserId: currentUser.id,
+        },
+        include: {
+          scheduledPayoutUser: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+          finalPayoutUser: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+          winningBidUser: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+        },
+      });
     });
 
     await this.auditService.log(
       'CYCLE_GENERATED',
       currentUser.id,
       {
-        cycles: createdCycles.map((cycle) => ({
-          roundId: cycle.roundId,
-          cycleNo: cycle.cycleNo,
-          dueDate: cycle.dueDate,
-          scheduledPayoutUserId: cycle.scheduledPayoutUserId,
-          finalPayoutUserId: cycle.finalPayoutUserId,
-          status: cycle.status,
-        })),
+        roundId: createdCycle.roundId,
+        cycleNo: createdCycle.cycleNo,
+        dueDate: createdCycle.dueDate,
+        scheduledPayoutUserId: createdCycle.scheduledPayoutUserId,
+        finalPayoutUserId: createdCycle.finalPayoutUserId,
+        status: createdCycle.status,
       },
       groupId,
     );
 
-    return createdCycles.map((cycle) => this.toCycleResponse(cycle));
+    return this.toCycleResponse(createdCycle);
   }
 
   async getCurrentCycle(

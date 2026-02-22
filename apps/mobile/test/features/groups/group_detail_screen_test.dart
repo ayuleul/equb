@@ -191,11 +191,8 @@ class _FakeGroupsApi implements GroupsApi {
 
 class _FakeCyclesApi implements CyclesApi {
   @override
-  Future<List<Map<String, dynamic>>> generateCycles(
-    String groupId,
-    Map<String, dynamic> payload,
-  ) async {
-    return <Map<String, dynamic>>[];
+  Future<Map<String, dynamic>> generateCycles(String groupId) async {
+    return _cycle(groupId, 'cycle-generated');
   }
 
   @override

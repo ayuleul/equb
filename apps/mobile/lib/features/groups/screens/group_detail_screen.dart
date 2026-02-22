@@ -705,7 +705,7 @@ Future<void> _showAdminActions({
     ),
     if (cycle == null)
       KitActionSheetItem(
-        label: 'Generate cycle',
+        label: 'Generate next cycle',
         icon: Icons.add_circle_outline,
         onPressed: () =>
             context.push(AppRoutePaths.groupCyclesGenerate(groupId)),

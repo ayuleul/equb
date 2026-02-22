@@ -7,6 +7,7 @@ import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../current_cycle_provider.dart';
 import '../../groups/group_detail_controller.dart';
 import '../generate_cycle_controller.dart';
 
@@ -20,7 +21,7 @@ class GenerateCycleScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
 
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Generate cycles'),
+      appBar: const KitAppBar(title: 'Generate next cycle'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -53,6 +54,7 @@ class _GenerateCycleBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(generateCycleControllerProvider(groupId));
+    final currentCycleAsync = ref.watch(currentCycleProvider(groupId));
 
     ref.listen(generateCycleControllerProvider(groupId), (previous, next) {
       final previousError = previous?.errorMessage;
@@ -67,47 +69,80 @@ class _GenerateCycleBody extends ConsumerWidget {
     return ListView(
       children: [
         EqubCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Generate count',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Choose how many cycles to generate (1-12).',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<int>(
-                initialValue: state.count,
-                decoration: const InputDecoration(labelText: 'Cycle count'),
-                items: List<DropdownMenuItem<int>>.generate(
-                  12,
-                  (index) => DropdownMenuItem<int>(
-                    value: index + 1,
-                    child: Text('${index + 1}'),
+          child: currentCycleAsync.when(
+            loading: () =>
+                const LoadingView(message: 'Checking current cycle...'),
+            error: (error, _) => ErrorView(
+              message: error.toString(),
+              onRetry: () => ref.invalidate(currentCycleProvider(groupId)),
+            ),
+            data: (currentCycle) {
+              if (currentCycle != null) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Finish current cycle first',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Cycle #${currentCycle.cycleNo} is still open. Close it before generating the next cycle.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Generate next cycle',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                ),
-                onChanged: state.isSubmitting
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          ref
-                              .read(
-                                generateCycleControllerProvider(
-                                  groupId,
-                                ).notifier,
-                              )
-                              .setCount(value);
-                        }
-                      },
-              ),
-            ],
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'This creates exactly one next cycle in sequence.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FilledButton(
+                    onPressed: state.isSubmitting
+                        ? null
+                        : () async {
+                            final generated = await ref
+                                .read(
+                                  generateCycleControllerProvider(
+                                    groupId,
+                                  ).notifier,
+                                )
+                                .generateNextCycle();
+
+                            if (!context.mounted || generated == null) {
+                              return;
+                            }
+
+                            AppSnackbars.success(
+                              context,
+                              'Next cycle generated.',
+                            );
+                            Navigator.of(context).pop();
+                          },
+                    child: Text(
+                      state.isSubmitting
+                          ? 'Generating next cycle...'
+                          : 'Generate next cycle',
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
-        if (state.errorMessage != null && state.errorMessage!.isNotEmpty) ...[
+        if (state.errorMessage != null &&
+            state.errorMessage!.isNotEmpty &&
+            !state.isRoundCompleted) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
             state.errorMessage!,
@@ -116,27 +151,25 @@ class _GenerateCycleBody extends ConsumerWidget {
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.lg),
-        FilledButton(
-          onPressed: state.isSubmitting
-              ? null
-              : () async {
-                  final generated = await ref
-                      .read(generateCycleControllerProvider(groupId).notifier)
-                      .generate();
-
-                  if (!context.mounted || generated == null) {
-                    return;
-                  }
-
-                  AppSnackbars.success(
-                    context,
-                    'Generated ${generated.length} cycle(s).',
-                  );
-                  Navigator.of(context).pop();
-                },
-          child: Text(state.isSubmitting ? 'Generating...' : 'Generate'),
-        ),
+        if (state.isRoundCompleted) ...[
+          const SizedBox(height: AppSpacing.sm),
+          KitCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Round completed',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'This round has finished all scheduled positions. Start a new round to continue.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

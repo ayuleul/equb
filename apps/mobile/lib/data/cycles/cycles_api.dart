@@ -8,10 +8,7 @@ abstract class CyclesApi {
     List<Map<String, dynamic>> payload,
   );
 
-  Future<List<Map<String, dynamic>>> generateCycles(
-    String groupId,
-    Map<String, dynamic> payload,
-  );
+  Future<Map<String, dynamic>> generateCycles(String groupId);
 
   Future<Map<String, dynamic>?> getCurrentCycle(String groupId);
   Future<List<Map<String, dynamic>>> listCycles(String groupId);
@@ -41,15 +38,11 @@ class DioCyclesApi implements CyclesApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> generateCycles(
-    String groupId,
-    Map<String, dynamic> payload,
-  ) async {
-    final response = await _apiClient.postList(
+  Future<Map<String, dynamic>> generateCycles(String groupId) async {
+    final response = await _apiClient.postMap(
       '/groups/$groupId/cycles/generate',
-      data: payload,
     );
-    return response.map(_toMap).toList(growable: false);
+    return _toMap(response);
   }
 
   @override

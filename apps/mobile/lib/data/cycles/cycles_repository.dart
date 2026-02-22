@@ -1,5 +1,4 @@
 import '../models/cycle_model.dart';
-import '../models/generate_cycles_request.dart';
 import '../models/member_model.dart';
 import '../models/payout_order_item.dart';
 import '../models/set_payout_order_request.dart';
@@ -94,19 +93,15 @@ class CyclesRepository {
     invalidateGroupCache(groupId);
   }
 
-  Future<List<CycleModel>> generateCycles(String groupId, {int? count}) async {
-    final request = GenerateCyclesRequest(count: count);
-    final payload = await _cyclesApi.generateCycles(groupId, request.toJson());
-
-    final cycles = payload.map(CycleModel.fromJson).toList(growable: false);
+  Future<CycleModel> generateNextCycle(String groupId) async {
+    final payload = await _cyclesApi.generateCycles(groupId);
+    final cycle = CycleModel.fromJson(payload);
 
     invalidateGroupCache(groupId);
 
-    for (final cycle in cycles) {
-      _cycleDetailCache[_detailCacheKey(groupId, cycle.id)] = cycle;
-    }
+    _cycleDetailCache[_detailCacheKey(groupId, cycle.id)] = cycle;
 
-    return cycles;
+    return cycle;
   }
 
   void invalidateGroupCache(String groupId) {

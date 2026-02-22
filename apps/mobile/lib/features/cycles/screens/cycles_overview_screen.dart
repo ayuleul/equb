@@ -90,14 +90,23 @@ class _CyclesOverviewBody extends ConsumerWidget {
             currentCycleAsync: currentCycleAsync,
           ),
           const SizedBox(height: AppSpacing.md),
-          if (isAdmin)
+          if (isAdmin && currentCycleAsync.valueOrNull == null)
             KitPrimaryButton(
               onPressed: () =>
                   context.push(AppRoutePaths.groupCyclesGenerate(group.id)),
               icon: Icons.add_circle_outline,
               label: 'Generate next cycle',
             ),
-          if (isAdmin) const SizedBox(height: AppSpacing.md),
+          if (isAdmin && currentCycleAsync.valueOrNull != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Text(
+                'Finish the current open cycle before generating the next one.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          if (isAdmin && currentCycleAsync.valueOrNull == null)
+            const SizedBox(height: AppSpacing.md),
           const KitSectionHeader(title: 'Past cycles'),
           cyclesAsync.when(
             loading: () => const SizedBox(

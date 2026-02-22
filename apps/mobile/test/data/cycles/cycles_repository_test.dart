@@ -73,10 +73,7 @@ class _FakeCyclesApi implements CyclesApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> generateCycles(
-    String groupId,
-    Map<String, dynamic> payload,
-  ) {
+  Future<Map<String, dynamic>> generateCycles(String groupId) {
     throw UnimplementedError();
   }
 

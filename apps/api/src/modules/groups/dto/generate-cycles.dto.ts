@@ -1,11 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsOptional } from 'class-validator';
 
 export class GenerateCyclesDto {
-  @ApiPropertyOptional({ default: 1, minimum: 1, maximum: 12 })
+  @ApiPropertyOptional({
+    deprecated: true,
+    description:
+      'Deprecated. Cycle generation is sequential and always creates exactly one next cycle.',
+  })
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(12)
-  count?: number;
+  count?: unknown;
 }
