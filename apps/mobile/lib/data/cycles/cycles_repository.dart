@@ -89,6 +89,11 @@ class CyclesRepository {
         .toList(growable: false);
   }
 
+  Future<void> startRound(String groupId) async {
+    await _cyclesApi.startRound(groupId);
+    invalidateGroupCache(groupId);
+  }
+
   Future<List<CycleModel>> generateCycles(String groupId, {int? count}) async {
     final request = GenerateCyclesRequest(count: count);
     final payload = await _cyclesApi.generateCycles(groupId, request.toJson());

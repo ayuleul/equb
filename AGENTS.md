@@ -67,12 +67,16 @@
   - `REMOVED` -> cannot self-rejoin via invite code
 
 ## Cycle rules
-- Payout order for ACTIVE members must be unique and contiguous (`1..N`) before cycle generation.
+- Random-draw rounds use an immutable per-round schedule; manual payout order is not required for cycle generation in random mode.
 - Only one `OPEN` cycle is allowed per group at any time.
 - When generating multiple cycles in one request, earlier generated cycles are marked `CLOSED` and only the last generated cycle is `OPEN`.
 - Due-date progression rules:
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
+- Random-draw payout schedules are immutable per round after round start; cycle generation must consume schedule positions in order.
+- Cycle auction impacts only the current cycle’s `finalPayoutUserId`; the scheduled recipient remains unchanged for round order continuity.
+- Auction winner selection is deterministic: highest bid wins, and ties are resolved by earliest bid `createdAt`.
+- Bid visibility rule is locked: active admins and the scheduled recipient can view all cycle bids; other active members can view only their own bid.
 
 ## Contribution rules
 - Contribution proof object key format is locked to:
@@ -86,7 +90,7 @@
 - Privacy rule: contribution list responses expose member phone numbers only to ACTIVE admins; non-admin members receive `phone = null`.
 
 ## Payout rules
-- Payout recipient is strict: payout `toUserId` must match `EqubCycle.payoutUserId` (no override in MVP).
+- Payout recipient is strict: payout `toUserId` must match `EqubCycle.finalPayoutUserId` (no override in MVP).
 - Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `CONFIRMED` contribution for the cycle.
 - In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
 - Cycle closure prerequisites:

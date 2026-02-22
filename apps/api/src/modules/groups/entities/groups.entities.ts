@@ -1,9 +1,11 @@
 import {
+  AuctionStatus,
   CycleStatus,
   GroupFrequency,
   GroupStatus,
   MemberRole,
   MemberStatus,
+  PayoutMode,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -116,6 +118,40 @@ export class CyclePayoutUserResponseDto {
   fullName!: string | null;
 }
 
+export class RoundScheduleResponseDto {
+  @ApiProperty()
+  position!: number;
+
+  @ApiProperty()
+  userId!: string;
+
+  @ApiProperty({ type: () => CyclePayoutUserResponseDto })
+  user!: CyclePayoutUserResponseDto;
+}
+
+export class RoundStartResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  groupId!: string;
+
+  @ApiProperty()
+  roundNo!: number;
+
+  @ApiProperty({ enum: PayoutMode })
+  payoutMode!: PayoutMode;
+
+  @ApiProperty()
+  startedByUserId!: string;
+
+  @ApiProperty()
+  startedAt!: Date;
+
+  @ApiProperty({ type: () => RoundScheduleResponseDto, isArray: true })
+  schedule!: RoundScheduleResponseDto[];
+}
+
 export class GroupCycleResponseDto {
   @ApiProperty()
   id!: string;
@@ -124,13 +160,31 @@ export class GroupCycleResponseDto {
   groupId!: string;
 
   @ApiProperty()
+  roundId!: string;
+
+  @ApiProperty()
   cycleNo!: number;
 
   @ApiProperty()
   dueDate!: Date;
 
   @ApiProperty()
+  scheduledPayoutUserId!: string;
+
+  @ApiProperty()
+  finalPayoutUserId!: string;
+
+  @ApiProperty()
   payoutUserId!: string;
+
+  @ApiProperty({ enum: AuctionStatus })
+  auctionStatus!: AuctionStatus;
+
+  @ApiPropertyOptional({ nullable: true })
+  winningBidAmount!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  winningBidUserId!: string | null;
 
   @ApiProperty({ enum: CycleStatus })
   status!: CycleStatus;
@@ -140,6 +194,18 @@ export class GroupCycleResponseDto {
 
   @ApiProperty()
   createdAt!: Date;
+
+  @ApiProperty({ type: () => CyclePayoutUserResponseDto })
+  scheduledPayoutUser!: CyclePayoutUserResponseDto;
+
+  @ApiProperty({ type: () => CyclePayoutUserResponseDto })
+  finalPayoutUser!: CyclePayoutUserResponseDto;
+
+  @ApiPropertyOptional({
+    type: () => CyclePayoutUserResponseDto,
+    nullable: true,
+  })
+  winningBidUser!: CyclePayoutUserResponseDto | null;
 
   @ApiProperty({ type: () => CyclePayoutUserResponseDto })
   payoutUser!: CyclePayoutUserResponseDto;

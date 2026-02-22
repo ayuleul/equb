@@ -34,6 +34,16 @@ enum CycleStatus {
   CLOSED
 }
 
+enum PayoutMode {
+  RANDOM_DRAW
+}
+
+enum AuctionStatus {
+  NONE
+  OPEN
+  CLOSED
+}
+
 enum ContributionStatus {
   PENDING
   SUBMITTED
@@ -79,8 +89,14 @@ model User {
   createdGroups  EqubGroup[]    @relation("GroupCreator")
   memberships    EqubMember[]
   createdInvites InviteCode[]   @relation("InviteCreator")
-  payoutCycles   EqubCycle[]    @relation("CyclePayoutUser")
+  scheduledPayoutCycles EqubCycle[] @relation("CycleScheduledPayoutUser")
+  finalPayoutCycles EqubCycle[] @relation("CycleFinalPayoutUser")
+  winningBidCycles EqubCycle[] @relation("CycleWinningBidUser")
   createdCycles  EqubCycle[]    @relation("CycleCreator")
+  startedRounds  EqubRound[]    @relation("RoundStarter")
+  payoutSchedules PayoutSchedule[] @relation("ScheduleUser")
+  openedAuctions CycleAuction[] @relation("AuctionOpener")
+  cycleBids      CycleBid[]
   contributions  Contribution[] @relation("ContributionUser")
   confirmedContributions Contribution[] @relation("ContributionConfirmedBy")
   rejectedContributions Contribution[] @relation("ContributionRejectedBy")
@@ -134,6 +150,7 @@ model EqubGroup {
   cycles             EqubCycle[]
   contributions      Contribution[]
   payouts            Payout[]
+  rounds             EqubRound[]
   notifications      Notification[]
 
   @@index([createdByUserId])
@@ -156,6 +173,35 @@ model EqubMember {
   @@index([groupId, status, role])
 }
 
+model EqubRound {
+  id              String      @id @default(uuid())
+  groupId         String
+  roundNo         Int
+  payoutMode      PayoutMode  @default(RANDOM_DRAW)
+  startedByUserId String
+  startedAt       DateTime    @default(now())
+  closedAt        DateTime?
+  group           EqubGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  startedByUser   User        @relation("RoundStarter", fields: [startedByUserId], references: [id], onDelete: Restrict)
+  schedules       PayoutSchedule[]
+  cycles          EqubCycle[]
+
+  @@unique([groupId, roundNo])
+  @@index([groupId, closedAt])
+}
+
+model PayoutSchedule {
+  roundId   String
+  position  Int
+  userId    String
+  round     EqubRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user      User      @relation("ScheduleUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([roundId, position])
+  @@unique([roundId, userId])
+  @@index([userId])
+}
+
 model InviteCode {
   id              String    @id @default(uuid())
   groupId         String
@@ -175,9 +221,14 @@ model InviteCode {
 model EqubCycle {
   id              String      @id @default(uuid())
   groupId         String
+  roundId         String
   cycleNo         Int
   dueDate         DateTime    @db.Date
-  payoutUserId    String
+  scheduledPayoutUserId String
+  finalPayoutUserId String
+  auctionStatus AuctionStatus @default(NONE)
+  winningBidAmount Int?
+  winningBidUserId String?
   status          CycleStatus @default(OPEN)
   contributionsConfirmedCount Int @default(0)
   contributionsSubmittedCount Int @default(0)
@@ -186,14 +237,48 @@ model EqubCycle {
   createdByUserId String
   createdAt       DateTime    @default(now())
   group           EqubGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  payoutUser      User        @relation("CyclePayoutUser", fields: [payoutUserId], references: [id], onDelete: Restrict)
+  round           EqubRound   @relation(fields: [roundId], references: [id], onDelete: Restrict)
+  scheduledPayoutUser User @relation("CycleScheduledPayoutUser", fields: [scheduledPayoutUserId], references: [id], onDelete: Restrict)
+  finalPayoutUser User @relation("CycleFinalPayoutUser", fields: [finalPayoutUserId], references: [id], onDelete: Restrict)
+  winningBidUser User? @relation("CycleWinningBidUser", fields: [winningBidUserId], references: [id], onDelete: SetNull)
   closedByUser    User?       @relation("CycleClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
   createdByUser   User        @relation("CycleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   contributions   Contribution[]
   payout          Payout?
+  auction         CycleAuction?
+  bids            CycleBid[]
 
-  @@unique([groupId, cycleNo])
+  @@unique([roundId, cycleNo])
   @@index([groupId, status])
+  @@index([groupId, roundId])
+}
+
+model CycleAuction {
+  id             String        @id @default(uuid())
+  cycleId        String        @unique
+  openedByUserId String
+  status         AuctionStatus
+  openedAt       DateTime      @default(now())
+  closedAt       DateTime?
+  cycle          EqubCycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  openedByUser   User          @relation("AuctionOpener", fields: [openedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([status, openedAt])
+}
+
+model CycleBid {
+  id        String    @id @default(uuid())
+  cycleId   String
+  userId    String
+  amount    Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  cycle     EqubCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, userId])
+  @@index([cycleId, amount, createdAt])
+  @@index([userId])
 }
 
 model Contribution {
@@ -233,6 +318,7 @@ model Payout {
   proofFileKey      String?
   paymentRef        String?
   note              String?
+  metadata          Json?
   createdByUserId   String
   createdAt         DateTime    @default(now())
   confirmedByUserId String?

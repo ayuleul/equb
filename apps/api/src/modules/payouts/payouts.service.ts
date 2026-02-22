@@ -82,12 +82,18 @@ export class PayoutsService {
         data: {
           groupId: cycle.groupId,
           cycleId: cycle.id,
-          toUserId: cycle.payoutUserId,
+          toUserId: cycle.finalPayoutUserId,
           amount: dto.amount ?? cycle.group.contributionAmount,
           status: PayoutStatus.PENDING,
           proofFileKey: dto.proofFileKey ?? null,
           paymentRef: dto.paymentRef ?? null,
           note: dto.note ?? null,
+          metadata: {
+            scheduledPayoutUserId: cycle.scheduledPayoutUserId,
+            finalPayoutUserId: cycle.finalPayoutUserId,
+            winningBidAmount: cycle.winningBidAmount,
+            winningBidUserId: cycle.winningBidUserId,
+          },
           createdByUserId: currentUser.id,
         },
         include: {

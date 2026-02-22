@@ -70,10 +70,30 @@ class GenerateCycleController extends StateNotifier<GenerateCycleState> {
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     try {
-      final generated = await _repository.generateCycles(
-        groupId,
-        count: state.count,
-      );
+      List<CycleModel> generated;
+      try {
+        generated = await _repository.generateCycles(
+          groupId,
+          count: state.count,
+        );
+      } catch (error) {
+        if (!_requiresActiveRound(error)) {
+          rethrow;
+        }
+
+        try {
+          await _repository.startRound(groupId);
+        } catch (roundError) {
+          if (!_activeRoundAlreadyExists(roundError)) {
+            rethrow;
+          }
+        }
+
+        generated = await _repository.generateCycles(
+          groupId,
+          count: state.count,
+        );
+      }
 
       _repository.invalidateGroupCache(groupId);
       _ref.invalidate(currentCycleProvider(groupId));
@@ -88,5 +108,15 @@ class GenerateCycleController extends StateNotifier<GenerateCycleState> {
       );
       return null;
     }
+  }
+
+  bool _requiresActiveRound(Object error) {
+    final message = mapApiErrorToMessage(error).toLowerCase();
+    return message.contains('active round is required');
+  }
+
+  bool _activeRoundAlreadyExists(Object error) {
+    final message = mapApiErrorToMessage(error).toLowerCase();
+    return message.contains('active round already exists');
   }
 }

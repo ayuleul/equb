@@ -40,6 +40,7 @@ import {
   GroupMemberResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
+  RoundStartResponseDto,
 } from './entities/groups.entities';
 import { GroupsService } from './groups.service';
 
@@ -214,6 +215,23 @@ export class GroupsController {
     @Body() dto: GenerateCyclesDto,
   ): Promise<GroupCycleResponseDto[]> {
     return this.groupsService.generateCycles(currentUser, groupId, dto);
+  }
+
+  @Post(':id/rounds/start')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Rounds')
+  @ApiOperation({ summary: 'Start a random-draw payout round and schedule' })
+  @ApiOkResponse({ type: RoundStartResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Group is inactive, round already active, or no active members',
+  })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  startRound(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<RoundStartResponseDto> {
+    return this.groupsService.startRound(currentUser, groupId);
   }
 
   @Get(':id/cycles/current')

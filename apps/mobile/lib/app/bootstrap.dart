@@ -7,6 +7,9 @@ import '../data/auth/auth_api.dart';
 import '../data/auth/auth_repository.dart';
 import '../data/contributions/contributions_api.dart';
 import '../data/contributions/contributions_repository.dart';
+import '../data/auctions/auction_api.dart';
+import '../data/auctions/auction_repository.dart';
+import '../data/auctions/bids_api.dart';
 import '../data/cycles/cycles_api.dart';
 import '../data/cycles/cycles_repository.dart';
 import '../data/files/files_api.dart';
@@ -155,6 +158,22 @@ final cyclesApiProvider = Provider<CyclesApi>((ref) {
 final cyclesRepositoryProvider = Provider<CyclesRepository>((ref) {
   final cyclesApi = ref.watch(cyclesApiProvider);
   return CyclesRepository(cyclesApi);
+});
+
+final auctionApiProvider = Provider<AuctionApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioAuctionApi(apiClient);
+});
+
+final bidsApiProvider = Provider<BidsApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DioBidsApi(apiClient);
+});
+
+final auctionRepositoryProvider = Provider<AuctionRepository>((ref) {
+  final auctionApi = ref.watch(auctionApiProvider);
+  final bidsApi = ref.watch(bidsApiProvider);
+  return AuctionRepository(auctionApi: auctionApi, bidsApi: bidsApi);
 });
 
 final contributionsApiProvider = Provider<ContributionsApi>((ref) {

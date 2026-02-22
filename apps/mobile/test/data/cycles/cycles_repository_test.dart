@@ -68,6 +68,11 @@ class _FakeCyclesApi implements CyclesApi {
   List<Map<String, dynamic>>? lastSetPayoutOrderPayload;
 
   @override
+  Future<Map<String, dynamic>> startRound(String groupId) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> generateCycles(
     String groupId,
     Map<String, dynamic> payload,

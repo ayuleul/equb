@@ -25,9 +25,19 @@ Map<String, dynamic> _$CyclePayoutUserModelToJson(
 _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
   id: json['id'] as String,
   groupId: json['groupId'] as String,
+  roundId: json['roundId'] as String?,
   cycleNo: _toInt(json['cycleNo']),
   dueDate: DateTime.parse(json['dueDate'] as String),
+  scheduledPayoutUserId: json['scheduledPayoutUserId'] as String?,
+  finalPayoutUserId: json['finalPayoutUserId'] as String?,
   payoutUserId: json['payoutUserId'] as String,
+  auctionStatus: $enumDecodeNullable(
+    _$AuctionStatusModelEnumMap,
+    json['auctionStatus'],
+    unknownValue: AuctionStatusModel.unknown,
+  ),
+  winningBidAmount: _toNullableInt(json['winningBidAmount']),
+  winningBidUserId: json['winningBidUserId'] as String?,
   status: $enumDecode(
     _$CycleStatusModelEnumMap,
     json['status'],
@@ -37,6 +47,21 @@ _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
+  scheduledPayoutUser: json['scheduledPayoutUser'] == null
+      ? null
+      : CyclePayoutUserModel.fromJson(
+          json['scheduledPayoutUser'] as Map<String, dynamic>,
+        ),
+  finalPayoutUser: json['finalPayoutUser'] == null
+      ? null
+      : CyclePayoutUserModel.fromJson(
+          json['finalPayoutUser'] as Map<String, dynamic>,
+        ),
+  winningBidUser: json['winningBidUser'] == null
+      ? null
+      : CyclePayoutUserModel.fromJson(
+          json['winningBidUser'] as Map<String, dynamic>,
+        ),
   payoutUser: json['payoutUser'] == null
       ? null
       : CyclePayoutUserModel.fromJson(
@@ -48,14 +73,30 @@ Map<String, dynamic> _$CycleModelToJson(_CycleModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'groupId': instance.groupId,
+      'roundId': instance.roundId,
       'cycleNo': instance.cycleNo,
       'dueDate': instance.dueDate.toIso8601String(),
+      'scheduledPayoutUserId': instance.scheduledPayoutUserId,
+      'finalPayoutUserId': instance.finalPayoutUserId,
       'payoutUserId': instance.payoutUserId,
+      'auctionStatus': _$AuctionStatusModelEnumMap[instance.auctionStatus],
+      'winningBidAmount': instance.winningBidAmount,
+      'winningBidUserId': instance.winningBidUserId,
       'status': _$CycleStatusModelEnumMap[instance.status]!,
       'createdByUserId': instance.createdByUserId,
       'createdAt': instance.createdAt?.toIso8601String(),
+      'scheduledPayoutUser': instance.scheduledPayoutUser,
+      'finalPayoutUser': instance.finalPayoutUser,
+      'winningBidUser': instance.winningBidUser,
       'payoutUser': instance.payoutUser,
     };
+
+const _$AuctionStatusModelEnumMap = {
+  AuctionStatusModel.none: 'NONE',
+  AuctionStatusModel.open: 'OPEN',
+  AuctionStatusModel.closed: 'CLOSED',
+  AuctionStatusModel.unknown: 'unknown',
+};
 
 const _$CycleStatusModelEnumMap = {
   CycleStatusModel.open: 'OPEN',

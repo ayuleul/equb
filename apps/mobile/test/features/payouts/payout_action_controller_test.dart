@@ -243,6 +243,11 @@ class _FakeCyclesRepository extends CyclesRepository {
 
 class _FakeCyclesApi implements CyclesApi {
   @override
+  Future<Map<String, dynamic>> startRound(String groupId) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> generateCycles(
     String groupId,
     Map<String, dynamic> payload,

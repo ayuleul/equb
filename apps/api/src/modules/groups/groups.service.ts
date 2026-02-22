@@ -7,14 +7,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  AuctionStatus,
   CycleStatus,
   GroupStatus,
   MemberRole,
   MemberStatus,
   NotificationType,
+  PayoutMode,
   Prisma,
 } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
 import { DateService } from '../../common/date/date.service';
@@ -32,6 +34,7 @@ import {
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
+  RoundStartResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
 } from './entities/groups.entities';
@@ -745,6 +748,156 @@ export class GroupsService {
     }));
   }
 
+  async startRound(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+  ): Promise<RoundStartResponseDto> {
+    const round = await this.prisma.$transaction(async (tx) => {
+      const group = await tx.equbGroup.findUnique({
+        where: { id: groupId },
+        select: { id: true, status: true },
+      });
+
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      if (group.status !== GroupStatus.ACTIVE) {
+        throw new BadRequestException(
+          'Rounds can only be started for active groups',
+        );
+      }
+
+      const existingOpenCycle = await tx.equbCycle.findFirst({
+        where: {
+          groupId,
+          status: CycleStatus.OPEN,
+        },
+        select: { id: true },
+      });
+
+      if (existingOpenCycle) {
+        throw new BadRequestException(
+          'Cannot start a new round while a cycle is still open',
+        );
+      }
+
+      const existingActiveRound = await tx.equbRound.findFirst({
+        where: {
+          groupId,
+          closedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (existingActiveRound) {
+        throw new BadRequestException('An active round already exists');
+      }
+
+      const activeMembers = await tx.equbMember.findMany({
+        where: {
+          groupId,
+          status: MemberStatus.ACTIVE,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+        },
+        orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
+      });
+
+      if (activeMembers.length === 0) {
+        throw new BadRequestException('No active members found for this group');
+      }
+
+      const shuffledMembers = this.shuffleRandomDrawMembers(activeMembers);
+
+      const latestRound = await tx.equbRound.findFirst({
+        where: { groupId },
+        orderBy: {
+          roundNo: 'desc',
+        },
+        select: {
+          roundNo: true,
+        },
+      });
+
+      return tx.equbRound.create({
+        data: {
+          groupId,
+          roundNo: (latestRound?.roundNo ?? 0) + 1,
+          payoutMode: PayoutMode.RANDOM_DRAW,
+          startedByUserId: currentUser.id,
+          schedules: {
+            create: shuffledMembers.map((member, index) => ({
+              position: index + 1,
+              userId: member.userId,
+            })),
+          },
+        },
+        include: {
+          schedules: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  phone: true,
+                  fullName: true,
+                },
+              },
+            },
+            orderBy: {
+              position: 'asc',
+            },
+          },
+        },
+      });
+    });
+
+    await this.auditService.log(
+      'ROUND_STARTED',
+      currentUser.id,
+      {
+        roundId: round.id,
+        roundNo: round.roundNo,
+        payoutMode: round.payoutMode,
+      },
+      groupId,
+    );
+
+    await this.auditService.log(
+      'SCHEDULE_GENERATED',
+      currentUser.id,
+      {
+        roundId: round.id,
+        schedule: round.schedules.map((entry) => ({
+          position: entry.position,
+          userId: entry.userId,
+        })),
+      },
+      groupId,
+    );
+
+    return {
+      id: round.id,
+      groupId: round.groupId,
+      roundNo: round.roundNo,
+      payoutMode: round.payoutMode,
+      startedByUserId: round.startedByUserId,
+      startedAt: round.startedAt,
+      schedule: round.schedules.map((entry) => ({
+        position: entry.position,
+        userId: entry.userId,
+        user: entry.user,
+      })),
+    };
+  }
+
   async generateCycles(
     currentUser: AuthenticatedUser,
     groupId: string,
@@ -793,51 +946,59 @@ export class GroupsService {
         );
       }
 
-      const activeMembers = await tx.equbMember.findMany({
+      const activeRound = await tx.equbRound.findFirst({
         where: {
           groupId,
-          status: MemberStatus.ACTIVE,
+          closedAt: null,
         },
-        select: {
-          userId: true,
-          payoutPosition: true,
+        include: {
+          schedules: {
+            orderBy: {
+              position: 'asc',
+            },
+          },
         },
       });
 
-      if (activeMembers.length === 0) {
-        throw new BadRequestException('No active members found for this group');
-      }
-
-      const hasUnsetPositions = activeMembers.some(
-        (member) => member.payoutPosition === null,
-      );
-      if (hasUnsetPositions) {
+      if (!activeRound) {
         throw new BadRequestException(
-          'Payout order is incomplete for active members',
+          'Active round is required before generating cycles',
         );
       }
 
-      const positions = activeMembers.map(
-        (member) => member.payoutPosition as number,
-      );
-      this.assertContiguousPositions(positions);
+      if (activeRound.schedules.length === 0) {
+        throw new BadRequestException(
+          'Active round has no payout schedule',
+        );
+      }
 
-      const payoutUserByPosition = new Map<number, string>();
-      for (const member of activeMembers) {
-        payoutUserByPosition.set(
-          member.payoutPosition as number,
-          member.userId,
+      const existingRoundCycleCount = await tx.equbCycle.count({
+        where: {
+          roundId: activeRound.id,
+        },
+      });
+
+      const remainingRoundPositions =
+        activeRound.schedules.length - existingRoundCycleCount;
+
+      if (remainingRoundPositions <= 0) {
+        throw new BadRequestException(
+          'Active round schedule is exhausted. Start a new round',
+        );
+      }
+
+      if (count > remainingRoundPositions) {
+        throw new BadRequestException(
+          `Only ${remainingRoundPositions} cycle(s) can be generated for the active round`,
         );
       }
 
       const latestCycle = await tx.equbCycle.findFirst({
         where: { groupId },
-        orderBy: {
-          cycleNo: 'desc',
-        },
+        orderBy: [{ dueDate: 'desc' }, { createdAt: 'desc' }],
       });
 
-      let cycleNo = (latestCycle?.cycleNo ?? 0) + 1;
+      let roundCycleNo = existingRoundCycleCount + 1;
       let dueDate = latestCycle
         ? this.dateService.advanceDueDate(
             latestCycle.dueDate,
@@ -849,26 +1010,42 @@ export class GroupsService {
       const generatedCycles: Array<{
         id: string;
         groupId: string;
+        roundId: string;
         cycleNo: number;
         dueDate: Date;
-        payoutUserId: string;
+        scheduledPayoutUserId: string;
+        finalPayoutUserId: string;
+        auctionStatus: AuctionStatus;
+        winningBidAmount: number | null;
+        winningBidUserId: string | null;
         status: CycleStatus;
         createdByUserId: string;
         createdAt: Date;
-        payoutUser: {
+        scheduledPayoutUser: {
           id: string;
           phone: string;
           fullName: string | null;
         };
+        finalPayoutUser: {
+          id: string;
+          phone: string;
+          fullName: string | null;
+        };
+        winningBidUser: {
+          id: string;
+          phone: string;
+          fullName: string | null;
+        } | null;
       }> = [];
 
       for (let index = 0; index < count; index += 1) {
-        const payoutPosition = ((cycleNo - 1) % activeMembers.length) + 1;
-        const payoutUserId = payoutUserByPosition.get(payoutPosition);
+        const scheduledEntry = activeRound.schedules.find(
+          (entry) => entry.position === roundCycleNo,
+        );
 
-        if (!payoutUserId) {
+        if (!scheduledEntry) {
           throw new BadRequestException(
-            `No active member found for payout position=${payoutPosition}`,
+            `No scheduled payout member found for position=${roundCycleNo}`,
           );
         }
 
@@ -878,14 +1055,31 @@ export class GroupsService {
         const createdCycle = await tx.equbCycle.create({
           data: {
             groupId,
-            cycleNo,
+            roundId: activeRound.id,
+            cycleNo: roundCycleNo,
             dueDate,
-            payoutUserId,
+            scheduledPayoutUserId: scheduledEntry.userId,
+            finalPayoutUserId: scheduledEntry.userId,
+            auctionStatus: AuctionStatus.NONE,
             status,
             createdByUserId: currentUser.id,
           },
           include: {
-            payoutUser: {
+            scheduledPayoutUser: {
+              select: {
+                id: true,
+                phone: true,
+                fullName: true,
+              },
+            },
+            finalPayoutUser: {
+              select: {
+                id: true,
+                phone: true,
+                fullName: true,
+              },
+            },
+            winningBidUser: {
               select: {
                 id: true,
                 phone: true,
@@ -896,12 +1090,19 @@ export class GroupsService {
         });
 
         generatedCycles.push(createdCycle);
-        cycleNo += 1;
+        roundCycleNo += 1;
         dueDate = this.dateService.advanceDueDate(
           dueDate,
           group.frequency,
           group.timezone,
         );
+      }
+
+      if (roundCycleNo > activeRound.schedules.length) {
+        await tx.equbRound.update({
+          where: { id: activeRound.id },
+          data: { closedAt: new Date() },
+        });
       }
 
       return generatedCycles;
@@ -912,9 +1113,11 @@ export class GroupsService {
       currentUser.id,
       {
         cycles: createdCycles.map((cycle) => ({
+          roundId: cycle.roundId,
           cycleNo: cycle.cycleNo,
           dueDate: cycle.dueDate,
-          payoutUserId: cycle.payoutUserId,
+          scheduledPayoutUserId: cycle.scheduledPayoutUserId,
+          finalPayoutUserId: cycle.finalPayoutUserId,
           status: cycle.status,
         })),
       },
@@ -933,7 +1136,21 @@ export class GroupsService {
         status: CycleStatus.OPEN,
       },
       include: {
-        payoutUser: {
+        scheduledPayoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+        finalPayoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+        winningBidUser: {
           select: {
             id: true,
             phone: true,
@@ -963,7 +1180,21 @@ export class GroupsService {
         groupId,
       },
       include: {
-        payoutUser: {
+        scheduledPayoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+        finalPayoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+        winningBidUser: {
           select: {
             id: true,
             phone: true,
@@ -986,7 +1217,21 @@ export class GroupsService {
         groupId,
       },
       include: {
-        payoutUser: {
+        scheduledPayoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+        finalPayoutUser: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+        winningBidUser: {
           select: {
             id: true,
             phone: true,
@@ -1033,29 +1278,68 @@ export class GroupsService {
   private toCycleResponse(cycle: {
     id: string;
     groupId: string;
+    roundId: string;
     cycleNo: number;
     dueDate: Date;
-    payoutUserId: string;
+    scheduledPayoutUserId: string;
+    finalPayoutUserId: string;
+    auctionStatus: AuctionStatus;
+    winningBidAmount: number | null;
+    winningBidUserId: string | null;
     status: CycleStatus;
     createdByUserId: string;
     createdAt: Date;
-    payoutUser: {
+    scheduledPayoutUser: {
       id: string;
       phone: string;
       fullName: string | null;
     };
+    finalPayoutUser: {
+      id: string;
+      phone: string;
+      fullName: string | null;
+    };
+    winningBidUser: {
+      id: string;
+      phone: string;
+      fullName: string | null;
+    } | null;
   }): GroupCycleResponseDto {
     return {
       id: cycle.id,
       groupId: cycle.groupId,
+      roundId: cycle.roundId,
       cycleNo: cycle.cycleNo,
       dueDate: cycle.dueDate,
-      payoutUserId: cycle.payoutUserId,
+      scheduledPayoutUserId: cycle.scheduledPayoutUserId,
+      finalPayoutUserId: cycle.finalPayoutUserId,
+      payoutUserId: cycle.finalPayoutUserId,
+      auctionStatus: cycle.auctionStatus,
+      winningBidAmount: cycle.winningBidAmount,
+      winningBidUserId: cycle.winningBidUserId,
       status: cycle.status,
       createdByUserId: cycle.createdByUserId,
       createdAt: cycle.createdAt,
-      payoutUser: cycle.payoutUser,
+      scheduledPayoutUser: cycle.scheduledPayoutUser,
+      finalPayoutUser: cycle.finalPayoutUser,
+      winningBidUser: cycle.winningBidUser,
+      payoutUser: cycle.finalPayoutUser,
     };
+  }
+
+  private shuffleRandomDrawMembers<
+    T extends { userId: string },
+  >(members: T[]): T[] {
+    const shuffled = [...members];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = randomInt(index + 1);
+      [shuffled[index], shuffled[swapIndex]] = [
+        shuffled[swapIndex],
+        shuffled[index],
+      ];
+    }
+
+    return shuffled;
   }
 
   private generateInviteCode(): string {

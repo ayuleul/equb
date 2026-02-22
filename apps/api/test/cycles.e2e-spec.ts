@@ -1,11 +1,13 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  AuctionStatus,
   CycleStatus,
   GroupFrequency,
   GroupStatus,
   MemberRole,
   MemberStatus,
+  PayoutMode,
 } from '@prisma/client';
 
 import { AppModule } from '../src/app.module';
@@ -17,7 +19,6 @@ type UserRecord = {
   id: string;
   phone: string;
   fullName: string | null;
-  createdAt: Date;
 };
 
 type GroupRecord = {
@@ -45,12 +46,33 @@ type MemberRecord = {
   createdAt: Date;
 };
 
+type RoundRecord = {
+  id: string;
+  groupId: string;
+  roundNo: number;
+  payoutMode: PayoutMode;
+  startedByUserId: string;
+  startedAt: Date;
+  closedAt: Date | null;
+};
+
+type ScheduleRecord = {
+  roundId: string;
+  position: number;
+  userId: string;
+};
+
 type CycleRecord = {
   id: string;
   groupId: string;
+  roundId: string;
   cycleNo: number;
   dueDate: Date;
-  payoutUserId: string;
+  scheduledPayoutUserId: string;
+  finalPayoutUserId: string;
+  auctionStatus: AuctionStatus;
+  winningBidAmount: number | null;
+  winningBidUserId: string | null;
   status: CycleStatus;
   createdByUserId: string;
   createdAt: Date;
@@ -64,23 +86,27 @@ describe('Cycles (e2e)', () => {
       id: 'user_admin',
       phone: '+251911111111',
       fullName: 'Admin User',
-      createdAt: new Date(),
     },
     {
       id: 'user_member',
       phone: '+251922222222',
       fullName: 'Member User',
-      createdAt: new Date(),
     },
   ];
 
   const groups: GroupRecord[] = [];
   const members: MemberRecord[] = [];
+  const rounds: RoundRecord[] = [];
+  const schedules: ScheduleRecord[] = [];
   const cycles: CycleRecord[] = [];
 
   const adminUser: AuthenticatedUser = {
     id: 'user_admin',
     phone: '+251911111111',
+  };
+
+  const findUser = (userId: string) => {
+    return users.find((user) => user.id === userId) ?? null;
   };
 
   const prismaMock = {
@@ -111,7 +137,6 @@ describe('Cycles (e2e)', () => {
             createdByUserId: data.createdByUserId,
             createdAt: new Date(),
           };
-
           groups.push(group);
           return group;
         },
@@ -172,7 +197,6 @@ describe('Cycles (e2e)', () => {
             joinedAt: data.joinedAt,
             createdAt: new Date(),
           };
-
           members.push(member);
           return member;
         },
@@ -181,7 +205,6 @@ describe('Cycles (e2e)', () => {
         ({
           where,
           include,
-          select,
         }: {
           where: {
             groupId?: string;
@@ -193,7 +216,6 @@ describe('Cycles (e2e)', () => {
               select: { id: true; phone: true; fullName: true };
             };
           };
-          select?: { userId?: boolean; payoutPosition?: boolean };
         }) => {
           const filtered = members.filter((member) => {
             const groupMatch =
@@ -203,132 +225,70 @@ describe('Cycles (e2e)', () => {
             return groupMatch && userMatch && statusMatch;
           });
 
-          if (select) {
-            return filtered.map((member) => ({
-              ...(select.userId ? { userId: member.userId } : {}),
-              ...(select.payoutPosition
-                ? { payoutPosition: member.payoutPosition }
-                : {}),
-            }));
-          }
-
           if (include?.user) {
             return filtered.map((member) => ({
               ...member,
-              user: users.find((user) => user.id === member.userId) ?? null,
+              user: findUser(member.userId),
             }));
           }
 
           return filtered;
         },
       ),
-      update: jest.fn(
-        ({
-          where,
-          data,
-          include,
-        }: {
-          where: { id: string };
-          data: {
-            payoutPosition?: number;
-            role?: MemberRole;
-            status?: MemberStatus;
-          };
-          include?: {
-            user?: {
-              select: { id: true; phone: true; fullName: true };
-            };
-          };
-        }) => {
-          const member = members.find((item) => item.id === where.id);
-          if (!member) {
-            throw new Error('Member not found');
-          }
-
-          if (typeof data.payoutPosition === 'number') {
-            member.payoutPosition = data.payoutPosition;
-          }
-          if (data.role) {
-            member.role = data.role;
-          }
-          if (data.status) {
-            member.status = data.status;
-          }
-
-          if (include?.user) {
-            return {
-              ...member,
-              user: users.find((user) => user.id === member.userId) ?? null,
-            };
-          }
-
-          return member;
-        },
-      ),
-      count: jest.fn(
-        ({
-          where,
-        }: {
-          where: {
-            groupId: string;
-            role: MemberRole;
-            status: MemberStatus;
-          };
-        }) => {
-          return members.filter(
-            (member) =>
-              member.groupId === where.groupId &&
-              member.role === where.role &&
-              member.status === where.status,
-          ).length;
-        },
-      ),
       findUnique: jest.fn(() => null),
+      update: jest.fn(),
+      count: jest.fn(),
     },
-    equbCycle: {
+    equbRound: {
       findFirst: jest.fn(
         ({
           where,
+          select,
           include,
           orderBy,
         }: {
-          where: { groupId: string; status?: CycleStatus; id?: string };
+          where: {
+            groupId: string;
+            closedAt?: Date | null;
+          };
+          select?: { id?: boolean; roundNo?: boolean };
           include?: {
-            payoutUser?: {
-              select: { id: true; phone: true; fullName: true };
+            schedules?: {
+              orderBy: { position: 'asc' | 'desc' };
             };
           };
-          orderBy?: { cycleNo: 'asc' | 'desc' };
+          orderBy?: { roundNo: 'asc' | 'desc' };
         }) => {
-          let filtered = cycles.filter(
-            (cycle) => cycle.groupId === where.groupId,
-          );
-
-          if (where.status) {
-            filtered = filtered.filter(
-              (cycle) => cycle.status === where.status,
+          let filtered = rounds.filter((round) => round.groupId === where.groupId);
+          if (Object.prototype.hasOwnProperty.call(where, 'closedAt')) {
+            filtered = filtered.filter((round) =>
+              where.closedAt === null ? round.closedAt === null : true,
             );
-          }
-
-          if (where.id) {
-            filtered = filtered.filter((cycle) => cycle.id === where.id);
           }
 
           if (filtered.length === 0) {
             return null;
           }
 
-          if (orderBy?.cycleNo === 'desc') {
-            filtered = [...filtered].sort((a, b) => b.cycleNo - a.cycleNo);
+          if (orderBy?.roundNo === 'desc') {
+            filtered = [...filtered].sort((a, b) => b.roundNo - a.roundNo);
           }
 
           const found = filtered[0];
 
-          if (include?.payoutUser) {
+          if (select) {
+            return {
+              ...(select.id ? { id: found.id } : {}),
+              ...(select.roundNo ? { roundNo: found.roundNo } : {}),
+            };
+          }
+
+          if (include?.schedules) {
             return {
               ...found,
-              payoutUser:
-                users.find((user) => user.id === found.payoutUserId) ?? null,
+              schedules: schedules
+                .filter((schedule) => schedule.roundId === found.id)
+                .sort((a, b) => a.position - b.position),
             };
           }
 
@@ -342,14 +302,168 @@ describe('Cycles (e2e)', () => {
         }: {
           data: {
             groupId: string;
+            roundNo: number;
+            payoutMode: PayoutMode;
+            startedByUserId: string;
+            schedules: {
+              create: Array<{ position: number; userId: string }>;
+            };
+          };
+          include?: {
+            schedules?: {
+              include: {
+                user: {
+                  select: { id: true; phone: true; fullName: true };
+                };
+              };
+              orderBy: { position: 'asc' | 'desc' };
+            };
+          };
+        }) => {
+          const round: RoundRecord = {
+            id: `round_${rounds.length + 1}`,
+            groupId: data.groupId,
+            roundNo: data.roundNo,
+            payoutMode: data.payoutMode,
+            startedByUserId: data.startedByUserId,
+            startedAt: new Date(),
+            closedAt: null,
+          };
+          rounds.push(round);
+
+          for (const entry of data.schedules.create) {
+            schedules.push({
+              roundId: round.id,
+              position: entry.position,
+              userId: entry.userId,
+            });
+          }
+
+          if (include?.schedules) {
+            return {
+              ...round,
+              schedules: schedules
+                .filter((schedule) => schedule.roundId === round.id)
+                .sort((a, b) => a.position - b.position)
+                .map((schedule) => ({
+                  ...schedule,
+                  user: findUser(schedule.userId),
+                })),
+            };
+          }
+
+          return round;
+        },
+      ),
+      update: jest.fn(
+        ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: { closedAt: Date };
+        }) => {
+          const round = rounds.find((item) => item.id === where.id);
+          if (!round) {
+            throw new Error('Round not found');
+          }
+          round.closedAt = data.closedAt;
+          return round;
+        },
+      ),
+    },
+    equbCycle: {
+      findFirst: jest.fn(
+        ({
+          where,
+          include,
+          orderBy,
+        }: {
+          where: {
+            groupId: string;
+            status?: CycleStatus;
+          };
+          include?: {
+            scheduledPayoutUser?: {
+              select: { id: true; phone: true; fullName: true };
+            };
+            finalPayoutUser?: {
+              select: { id: true; phone: true; fullName: true };
+            };
+            winningBidUser?: {
+              select: { id: true; phone: true; fullName: true };
+            };
+          };
+          orderBy?: Array<{ dueDate?: 'asc' | 'desc'; createdAt?: 'asc' | 'desc' }> | { cycleNo: 'asc' | 'desc' };
+        }) => {
+          let filtered = cycles.filter((cycle) => cycle.groupId === where.groupId);
+          if (where.status) {
+            filtered = filtered.filter((cycle) => cycle.status === where.status);
+          }
+
+          if (filtered.length === 0) {
+            return null;
+          }
+
+          if (Array.isArray(orderBy)) {
+            filtered = [...filtered].sort((a, b) => {
+              const dueDateDiff = b.dueDate.getTime() - a.dueDate.getTime();
+              if (dueDateDiff !== 0) {
+                return dueDateDiff;
+              }
+              return b.createdAt.getTime() - a.createdAt.getTime();
+            });
+          } else if (orderBy && 'cycleNo' in orderBy && orderBy.cycleNo === 'desc') {
+            filtered = [...filtered].sort((a, b) => b.cycleNo - a.cycleNo);
+          }
+
+          const found = filtered[0];
+
+          if (include) {
+            return {
+              ...found,
+              ...(include.scheduledPayoutUser
+                ? { scheduledPayoutUser: findUser(found.scheduledPayoutUserId) }
+                : {}),
+              ...(include.finalPayoutUser
+                ? { finalPayoutUser: findUser(found.finalPayoutUserId) }
+                : {}),
+              ...(include.winningBidUser
+                ? { winningBidUser: found.winningBidUserId ? findUser(found.winningBidUserId) : null }
+                : {}),
+            };
+          }
+
+          return found;
+        },
+      ),
+      count: jest.fn(({ where }: { where: { roundId: string } }) => {
+        return cycles.filter((cycle) => cycle.roundId === where.roundId).length;
+      }),
+      create: jest.fn(
+        ({
+          data,
+          include,
+        }: {
+          data: {
+            groupId: string;
+            roundId: string;
             cycleNo: number;
             dueDate: Date;
-            payoutUserId: string;
+            scheduledPayoutUserId: string;
+            finalPayoutUserId: string;
+            auctionStatus: AuctionStatus;
             status: CycleStatus;
             createdByUserId: string;
           };
           include?: {
-            payoutUser?: {
+            scheduledPayoutUser?: {
+              select: { id: true; phone: true; fullName: true };
+            };
+            finalPayoutUser?: {
+              select: { id: true; phone: true; fullName: true };
+            };
+            winningBidUser?: {
               select: { id: true; phone: true; fullName: true };
             };
           };
@@ -357,21 +471,26 @@ describe('Cycles (e2e)', () => {
           const cycle: CycleRecord = {
             id: `cycle_${cycles.length + 1}`,
             groupId: data.groupId,
+            roundId: data.roundId,
             cycleNo: data.cycleNo,
             dueDate: data.dueDate,
-            payoutUserId: data.payoutUserId,
+            scheduledPayoutUserId: data.scheduledPayoutUserId,
+            finalPayoutUserId: data.finalPayoutUserId,
+            auctionStatus: data.auctionStatus,
+            winningBidAmount: null,
+            winningBidUserId: null,
             status: data.status,
             createdByUserId: data.createdByUserId,
             createdAt: new Date(),
           };
-
           cycles.push(cycle);
 
-          if (include?.payoutUser) {
+          if (include) {
             return {
               ...cycle,
-              payoutUser:
-                users.find((user) => user.id === cycle.payoutUserId) ?? null,
+              scheduledPayoutUser: findUser(cycle.scheduledPayoutUserId),
+              finalPayoutUser: findUser(cycle.finalPayoutUserId),
+              winningBidUser: null,
             };
           }
 
@@ -384,8 +503,11 @@ describe('Cycles (e2e)', () => {
           .sort((a, b) => b.cycleNo - a.cycleNo)
           .map((cycle) => ({
             ...cycle,
-            payoutUser:
-              users.find((user) => user.id === cycle.payoutUserId) ?? null,
+            scheduledPayoutUser: findUser(cycle.scheduledPayoutUserId),
+            finalPayoutUser: findUser(cycle.finalPayoutUserId),
+            winningBidUser: cycle.winningBidUserId
+              ? findUser(cycle.winningBidUserId)
+              : null,
           }));
       }),
     },
@@ -406,7 +528,6 @@ describe('Cycles (e2e)', () => {
         if (typeof arg === 'function') {
           return arg(prismaMock);
         }
-
         return Promise.all(arg);
       },
     ),
@@ -426,11 +547,13 @@ describe('Cycles (e2e)', () => {
   beforeEach(() => {
     groups.splice(0, groups.length);
     members.splice(0, members.length);
+    rounds.splice(0, rounds.length);
+    schedules.splice(0, schedules.length);
     cycles.splice(0, cycles.length);
     jest.clearAllMocks();
   });
 
-  it('set payout order -> generate cycle -> current cycle returns expected payout user', async () => {
+  it('start random round -> generate cycle -> scheduled and final recipients match', async () => {
     const group = await groupsController.createGroup(adminUser, {
       name: 'Cycle Group',
       contributionAmount: 700,
@@ -450,10 +573,9 @@ describe('Cycles (e2e)', () => {
       createdAt: new Date(),
     });
 
-    await groupsController.updatePayoutOrder(adminUser, group.id, [
-      { userId: 'user_admin', payoutPosition: 1 },
-      { userId: 'user_member', payoutPosition: 2 },
-    ]);
+    const round = await groupsController.startRound(adminUser, group.id);
+    expect(round.payoutMode).toBe(PayoutMode.RANDOM_DRAW);
+    expect(round.schedule).toHaveLength(2);
 
     const generatedCycles = await groupsController.generateCycles(
       adminUser,
@@ -461,19 +583,23 @@ describe('Cycles (e2e)', () => {
       { count: 1 },
     );
 
-    expect(generatedCycles[0].payoutUserId).toBe('user_admin');
+    expect(generatedCycles[0].scheduledPayoutUserId).toBe(
+      generatedCycles[0].finalPayoutUserId,
+    );
+    expect(generatedCycles[0].auctionStatus).toBe(AuctionStatus.NONE);
 
     const currentCycle = await groupsController.getCurrentCycle(group.id);
-
     expect(currentCycle).not.toBeNull();
-    expect(currentCycle?.payoutUserId).toBe('user_admin');
+    expect(currentCycle?.scheduledPayoutUserId).toBe(
+      currentCycle?.finalPayoutUserId,
+    );
     expect(currentCycle?.status).toBe(CycleStatus.OPEN);
   });
 
-  it('disallows cycle generation if payout order is incomplete', async () => {
+  it('disallows cycle generation when no active round exists', async () => {
     const group = await groupsController.createGroup(adminUser, {
-      name: 'Incomplete Group',
-      contributionAmount: 400,
+      name: 'No Round Group',
+      contributionAmount: 500,
       frequency: GroupFrequency.WEEKLY,
       startDate: '2026-03-01',
       currency: 'ETB',

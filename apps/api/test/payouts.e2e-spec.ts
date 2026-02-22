@@ -32,7 +32,10 @@ type GroupRecord = {
 type CycleRecord = {
   id: string;
   groupId: string;
-  payoutUserId: string;
+  scheduledPayoutUserId: string;
+  finalPayoutUserId: string;
+  winningBidAmount: number | null;
+  winningBidUserId: string | null;
   status: CycleStatus;
   closedAt: Date | null;
   closedByUserId: string | null;
@@ -62,6 +65,7 @@ type PayoutRecord = {
   proofFileKey: string | null;
   paymentRef: string | null;
   note: string | null;
+  metadata?: Record<string, unknown> | null;
   createdByUserId: string;
   createdAt: Date;
   confirmedByUserId: string | null;
@@ -98,7 +102,10 @@ describe('Payouts (e2e)', () => {
     {
       id: '00000000-0000-0000-0000-000000000201',
       groupId: '00000000-0000-0000-0000-000000000101',
-      payoutUserId: '00000000-0000-0000-0000-000000000022',
+      scheduledPayoutUserId: '00000000-0000-0000-0000-000000000011',
+      finalPayoutUserId: '00000000-0000-0000-0000-000000000022',
+      winningBidAmount: 250,
+      winningBidUserId: '00000000-0000-0000-0000-000000000022',
       status: CycleStatus.OPEN,
       closedAt: null,
       closedByUserId: null,
@@ -287,6 +294,7 @@ describe('Payouts (e2e)', () => {
             proofFileKey: string | null;
             paymentRef: string | null;
             note: string | null;
+            metadata?: Record<string, unknown> | null;
             createdByUserId: string;
           };
           include?: {
@@ -420,13 +428,17 @@ describe('Payouts (e2e)', () => {
     payouts.splice(0, payouts.length);
     contributions.splice(0, contributions.length);
     groups[0].strictPayout = false;
+    cycles[0].scheduledPayoutUserId = '00000000-0000-0000-0000-000000000011';
+    cycles[0].finalPayoutUserId = '00000000-0000-0000-0000-000000000022';
+    cycles[0].winningBidAmount = 250;
+    cycles[0].winningBidUserId = '00000000-0000-0000-0000-000000000022';
     cycles[0].status = CycleStatus.OPEN;
     cycles[0].closedAt = null;
     cycles[0].closedByUserId = null;
     jest.clearAllMocks();
   });
 
-  it('admin creates payout, confirms payout in non-strict mode, then closes cycle', async () => {
+  it('admin creates payout for final recipient, confirms payout in non-strict mode, then closes cycle', async () => {
     const created = await payoutsController.createPayout(
       adminUser,
       '00000000-0000-0000-0000-000000000201',

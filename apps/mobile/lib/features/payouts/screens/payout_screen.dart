@@ -257,7 +257,13 @@ class _CycleHeaderCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
           const SizedBox(height: AppSpacing.xs),
-          Text('Recipient: ${_cycleRecipientLabel(cycle)}'),
+          Text('Scheduled recipient: ${_scheduledCycleRecipientLabel(cycle)}'),
+          if (_scheduledCycleRecipientLabel(cycle) !=
+              _cycleRecipientLabel(cycle))
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text('Final recipient: ${_cycleRecipientLabel(cycle)}'),
+            ),
           const SizedBox(height: AppSpacing.xs),
           StatusPill.fromLabel(statusLabel),
         ],
@@ -887,15 +893,31 @@ Future<void> _viewProof(BuildContext context, WidgetRef ref, String key) async {
 }
 
 String _cycleRecipientLabel(CycleModel cycle) {
-  final fullName = cycle.payoutUser?.fullName?.trim();
+  final user = cycle.finalPayoutUser ?? cycle.payoutUser;
+  final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {
     return fullName;
   }
 
-  final phone = cycle.payoutUser?.phone?.trim();
+  final phone = user?.phone?.trim();
   if (phone != null && phone.isNotEmpty) {
     return phone;
   }
 
-  return cycle.payoutUserId;
+  return cycle.finalPayoutUserId ?? cycle.payoutUserId;
+}
+
+String _scheduledCycleRecipientLabel(CycleModel cycle) {
+  final user = cycle.scheduledPayoutUser ?? cycle.payoutUser;
+  final fullName = user?.fullName?.trim();
+  if (fullName != null && fullName.isNotEmpty) {
+    return fullName;
+  }
+
+  final phone = user?.phone?.trim();
+  if (phone != null && phone.isNotEmpty) {
+    return phone;
+  }
+
+  return cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
 }
