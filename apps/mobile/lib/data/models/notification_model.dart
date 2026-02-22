@@ -16,6 +16,10 @@ enum NotificationTypeModel {
   payoutConfirmed,
   @JsonValue('DUE_REMINDER')
   dueReminder,
+  @JsonValue('LOTTERY_WINNER')
+  lotteryWinner,
+  @JsonValue('LOTTERY_ANNOUNCEMENT')
+  lotteryAnnouncement,
   unknown,
 }
 
@@ -89,6 +93,8 @@ String notificationTypeWireValue(NotificationTypeModel type) {
     NotificationTypeModel.contributionRejected => 'CONTRIBUTION_REJECTED',
     NotificationTypeModel.payoutConfirmed => 'PAYOUT_CONFIRMED',
     NotificationTypeModel.dueReminder => 'DUE_REMINDER',
+    NotificationTypeModel.lotteryWinner => 'LOTTERY_WINNER',
+    NotificationTypeModel.lotteryAnnouncement => 'LOTTERY_ANNOUNCEMENT',
     NotificationTypeModel.unknown => 'UNKNOWN',
   };
 }

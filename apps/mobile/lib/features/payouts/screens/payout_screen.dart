@@ -124,7 +124,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading payout...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () => ref
               .read(groupDetailControllerProvider)
               .refreshAll(widget.groupId),
@@ -133,7 +133,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
           return cycleAsync.when(
             loading: () => const LoadingView(message: 'Loading cycle...'),
             error: (error, _) => ErrorView(
-              message: error.toString(),
+              message: mapFriendlyError(error),
               onRetry: () => ref.invalidate(
                 cycleDetailProvider((
                   groupId: widget.groupId,
@@ -145,7 +145,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
               return payoutAsync.when(
                 loading: () => const LoadingView(message: 'Loading payout...'),
                 error: (error, _) => ErrorView(
-                  message: error.toString(),
+                  message: mapFriendlyError(error),
                   onRetry: () =>
                       ref.invalidate(cyclePayoutProvider(widget.cycleId)),
                 ),
@@ -257,12 +257,13 @@ class _CycleHeaderCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
           const SizedBox(height: AppSpacing.xs),
-          Text('Scheduled recipient: ${_scheduledCycleRecipientLabel(cycle)}'),
-          if (_scheduledCycleRecipientLabel(cycle) !=
-              _cycleRecipientLabel(cycle))
+          Text('Drawn winner: ${_drawnWinnerLabel(cycle)}'),
+          if (_drawnWinnerLabel(cycle) != _cycleRecipientLabel(cycle))
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text('Final recipient: ${_cycleRecipientLabel(cycle)}'),
+              child: Text(
+                'Final recipient after auction: ${_cycleRecipientLabel(cycle)}',
+              ),
             ),
           const SizedBox(height: AppSpacing.xs),
           StatusPill.fromLabel(statusLabel),
@@ -907,7 +908,7 @@ String _cycleRecipientLabel(CycleModel cycle) {
   return cycle.finalPayoutUserId ?? cycle.payoutUserId;
 }
 
-String _scheduledCycleRecipientLabel(CycleModel cycle) {
+String _drawnWinnerLabel(CycleModel cycle) {
   final user = cycle.scheduledPayoutUser ?? cycle.payoutUser;
   final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {

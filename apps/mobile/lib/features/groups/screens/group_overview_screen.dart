@@ -8,19 +8,14 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/member_model.dart';
-import '../../../shared/copy/fair_draw_copy.dart';
+import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
-import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/current_cycle_provider.dart';
+import '../../cycles/cycles_list_provider.dart';
 import '../group_detail_controller.dart';
-import '../../rounds/current_round_schedule_provider.dart';
-import '../../rounds/round_draw_reveal_state.dart';
-import '../../rounds/start_round_controller.dart';
-import '../../rounds/start_round_flow.dart';
-import '../../rounds/widgets/round_order_card.dart';
 
 class GroupOverviewScreen extends ConsumerWidget {
   const GroupOverviewScreen({super.key, required this.groupId});
@@ -31,22 +26,13 @@ class GroupOverviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final group = groupAsync.valueOrNull;
-    ref.listen(startRoundControllerProvider(groupId), (previous, next) {
-      final previousError = previous?.errorMessage;
-      final nextError = next.errorMessage;
-      if (nextError != null &&
-          nextError.isNotEmpty &&
-          previousError != nextError) {
-        AppSnackbars.error(context, nextError);
-      }
-    });
 
     return KitScaffold(
       appBar: KitAppBar(title: group?.name ?? 'Group overview'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () =>
               ref.read(groupDetailControllerProvider).refreshAll(groupId),
         ),
@@ -56,59 +42,24 @@ class GroupOverviewScreen extends ConsumerWidget {
   }
 }
 
-class _GroupOverviewBody extends ConsumerStatefulWidget {
+class _GroupOverviewBody extends ConsumerWidget {
   const _GroupOverviewBody({required this.group});
 
   final GroupModel group;
 
   @override
-  ConsumerState<_GroupOverviewBody> createState() => _GroupOverviewBodyState();
-}
-
-class _GroupOverviewBodyState extends ConsumerState<_GroupOverviewBody> {
-  final _roundOrderKey = GlobalKey();
-  var _didAutoScrollForReveal = false;
-
-  void _scrollToRoundOrderIfNeeded(bool shouldAutoPlay) {
-    if (!shouldAutoPlay) {
-      _didAutoScrollForReveal = false;
-      return;
-    }
-    if (_didAutoScrollForReveal) {
-      return;
-    }
-    _didAutoScrollForReveal = true;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final targetContext = _roundOrderKey.currentContext;
-      if (targetContext == null || !mounted) {
-        return;
-      }
-
-      Scrollable.ensureVisible(
-        targetContext,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        alignment: 0.08,
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final group = widget.group;
+  Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(groupMembersProvider(group.id));
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
-    final shouldAutoPlay = ref.watch(roundJustStartedProvider(group.id));
+    final cyclesAsync = ref.watch(cyclesListProvider(group.id));
     final isAdmin = group.membership?.role == MemberRoleModel.admin;
-    _scrollToRoundOrderIfNeeded(shouldAutoPlay);
 
     return RefreshIndicator(
       onRefresh: () async {
         await ref.read(groupDetailControllerProvider).refreshAll(group.id);
         ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
         ref.invalidate(currentCycleProvider(group.id));
-        ref.invalidate(currentRoundScheduleProvider(group.id));
+        ref.invalidate(cyclesListProvider(group.id));
       },
       child: ListView(
         children: [
@@ -118,10 +69,14 @@ class _GroupOverviewBodyState extends ConsumerState<_GroupOverviewBody> {
             currentCycle: currentCycleAsync.valueOrNull,
           ),
           const SizedBox(height: AppSpacing.md),
-          Container(
-            key: _roundOrderKey,
-            child: RoundOrderCard(groupId: group.id),
+          _LotterySummaryCard(
+            groupId: group.id,
+            membersAsync: membersAsync,
+            currentCycleAsync: currentCycleAsync,
+            cyclesAsync: cyclesAsync,
           ),
+          const SizedBox(height: AppSpacing.md),
+          _WinnerHistoryCard(groupId: group.id, cyclesAsync: cyclesAsync),
           const SizedBox(height: AppSpacing.md),
           _MembersCard(
             groupId: group.id,
@@ -158,7 +113,7 @@ class _GroupSummaryCard extends StatelessWidget {
       null =>
         group.status == GroupStatusModel.archived ? 'Completed' : 'Not started',
       final cycle =>
-        cycle.status == CycleStatusModel.closed ? 'Completed' : 'Active',
+        cycle.status == CycleStatusModel.closed ? 'Completed' : 'In progress',
     };
 
     return KitCard(
@@ -181,10 +136,239 @@ class _GroupSummaryCard extends StatelessWidget {
             value: _frequencyLabel(group.frequency),
           ),
           _SummaryRow(label: 'Members', value: '${membersCount ?? '-'}'),
-          const _SummaryRow(label: 'Payout mode', value: FairDrawCopy.label),
+          const _SummaryRow(label: 'Payout mode', value: LotteryCopy.label),
           _SummaryRow(label: 'Round status', value: roundStatus),
         ],
       ),
+    );
+  }
+}
+
+class _LotterySummaryCard extends StatelessWidget {
+  const _LotterySummaryCard({
+    required this.groupId,
+    required this.membersAsync,
+    required this.currentCycleAsync,
+    required this.cyclesAsync,
+  });
+
+  final String groupId;
+  final AsyncValue<List<MemberModel>> membersAsync;
+  final AsyncValue<CycleModel?> currentCycleAsync;
+  final AsyncValue<List<CycleModel>> cyclesAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    if (membersAsync.isLoading ||
+        cyclesAsync.isLoading ||
+        currentCycleAsync.isLoading) {
+      return const KitCard(
+        child: SizedBox(height: 180, child: KitSkeletonList(itemCount: 4)),
+      );
+    }
+
+    if (membersAsync.hasError ||
+        cyclesAsync.hasError ||
+        currentCycleAsync.hasError) {
+      final error =
+          membersAsync.error ?? cyclesAsync.error ?? currentCycleAsync.error;
+      return ErrorView(
+        message: mapFriendlyError(error ?? 'Unable to load lottery summary.'),
+      );
+    }
+
+    final members = membersAsync.valueOrNull ?? const <MemberModel>[];
+    final activeMemberCount = members
+        .where((member) => member.status == MemberStatusModel.active)
+        .length;
+    final cycles = cyclesAsync.valueOrNull ?? const <CycleModel>[];
+    final currentCycle = currentCycleAsync.valueOrNull;
+
+    final summary = _buildLotterySummary(
+      activeMemberCount: activeMemberCount,
+      currentCycle: currentCycle,
+      cycles: cycles,
+    );
+
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            LotteryCopy.summaryTitle,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _SummaryRow(
+            label: LotteryCopy.turnsCompletedLabel,
+            value: '${summary.turnsCompleted} / ${summary.totalTurns}',
+          ),
+          _SummaryRow(
+            label: LotteryCopy.lastWinnerLabel,
+            value: summary.lastWinnerName,
+          ),
+          _SummaryRow(
+            label: LotteryCopy.statusLabel,
+            value: summary.roundStatus,
+          ),
+          if (summary.isCompleted) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              LotteryCopy.completedRoundMessage,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  _LotterySummaryData _buildLotterySummary({
+    required int activeMemberCount,
+    required CycleModel? currentCycle,
+    required List<CycleModel> cycles,
+  }) {
+    final latestRoundId =
+        currentCycle?.roundId ??
+        (cycles.isNotEmpty ? cycles.first.roundId : null);
+    final roundCycles = latestRoundId == null
+        ? <CycleModel>[]
+        : cycles
+              .where((cycle) => cycle.roundId == latestRoundId)
+              .toList(growable: true);
+    roundCycles.sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
+
+    final turnsCompleted = roundCycles.length;
+    final totalTurns = activeMemberCount;
+    final isCompleted =
+        totalTurns > 0 && turnsCompleted >= totalTurns && currentCycle == null;
+
+    return _LotterySummaryData(
+      turnsCompleted: turnsCompleted,
+      totalTurns: totalTurns,
+      roundStatus: isCompleted
+          ? LotteryCopy.statusCompleted
+          : LotteryCopy.statusInProgress,
+      isCompleted: isCompleted,
+      lastWinnerName: roundCycles.isEmpty
+          ? LotteryCopy.noWinnerYet
+          : _cycleWinnerLabel(roundCycles.first),
+    );
+  }
+}
+
+class _LotterySummaryData {
+  const _LotterySummaryData({
+    required this.turnsCompleted,
+    required this.totalTurns,
+    required this.lastWinnerName,
+    required this.roundStatus,
+    required this.isCompleted,
+  });
+
+  final int turnsCompleted;
+  final int totalTurns;
+  final String lastWinnerName;
+  final String roundStatus;
+  final bool isCompleted;
+}
+
+class _WinnerHistoryCard extends ConsumerWidget {
+  const _WinnerHistoryCard({required this.groupId, required this.cyclesAsync});
+
+  final String groupId;
+  final AsyncValue<List<CycleModel>> cyclesAsync;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const KitSectionHeader(title: 'Winner history'),
+        cyclesAsync.when(
+          loading: () => const KitCard(
+            child: Column(
+              children: [
+                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
+                SizedBox(height: AppSpacing.sm),
+                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
+                SizedBox(height: AppSpacing.sm),
+                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
+              ],
+            ),
+          ),
+          error: (error, _) => ErrorView(
+            message: mapFriendlyError(error),
+            onRetry: () => ref.invalidate(cyclesListProvider(groupId)),
+          ),
+          data: (cycles) {
+            if (cycles.isEmpty) {
+              return const KitEmptyState(
+                icon: Icons.emoji_events_outlined,
+                title: 'No winners yet',
+                message: 'Winners will appear here after each turn draw.',
+              );
+            }
+
+            final sortedCycles = [...cycles]
+              ..sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
+            return KitCard(
+              child: Column(
+                children: [
+                  for (var i = 0; i < sortedCycles.length; i++) ...[
+                    _WinnerHistoryRow(cycle: sortedCycles[i]),
+                    if (i != sortedCycles.length - 1)
+                      Divider(
+                        height: AppSpacing.lg,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _WinnerHistoryRow extends StatelessWidget {
+  const _WinnerHistoryRow({required this.cycle});
+
+  final CycleModel cycle;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusLabel = switch (cycle.status) {
+      CycleStatusModel.open => 'OPEN',
+      CycleStatusModel.closed => 'CLOSED',
+      CycleStatusModel.unknown => 'UNKNOWN',
+    };
+    final winnerLabel = _cycleWinnerLabel(cycle);
+
+    return Row(
+      children: [
+        KitAvatar(name: winnerLabel, size: KitAvatarSize.sm),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(winnerLabel, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                'Turn ${cycle.cycleNo} • Due ${formatDate(cycle.dueDate)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        StatusPill.fromLabel(statusLabel),
+      ],
     );
   }
 }
@@ -227,7 +411,7 @@ class _MembersCard extends ConsumerWidget {
             ),
           ),
           error: (error, _) => ErrorView(
-            message: error.toString(),
+            message: mapFriendlyError(error),
             onRetry: () =>
                 ref.read(groupDetailControllerProvider).refreshMembers(groupId),
           ),
@@ -261,7 +445,7 @@ class _MembersCard extends ConsumerWidget {
   }
 }
 
-class _OverviewAdminActionsCard extends ConsumerWidget {
+class _OverviewAdminActionsCard extends StatelessWidget {
   const _OverviewAdminActionsCard({
     required this.groupId,
     required this.hasOpenCycle,
@@ -271,16 +455,7 @@ class _OverviewAdminActionsCard extends ConsumerWidget {
   final bool hasOpenCycle;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final startRoundState = ref.watch(startRoundControllerProvider(groupId));
-    final hasLockedOrder =
-        ref
-            .watch(currentRoundScheduleProvider(groupId))
-            .valueOrNull
-            ?.schedule
-            .isNotEmpty ==
-        true;
-
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -295,29 +470,11 @@ class _OverviewAdminActionsCard extends ConsumerWidget {
                 onPressed: () =>
                     context.push(AppRoutePaths.groupInvite(groupId)),
               ),
-              if (!hasOpenCycle && !hasLockedOrder) ...[
-                const SizedBox(height: AppSpacing.sm),
-                KitPrimaryButton(
-                  label: startRoundState.isSubmitting
-                      ? 'Starting round...'
-                      : 'Start round',
-                  icon: Icons.play_arrow_rounded,
-                  isLoading: startRoundState.isSubmitting,
-                  onPressed: startRoundState.isSubmitting
-                      ? null
-                      : () => startFairDrawFlow(
-                          context: context,
-                          ref: ref,
-                          groupId: groupId,
-                          navigateToOverview: false,
-                        ),
-                ),
-              ],
               if (!hasOpenCycle) ...[
                 const SizedBox(height: AppSpacing.sm),
-                KitSecondaryButton(
-                  label: 'Generate next cycle',
-                  icon: Icons.add_circle_outline,
+                KitPrimaryButton(
+                  label: LotteryCopy.drawWinnerButton,
+                  icon: Icons.casino_outlined,
                   onPressed: () =>
                       context.push(AppRoutePaths.groupCyclesGenerate(groupId)),
                 ),
@@ -417,4 +574,18 @@ String _frequencyLabel(GroupFrequencyModel frequency) {
     GroupFrequencyModel.monthly => 'Monthly',
     GroupFrequencyModel.unknown => 'Unknown',
   };
+}
+
+String _cycleWinnerLabel(CycleModel cycle) {
+  final fullName = cycle.finalPayoutUser?.fullName?.trim();
+  if (fullName != null && fullName.isNotEmpty) {
+    return fullName;
+  }
+
+  final phone = cycle.finalPayoutUser?.phone?.trim();
+  if (phone != null && phone.isNotEmpty) {
+    return phone;
+  }
+
+  return cycle.finalPayoutUserId ?? cycle.payoutUserId;
 }

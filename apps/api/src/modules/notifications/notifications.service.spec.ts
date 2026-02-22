@@ -107,4 +107,24 @@ describe('NotificationsService', () => {
       (prismaMock.notification.create as jest.Mock).mock.calls.length,
     ).toBe(1);
   });
+
+  it('skips notify when eventId already exists for the user', async () => {
+    prismaMock.notification.findFirst = jest
+      .fn()
+      .mockResolvedValueOnce({ id: 'notification_existing' });
+
+    await service.notifyUser('user_3', {
+      type: NotificationType.LOTTERY_WINNER,
+      title: 'You won',
+      body: 'Winner',
+      eventId: 'DRAW_cycle_1_WINNER',
+    });
+
+    expect(
+      (bullMqMock.enqueueNotification as jest.Mock).mock.calls,
+    ).toHaveLength(0);
+    expect(
+      (prismaMock.notification.create as jest.Mock).mock.calls,
+    ).toHaveLength(0);
+  });
 });

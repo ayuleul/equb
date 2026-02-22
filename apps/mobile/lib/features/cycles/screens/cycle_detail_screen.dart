@@ -70,7 +70,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
       child: cycleAsync.when(
         loading: () => const LoadingView(message: 'Loading cycle...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () => ref.invalidate(
             cycleDetailProvider((
               groupId: widget.groupId,
@@ -81,10 +81,10 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         data: (cycle) {
           final isAdmin =
               groupAsync.valueOrNull?.membership?.role == MemberRoleModel.admin;
-          final scheduledUserId =
+          final drawnWinnerUserId =
               cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
-          final isScheduledRecipient = currentUser?.id == scheduledUserId;
-          final canManageAuction = isAdmin || isScheduledRecipient;
+          final isDrawnWinner = currentUser?.id == drawnWinnerUserId;
+          final canManageAuction = isAdmin || isDrawnWinner;
 
           return _CycleDetailBody(
             groupId: widget.groupId,
@@ -125,7 +125,7 @@ class _CycleDetailBody extends ConsumerWidget {
       CycleStatusModel.unknown => 'UNKNOWN',
     };
 
-    final scheduledRecipient = _recipientLabel(
+    final drawnWinner = _recipientLabel(
       cycle.scheduledPayoutUser ?? cycle.payoutUser,
       cycle.scheduledPayoutUserId ?? cycle.payoutUserId,
     );
@@ -155,10 +155,10 @@ class _CycleDetailBody extends ConsumerWidget {
               const SizedBox(height: AppSpacing.sm),
               Text('Due date: ${formatDate(cycle.dueDate)}'),
               const SizedBox(height: AppSpacing.xs),
-              Text('Scheduled recipient: $scheduledRecipient'),
-              if (finalRecipient != scheduledRecipient) ...[
+              Text('Drawn winner: $drawnWinner'),
+              if (finalRecipient != drawnWinner) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text('Final recipient: $finalRecipient'),
+                Text('Final recipient after auction: $finalRecipient'),
               ],
             ],
           ),
@@ -290,7 +290,7 @@ class _AuctionCard extends ConsumerWidget {
             Text(
               canManageAuction
                   ? 'Auction is not open yet for this cycle.'
-                  : 'Scheduled recipient has not opened auction.',
+                  : 'The drawn winner has not opened auction.',
             ),
             if (canManageAuction) ...[
               const SizedBox(height: AppSpacing.md),
@@ -377,7 +377,7 @@ class _AuctionCard extends ConsumerWidget {
           if (auctionStatus == AuctionStatusModel.closed) ...[
             if (cycle.winningBidUserId == null)
               const Text(
-                'Auction closed with no bids. Scheduled recipient keeps the turn.',
+                'Auction closed with no bids. The drawn winner keeps this turn.',
               )
             else ...[
               Text(

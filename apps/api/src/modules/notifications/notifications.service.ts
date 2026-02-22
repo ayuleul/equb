@@ -33,6 +33,7 @@ export interface NotificationPayload {
   title: string;
   body: string;
   groupId?: string | null;
+  eventId?: string;
   data?: Record<string, unknown> | null;
   dedupKey?: string;
 }
@@ -153,27 +154,36 @@ export class NotificationsService {
     payload: NotificationPayload,
   ): Promise<void> {
     try {
-      const dataWithDedup = this.attachDedupKey(payload.data, payload.dedupKey);
+      const dedupKey = payload.dedupKey ?? payload.eventId;
+      const dataWithDedup = this.attachDedupKey(payload.data, dedupKey);
       const jobData: NotificationJobData = {
         userId,
         groupId: payload.groupId ?? null,
+        eventId: payload.eventId ?? null,
         type: payload.type,
         title: payload.title,
         body: payload.body,
         data: dataWithDedup,
-        dedupKey: payload.dedupKey,
+        dedupKey,
       };
 
       if (
-        payload.dedupKey &&
-        (await this.existsForDedup(userId, payload.type, payload.dedupKey))
+        payload.eventId &&
+        (await this.existsForEventId(userId, payload.eventId))
+      ) {
+        return;
+      }
+
+      if (
+        dedupKey &&
+        (await this.existsForDedup(userId, payload.type, dedupKey))
       ) {
         return;
       }
 
       const queued = await this.bullMqService.enqueueNotification(jobData, {
-        jobId: payload.dedupKey
-          ? `notification:${payload.dedupKey}`
+        jobId: dedupKey
+          ? `notification:${dedupKey}`
           : undefined,
       });
 
@@ -270,21 +280,95 @@ export class NotificationsService {
   }
 
   async deliverNotification(jobData: NotificationJobData): Promise<void> {
+    const dedupKey = jobData.dedupKey ?? jobData.eventId ?? undefined;
+
     if (
-      jobData.dedupKey &&
+      jobData.eventId &&
+      (await this.existsForEventId(jobData.userId, jobData.eventId))
+    ) {
+      return;
+    }
+
+    if (
+      dedupKey &&
       (await this.existsForDedup(
         jobData.userId,
         jobData.type,
-        jobData.dedupKey,
+        dedupKey,
       ))
     ) {
       return;
     }
 
+    let notification:
+      | {
+          id: string;
+          userId: string;
+          groupId: string | null;
+          type: NotificationType;
+        }
+      | null
+      | undefined = null;
+    try {
+      notification = await this.prisma.notification?.create?.({
+        data: {
+          userId: jobData.userId,
+          groupId: jobData.groupId ?? null,
+          eventId: jobData.eventId ?? null,
+          type: jobData.type,
+          title: jobData.title,
+          body: jobData.body,
+          dataJson: jobData.data
+            ? (jobData.data as Prisma.InputJsonValue)
+            : undefined,
+        },
+      });
+    } catch (error) {
+      if (this.isUniqueConstraintViolation(error)) {
+        return;
+      }
+      this.logger.error(
+        `Notification persistence failed for userId=${jobData.userId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return;
+    }
+
+    if (!notification) {
+      return;
+    }
+
+    await this.sendPushToUser(
+      jobData.userId,
+      jobData.title,
+      jobData.body,
+      jobData.data,
+    );
+
+    await this.auditService.log(
+      'NOTIFICATION_CREATED',
+      null,
+      {
+        notificationId: notification.id,
+        userId: notification.userId,
+        type: notification.type,
+        dedupKey,
+        eventId: jobData.eventId ?? null,
+      },
+      notification.groupId,
+    );
+  }
+
+  async sendPushToUser(
+    userId: string,
+    title: string,
+    body: string,
+    data?: Record<string, unknown> | null,
+  ): Promise<void> {
     const activeTokens =
       (await this.prisma.deviceToken?.findMany?.({
         where: {
-          userId: jobData.userId,
+          userId,
           isActive: true,
         },
         select: {
@@ -295,45 +379,16 @@ export class NotificationsService {
     try {
       await this.fcmProvider.sendToTokens(
         activeTokens.map((item) => item.token),
-        jobData.title,
-        jobData.body,
-        jobData.data,
+        title,
+        body,
+        data,
       );
     } catch (error) {
       this.logger.error(
-        `Push delivery failed for userId=${jobData.userId}`,
+        `Push delivery failed for userId=${userId}`,
         error instanceof Error ? error.stack : undefined,
       );
     }
-
-    const notification = await this.prisma.notification?.create?.({
-      data: {
-        userId: jobData.userId,
-        groupId: jobData.groupId ?? null,
-        type: jobData.type,
-        title: jobData.title,
-        body: jobData.body,
-        dataJson: jobData.data
-          ? (jobData.data as Prisma.InputJsonValue)
-          : undefined,
-      },
-    });
-
-    if (!notification) {
-      return;
-    }
-
-    await this.auditService.log(
-      'NOTIFICATION_CREATED',
-      null,
-      {
-        notificationId: notification.id,
-        userId: notification.userId,
-        type: notification.type,
-        dedupKey: jobData.dedupKey ?? null,
-      },
-      notification.groupId,
-    );
   }
 
   private attachDedupKey(
@@ -371,6 +426,30 @@ export class NotificationsService {
     });
 
     return Boolean(existing);
+  }
+
+  private async existsForEventId(
+    userId: string,
+    eventId: string,
+  ): Promise<boolean> {
+    const existing = await this.prisma.notification?.findFirst?.({
+      where: {
+        userId,
+        eventId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return Boolean(existing);
+  }
+
+  private isUniqueConstraintViolation(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    );
   }
 
   private toNotificationResponse(value: {

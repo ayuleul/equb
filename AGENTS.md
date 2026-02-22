@@ -113,12 +113,17 @@
   - `CONTRIBUTION_REJECTED`
   - `PAYOUT_CONFIRMED`
   - `DUE_REMINDER`
+  - `LOTTERY_WINNER`
+  - `LOTTERY_ANNOUNCEMENT`
 - Event triggers (MVP):
   - `MEMBER_JOINED` -> notify active group admins
   - `CONTRIBUTION_SUBMITTED` -> notify active group admins
   - `CONTRIBUTION_CONFIRMED` / `CONTRIBUTION_REJECTED` -> notify contributor
   - `PAYOUT_CONFIRMED` -> notify active group members
   - `DUE_REMINDER` -> notify active members missing `SUBMITTED|CONFIRMED` contribution
+  - `LOTTERY_WINNER` -> notify drawn cycle winner
+  - `LOTTERY_ANNOUNCEMENT` -> notify all other round snapshot members
+- Lottery draw notifications are idempotent per user/event via `Notification.eventId` (for example `DRAW_<cycleId>_WINNER` and `DRAW_<cycleId>_ANNOUNCEMENT`).
 - Reminder scheduler runs daily at `09:00` in `Africa/Addis_Ababa` and enqueues a reminder-scan job.
 - Reminder dedup strategy is locked to one reminder per `(userId, cycleId, type, local-date)` using `dataJson.dedupKey` and queue `jobId`.
 - FCM config method is env-based (no JSON file path):

@@ -79,6 +79,13 @@ class ApiError implements Exception {
           message: payloadMessage ?? 'Not found.',
           statusCode: statusCode,
         );
+      case 429:
+        return ApiError(
+          type: ApiErrorType.badRequest,
+          message:
+              payloadMessage ?? 'Too many requests. Please wait and try again.',
+          statusCode: statusCode,
+        );
       default:
         if (statusCode != null && statusCode >= 500) {
           return ApiError(

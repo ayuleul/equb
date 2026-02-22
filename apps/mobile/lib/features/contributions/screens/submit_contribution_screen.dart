@@ -81,7 +81,7 @@ class _SubmitContributionScreenState
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () => ref
               .read(groupDetailControllerProvider)
               .refreshGroup(widget.groupId),
@@ -90,7 +90,7 @@ class _SubmitContributionScreenState
           return cycleAsync.when(
             loading: () => const LoadingView(message: 'Loading cycle...'),
             error: (error, _) => ErrorView(
-              message: error.toString(),
+              message: mapFriendlyError(error),
               onRetry: () => ref.invalidate(
                 cycleDetailProvider((
                   groupId: widget.groupId,

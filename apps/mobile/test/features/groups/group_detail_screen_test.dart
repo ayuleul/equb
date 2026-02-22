@@ -27,11 +27,11 @@ void main() {
     await tester.pumpWidget(_buildTestApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Current round'), findsOneWidget);
-    expect(find.text('Cycle #3'), findsOneWidget);
+    expect(find.text('Current turn'), findsOneWidget);
+    expect(find.text('Turn 3'), findsOneWidget);
     expect(find.text('Contributions'), findsWidgets);
     expect(find.text('Paid: 2 / 2'), findsOneWidget);
-    expect(find.text('Round timeline'), findsOneWidget);
+    expect(find.text('Turn progress'), findsOneWidget);
     expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
     expect(find.byKey(const ValueKey('group-tab-members')), findsNothing);
   });
@@ -49,7 +49,7 @@ void main() {
     expect(find.byType(GroupOverviewScreen), findsOneWidget);
     expect(find.text('Group summary'), findsOneWidget);
     expect(find.text('Members'), findsWidgets);
-    expect(find.text('Test User'), findsOneWidget);
+    expect(find.text('Test User'), findsWidgets);
   });
 }
 
@@ -221,22 +221,6 @@ class _FakeCyclesApi implements CyclesApi {
   @override
   Future<Map<String, dynamic>> startRound(String groupId) async {
     return <String, dynamic>{'success': true};
-  }
-
-  @override
-  Future<Map<String, dynamic>> getCurrentRoundSchedule(String groupId) async {
-    return <String, dynamic>{
-      'roundId': 'round-1',
-      'roundNo': 1,
-      'drawSeedHash': 'abc123',
-      'schedule': <Map<String, dynamic>>[
-        <String, dynamic>{
-          'position': 1,
-          'userId': 'user-1',
-          'displayName': 'Test User',
-        },
-      ],
-    };
   }
 
   Map<String, dynamic> _cycle(String groupId, String cycleId) {

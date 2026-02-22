@@ -40,7 +40,7 @@ class GroupInviteScreen extends ConsumerWidget {
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () =>
               ref.read(groupDetailControllerProvider).refreshGroup(groupId),
         ),

@@ -19,7 +19,6 @@ import '../features/groups/screens/join_group_screen.dart';
 import '../features/cycles/screens/cycle_detail_screen.dart';
 import '../features/cycles/screens/cycles_overview_screen.dart';
 import '../features/cycles/screens/generate_cycle_screen.dart';
-import '../features/cycles/screens/payout_order_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/submit_contribution_screen.dart';
 import '../features/payouts/screens/payout_screen.dart';
@@ -51,8 +50,6 @@ class AppRoutePaths {
       '/groups/$groupId/cycles/current';
   static String groupCycleDetail(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId';
-  static String groupPayoutOrder(String groupId) =>
-      '/groups/$groupId/payout-order';
   static String groupCyclesGenerate(String groupId) =>
       '/groups/$groupId/cycles/generate';
   static String groupCycleContributions(String groupId, String cycleId) =>
@@ -153,13 +150,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       builder: (context, state) {
                         final groupId = state.pathParameters['id'] ?? '';
                         return GroupInviteScreen(groupId: groupId);
-                      },
-                    ),
-                    GoRoute(
-                      path: 'payout-order',
-                      builder: (context, state) {
-                        final groupId = state.pathParameters['id'] ?? '';
-                        return PayoutOrderScreen(groupId: groupId);
                       },
                     ),
                     GoRoute(

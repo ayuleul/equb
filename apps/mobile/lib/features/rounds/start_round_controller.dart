@@ -6,8 +6,6 @@ import '../../shared/utils/api_error_mapper.dart';
 import '../cycles/current_cycle_provider.dart';
 import '../cycles/cycles_list_provider.dart';
 import '../groups/group_detail_controller.dart';
-import 'current_round_schedule_provider.dart';
-import 'round_draw_reveal_state.dart';
 
 class StartRoundState {
   const StartRoundState({required this.isSubmitting, this.errorMessage});
@@ -63,8 +61,6 @@ class StartRoundController extends StateNotifier<StartRoundState> {
       _ref.invalidate(groupDetailProvider(groupId));
       _ref.invalidate(currentCycleProvider(groupId));
       _ref.invalidate(cyclesListProvider(groupId));
-      _ref.invalidate(currentRoundScheduleProvider(groupId));
-      _ref.read(roundJustStartedProvider(groupId).notifier).state = true;
 
       state = state.copyWith(isSubmitting: false, clearError: true);
       return true;

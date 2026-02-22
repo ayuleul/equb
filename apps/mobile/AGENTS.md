@@ -53,6 +53,7 @@
 - Every screen should provide loading and error states.
 - Reuse shared widgets for buttons, text fields, loading, and error views.
 - Keep visuals minimal and clear; prioritize stable flow over complex design.
+- User-facing error surfaces must show mapped friendly messages (`mapFriendlyError` / `mapApiErrorToMessage`) instead of raw exception `toString()`.
 
 ## Theming rules
 - Theme tokens in `lib/app/theme/` are the single source of truth for app styling.
@@ -96,11 +97,12 @@
 - Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); it must not mutate the scheduled recipient or round order.
 - Scheduled recipient (and admins) can open/close cycle auction; non-admin, non-scheduled members can only submit bids while auction is open.
 - Bid visibility in UI is locked to backend scope: admins/scheduled recipient see all bids, other members see only their own bid entries.
-- User-facing random round language is locked to `🎲 Fair Random Draw`.
-- Fair draw shuffle animations are presentation-only; the locked round order source of truth is always backend schedule data.
-- Group Overview `Round order` card must provide loading, retryable error, and replay states.
-- Advanced fairness verification details (for example commitment hash) must stay behind an expandable `Advanced` section in the info sheet.
-- Start-round autoplay into round-order reveal uses in-memory state (`roundJustStartedProvider(groupId)`) rather than route query params.
+- User-facing round language is locked to `🎲 Lottery`.
+- Lottery is per-turn only; future winners must never be visible in UI.
+- No UI element may imply a pre-generated visible winner list/order.
+- Admins must manually initiate each turn by tapping `🎲 Draw winner`.
+- Draw reveal animation is cosmetic only; winner data must come from backend draw response.
+- Group Overview must show lottery summary (turns completed, last winner, round status) and must not show future-turn lists.
 
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.
@@ -117,6 +119,7 @@
 ## Notifications rules
 - Device token registration is best-effort and must only call `/devices/register-token` when token changed for the current authenticated user context.
 - Deep-link resolution from notification payload must stay centralized in `features/notifications/deeplink_mapper.dart`.
+- Notification deep-link mapper should prefer explicit payload `route` when present, then fall back to `groupId`/`cycleId` mapping.
 - Tapping a notification row must mark it as read first, then navigate when a resolvable deep link exists.
 - Push delivery is optional; the app must keep notifications UX functional without Firebase by relying on in-app list and graceful fallback behavior.
 

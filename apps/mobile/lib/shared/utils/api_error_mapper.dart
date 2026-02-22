@@ -41,7 +41,7 @@ String _mapApiError(ApiError error) {
   }
 
   if (normalized.contains('payout order is incomplete')) {
-    return 'Set payout order for all active members before generating cycles.';
+    return 'A round must be started before drawing a winner.';
   }
 
   if (normalized.contains('open cycle already exists')) {

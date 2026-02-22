@@ -3,6 +3,7 @@ import { NotificationType } from '@prisma/client';
 export interface NotificationJobData {
   userId: string;
   groupId?: string | null;
+  eventId?: string | null;
   type: NotificationType;
   title: string;
   body: string;

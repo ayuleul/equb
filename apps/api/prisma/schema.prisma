@@ -69,6 +69,8 @@ enum NotificationType {
   CONTRIBUTION_REJECTED
   PAYOUT_CONFIRMED
   DUE_REMINDER
+  LOTTERY_WINNER
+  LOTTERY_ANNOUNCEMENT
 }
 
 enum NotificationStatus {
@@ -372,6 +374,7 @@ model Notification {
   id        String             @id @default(uuid())
   userId    String
   groupId   String?
+  eventId   String?
   type      NotificationType
   title     String
   body      String
@@ -383,4 +386,5 @@ model Notification {
   group     EqubGroup?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([userId, status, createdAt(sort: Desc)])
+  @@unique([userId, eventId])
 }

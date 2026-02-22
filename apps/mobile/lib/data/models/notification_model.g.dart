@@ -51,6 +51,8 @@ const _$NotificationTypeModelEnumMap = {
   NotificationTypeModel.contributionRejected: 'CONTRIBUTION_REJECTED',
   NotificationTypeModel.payoutConfirmed: 'PAYOUT_CONFIRMED',
   NotificationTypeModel.dueReminder: 'DUE_REMINDER',
+  NotificationTypeModel.lotteryWinner: 'LOTTERY_WINNER',
+  NotificationTypeModel.lotteryAnnouncement: 'LOTTERY_ANNOUNCEMENT',
   NotificationTypeModel.unknown: 'unknown',
 };
 

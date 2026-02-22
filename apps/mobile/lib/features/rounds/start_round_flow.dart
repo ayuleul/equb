@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
-import '../../shared/copy/fair_draw_copy.dart';
+import '../../shared/copy/lottery_copy.dart';
 import '../../shared/kit/kit.dart';
 import '../../shared/ui/ui.dart';
 import 'start_round_controller.dart';
 
-Future<void> startFairDrawFlow({
+Future<void> startLotteryRoundFlow({
   required BuildContext context,
   required WidgetRef ref,
   required String groupId,
@@ -21,12 +21,10 @@ Future<void> startFairDrawFlow({
 
   final confirmed = await KitDialog.confirm(
     context: context,
-    title: FairDrawCopy.startDialogTitle,
-    message: FairDrawCopy.startDialogBullets
-        .map((line) => '• $line')
-        .join('\n'),
-    cancelLabel: FairDrawCopy.startDialogCancel,
-    confirmLabel: FairDrawCopy.startDialogConfirm,
+    title: LotteryCopy.startDialogTitle,
+    message: LotteryCopy.startDialogBullets.map((line) => '• $line').join('\n'),
+    cancelLabel: LotteryCopy.startDialogCancel,
+    confirmLabel: LotteryCopy.startDialogConfirm,
   );
 
   if (confirmed != true) {
@@ -41,7 +39,7 @@ Future<void> startFairDrawFlow({
     return;
   }
 
-  AppSnackbars.success(context, '${FairDrawCopy.label} started.');
+  AppSnackbars.success(context, LotteryCopy.startedMessage);
 
   if (navigateToOverview) {
     context.push(AppRoutePaths.groupOverview(groupId));

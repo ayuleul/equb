@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,7 @@ import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/payout_model.dart';
+import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
@@ -18,12 +21,13 @@ import '../../../shared/widgets/loading_view.dart';
 import '../../auth/auth_controller.dart';
 import '../../contributions/cycle_contributions_provider.dart';
 import '../../cycles/current_cycle_provider.dart';
+import '../../cycles/cycles_list_provider.dart';
+import '../../cycles/generate_cycle_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
+import '../../rounds/start_round_controller.dart';
+import '../../rounds/widgets/lottery_reveal_animation.dart';
 import '../group_detail_controller.dart';
 import '../widgets/group_more_actions_button.dart';
-import '../../rounds/start_round_controller.dart';
-import '../../rounds/current_round_schedule_provider.dart';
-import '../../rounds/start_round_flow.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({super.key, required this.groupId});
@@ -67,7 +71,7 @@ class GroupDetailScreen extends ConsumerWidget {
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () =>
               ref.read(groupDetailControllerProvider).refreshAll(groupId),
         ),
@@ -94,6 +98,7 @@ class _GroupRoundHub extends ConsumerWidget {
         final refreshedCycle = await ref.refresh(
           currentCycleProvider(group.id).future,
         );
+        ref.invalidate(cyclesListProvider(group.id));
         if (refreshedCycle != null) {
           ref.invalidate(
             cycleContributionsProvider((
@@ -106,7 +111,7 @@ class _GroupRoundHub extends ConsumerWidget {
       },
       child: ListView(
         children: [
-          _CurrentRoundCard(
+          _CurrentTurnCard(
             group: group,
             currentCycleAsync: currentCycleAsync,
             isAdmin: isAdmin,
@@ -134,8 +139,8 @@ class _GroupRoundHub extends ConsumerWidget {
   }
 }
 
-class _CurrentRoundCard extends ConsumerWidget {
-  const _CurrentRoundCard({
+class _CurrentTurnCard extends ConsumerStatefulWidget {
+  const _CurrentTurnCard({
     required this.group,
     required this.currentCycleAsync,
     required this.isAdmin,
@@ -146,22 +151,96 @@ class _CurrentRoundCard extends ConsumerWidget {
   final bool isAdmin;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final startRoundState = ref.watch(startRoundControllerProvider(group.id));
-    final hasLockedOrder =
-        ref
-            .watch(currentRoundScheduleProvider(group.id))
-            .valueOrNull
-            ?.schedule
-            .isNotEmpty ==
-        true;
+  ConsumerState<_CurrentTurnCard> createState() => _CurrentTurnCardState();
+}
 
+class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
+  bool _isDrawing = false;
+  String? _highlightCycleId;
+
+  Future<void> _drawWinner() async {
+    if (_isDrawing) {
+      return;
+    }
+
+    setState(() => _isDrawing = true);
+
+    final startedAt = DateTime.now();
+    final drawController = ref.read(
+      generateCycleControllerProvider(widget.group.id).notifier,
+    );
+
+    CycleModel? created = await drawController.generateNextCycle();
+
+    if (created == null) {
+      final drawError =
+          ref
+              .read(generateCycleControllerProvider(widget.group.id))
+              .errorMessage ??
+          '';
+      final normalized = drawError.toLowerCase();
+
+      if (normalized.contains('active round is required')) {
+        final startedRound = await ref
+            .read(startRoundControllerProvider(widget.group.id).notifier)
+            .startRound();
+
+        if (startedRound) {
+          created = await drawController.generateNextCycle();
+        }
+      }
+    }
+
+    final elapsed = DateTime.now().difference(startedAt);
+    const minimumAnimation = Duration(milliseconds: 1200);
+    if (elapsed < minimumAnimation) {
+      await Future<void>.delayed(minimumAnimation - elapsed);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _isDrawing = false);
+
+    if (created == null) {
+      final errorMessage =
+          ref
+              .read(generateCycleControllerProvider(widget.group.id))
+              .errorMessage ??
+          'Could not draw a winner right now.';
+      AppSnackbars.error(context, errorMessage);
+      return;
+    }
+    final createdCycle = created;
+
+    final winnerName = _cycleUserLabel(
+      createdCycle.finalPayoutUser,
+      createdCycle.finalPayoutUserId ?? createdCycle.payoutUserId,
+    );
+
+    setState(() => _highlightCycleId = createdCycle.id);
+    Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted || _highlightCycleId != createdCycle.id) {
+        return;
+      }
+      setState(() => _highlightCycleId = null);
+    });
+
+    AppSnackbars.success(
+      context,
+      '${LotteryCopy.drawSuccessPrefix} $winnerName won this turn!',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return KitCard(
-      child: currentCycleAsync.when(
-        loading: () => const _CurrentRoundSkeleton(),
+      child: widget.currentCycleAsync.when(
+        loading: () => const _CurrentTurnSkeleton(),
         error: (error, _) => ErrorView(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(currentCycleProvider(group.id)),
+          message: mapFriendlyError(error),
+          onRetry: () => ref.invalidate(currentCycleProvider(widget.group.id)),
         ),
         data: (cycle) {
           if (cycle == null) {
@@ -169,62 +248,51 @@ class _CurrentRoundCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Current round',
+                  LotteryCopy.noTurnYetTitle,
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Round not started',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'The first round will appear here once an admin starts it.',
+                  LotteryCopy.noTurnYetMessage,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                KitPrimaryButton(
-                  label: isAdmin
-                      ? (hasLockedOrder
-                            ? 'Generate next cycle'
-                            : (startRoundState.isSubmitting
-                                  ? 'Starting round...'
-                                  : 'Start round'))
-                      : 'Round not started',
-                  icon: isAdmin
-                      ? (hasLockedOrder
-                            ? Icons.add_circle_outline
-                            : Icons.play_arrow_rounded)
-                      : Icons.hourglass_top,
-                  isLoading:
-                      isAdmin &&
-                      !hasLockedOrder &&
-                      startRoundState.isSubmitting,
-                  onPressed: isAdmin
-                      ? (hasLockedOrder
-                            ? () => context.push(
-                                AppRoutePaths.groupCyclesGenerate(group.id),
-                              )
-                            : (startRoundState.isSubmitting
-                                  ? null
-                                  : () => startFairDrawFlow(
-                                      context: context,
-                                      ref: ref,
-                                      groupId: group.id,
-                                      navigateToOverview: true,
-                                    )))
-                      : null,
-                ),
+                if (_isDrawing)
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        LotteryCopy.drawingWinnerLabel,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ],
+                  )
+                else
+                  KitPrimaryButton(
+                    label: widget.isAdmin
+                        ? LotteryCopy.drawWinnerButton
+                        : 'Waiting for admin draw',
+                    icon: widget.isAdmin
+                        ? Icons.casino_outlined
+                        : Icons.hourglass_top,
+                    onPressed: widget.isAdmin ? _drawWinner : null,
+                  ),
               ],
             );
           }
 
-          return _CurrentRoundLoaded(
-            group: group,
+          return _CurrentTurnLoaded(
+            group: widget.group,
             cycle: cycle,
-            isAdmin: isAdmin,
+            isAdmin: widget.isAdmin,
+            highlightWinner: _highlightCycleId == cycle.id,
           );
         },
       ),
@@ -232,16 +300,18 @@ class _CurrentRoundCard extends ConsumerWidget {
   }
 }
 
-class _CurrentRoundLoaded extends ConsumerWidget {
-  const _CurrentRoundLoaded({
+class _CurrentTurnLoaded extends ConsumerWidget {
+  const _CurrentTurnLoaded({
     required this.group,
     required this.cycle,
     required this.isAdmin,
+    required this.highlightWinner,
   });
 
   final GroupModel group;
   final CycleModel cycle;
   final bool isAdmin;
+  final bool highlightWinner;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -266,11 +336,7 @@ class _CurrentRoundLoaded extends ConsumerWidget {
       payout: payout,
       contributions: contributionsAsync.valueOrNull,
     );
-    final scheduledRecipient = _cycleUserLabel(
-      cycle.scheduledPayoutUser,
-      cycle.scheduledPayoutUserId ?? cycle.payoutUserId,
-    );
-    final finalRecipient = _cycleUserLabel(
+    final winnerName = _cycleUserLabel(
       cycle.finalPayoutUser,
       cycle.finalPayoutUserId ?? cycle.payoutUserId,
     );
@@ -282,7 +348,7 @@ class _CurrentRoundLoaded extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                'Current round',
+                'Current turn',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -293,7 +359,7 @@ class _CurrentRoundLoaded extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'Cycle #${cycle.cycleNo}',
+          'Turn ${cycle.cycleNo}',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -301,18 +367,24 @@ class _CurrentRoundLoaded extends ConsumerWidget {
           'Due ${formatDate(cycle.dueDate)}',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Scheduled recipient: $scheduledRecipient',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        if (finalRecipient != scheduledRecipient) ...[
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Final recipient: $finalRecipient',
-            style: Theme.of(context).textTheme.bodyMedium,
+        const SizedBox(height: AppSpacing.sm),
+        LotteryRevealAnimation(
+          play: highlightWinner,
+          child: Row(
+            children: [
+              const Icon(Icons.emoji_events_outlined),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  '${LotteryCopy.winnerHeadline}: $winnerName',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
         const SizedBox(height: AppSpacing.md),
         KitPrimaryButton(
           label: primaryAction.label,
@@ -339,7 +411,7 @@ class _ContributionsSummaryCard extends ConsumerWidget {
       child: currentCycleAsync.when(
         loading: () => const _SummarySkeleton(title: 'Contributions'),
         error: (error, _) => ErrorView(
-          message: error.toString(),
+          message: mapFriendlyError(error),
           onRetry: () => ref.invalidate(currentCycleProvider(groupId)),
         ),
         data: (cycle) {
@@ -355,7 +427,7 @@ class _ContributionsSummaryCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'No active round yet.',
+                  'No open turn yet.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -369,7 +441,7 @@ class _ContributionsSummaryCard extends ConsumerWidget {
           return contributionsAsync.when(
             loading: () => const _SummarySkeleton(title: 'Contributions'),
             error: (error, _) => ErrorView(
-              message: error.toString(),
+              message: mapFriendlyError(error),
               onRetry: () => ref.invalidate(
                 cycleContributionsProvider((
                   groupId: groupId,
@@ -462,7 +534,7 @@ class _RoundTimelineCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Round timeline',
+            'Turn progress',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -583,8 +655,8 @@ class _TimelineNode extends StatelessWidget {
   }
 }
 
-class _CurrentRoundSkeleton extends StatelessWidget {
-  const _CurrentRoundSkeleton();
+class _CurrentTurnSkeleton extends StatelessWidget {
+  const _CurrentTurnSkeleton();
 
   @override
   Widget build(BuildContext context) {
@@ -658,10 +730,10 @@ _PrimaryAction _resolvePrimaryAction({
   );
   final payoutRoute = AppRoutePaths.groupCyclePayout(groupId, cycle.id);
   final auctionStatus = cycle.auctionStatus ?? AuctionStatusModel.none;
-  final scheduledUserId = cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
-  final isScheduledRecipient =
-      currentUserId != null && currentUserId == scheduledUserId;
-  final canManageAuction = isAdmin || isScheduledRecipient;
+  final drawnWinnerUserId = cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
+  final isDrawnWinner =
+      currentUserId != null && currentUserId == drawnWinnerUserId;
+  final canManageAuction = isAdmin || isDrawnWinner;
 
   if (isAdmin && payout?.status == PayoutStatusModel.pending) {
     return _PrimaryAction(
@@ -686,7 +758,7 @@ _PrimaryAction _resolvePrimaryAction({
     );
   }
 
-  if (isScheduledRecipient && auctionStatus != AuctionStatusModel.open) {
+  if (isDrawnWinner && auctionStatus != AuctionStatusModel.open) {
     return _PrimaryAction(
       label: 'Auction my turn',
       icon: Icons.gavel_rounded,
@@ -728,7 +800,7 @@ _PrimaryAction _resolvePrimaryAction({
   }
 
   return _PrimaryAction(
-    label: 'View current round',
+    label: 'View current turn',
     icon: Icons.visibility_outlined,
     onPressed: () => context.push(cycleDetailRoute),
   );
@@ -748,8 +820,8 @@ Future<void> _showAdminActions({
     ),
     if (cycle == null)
       KitActionSheetItem(
-        label: 'Generate next cycle',
-        icon: Icons.add_circle_outline,
+        label: LotteryCopy.drawWinnerButton,
+        icon: Icons.casino_outlined,
         onPressed: () =>
             context.push(AppRoutePaths.groupCyclesGenerate(groupId)),
       ),

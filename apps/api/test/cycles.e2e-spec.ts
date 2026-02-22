@@ -7,7 +7,10 @@ import {
   GroupStatus,
   MemberRole,
   MemberStatus,
+  NotificationStatus,
+  NotificationType,
   PayoutMode,
+  Platform,
 } from '@prisma/client';
 
 import { AppModule } from '../src/app.module';
@@ -15,6 +18,7 @@ import { seededShuffle, sha256Hex } from '../src/common/crypto/secure-shuffle';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../src/common/types/authenticated-user.type';
 import { GroupsController } from '../src/modules/groups/groups.controller';
+import { FCM_PROVIDER } from '../src/modules/notifications/interfaces/fcm-provider.interface';
 
 type UserRecord = {
   id: string;
@@ -83,6 +87,20 @@ type CycleRecord = {
   createdAt: Date;
 };
 
+type NotificationRecord = {
+  id: string;
+  userId: string;
+  groupId: string | null;
+  eventId: string | null;
+  type: NotificationType;
+  title: string;
+  body: string;
+  dataJson: Record<string, unknown> | null;
+  status: NotificationStatus;
+  createdAt: Date;
+  readAt: Date | null;
+};
+
 describe('Cycles (e2e)', () => {
   let groupsController: GroupsController;
 
@@ -104,10 +122,20 @@ describe('Cycles (e2e)', () => {
   const rounds: RoundRecord[] = [];
   const schedules: ScheduleRecord[] = [];
   const cycles: CycleRecord[] = [];
+  const notifications: NotificationRecord[] = [];
 
   const adminUser: AuthenticatedUser = {
     id: 'user_admin',
     phone: '+251911111111',
+  };
+
+  const fcmProviderMock = {
+    sendToTokens: jest.fn(() =>
+      Promise.resolve({
+        sentCount: 0,
+        failedCount: 0,
+      }),
+    ),
   };
 
   const findUser = (userId: string) => {
@@ -599,6 +627,110 @@ describe('Cycles (e2e)', () => {
           }));
       }),
     },
+    notification: {
+      create: jest.fn(
+        ({
+          data,
+        }: {
+          data: {
+            userId: string;
+            groupId?: string | null;
+            eventId?: string | null;
+            type: NotificationType;
+            title: string;
+            body: string;
+            dataJson?: Record<string, unknown> | null;
+          };
+        }) => {
+          const duplicate = notifications.find(
+            (item) =>
+              item.userId === data.userId &&
+              item.eventId !== null &&
+              item.eventId === (data.eventId ?? null),
+          );
+          if (duplicate) {
+            const error = new Error('Duplicate notification event');
+            (error as Error & { code?: string }).code = 'P2002';
+            throw error;
+          }
+
+          const notification: NotificationRecord = {
+            id: `notification_${notifications.length + 1}`,
+            userId: data.userId,
+            groupId: data.groupId ?? null,
+            eventId: data.eventId ?? null,
+            type: data.type,
+            title: data.title,
+            body: data.body,
+            dataJson: data.dataJson ?? null,
+            status: NotificationStatus.UNREAD,
+            createdAt: new Date(),
+            readAt: null,
+          };
+          notifications.push(notification);
+          return notification;
+        },
+      ),
+      findFirst: jest.fn(
+        ({
+          where,
+        }: {
+          where: {
+            userId?: string;
+            eventId?: string;
+            type?: NotificationType;
+            dataJson?: { path: string[]; equals: string };
+          };
+        }) => {
+          return (
+            notifications.find((item) => {
+              const userMatch = !where.userId || item.userId === where.userId;
+              const eventMatch =
+                !where.eventId || item.eventId === where.eventId;
+              const typeMatch = !where.type || item.type === where.type;
+              const dedupMatch = !where.dataJson
+                ? true
+                : item.dataJson?.dedupKey === where.dataJson.equals;
+              return userMatch && eventMatch && typeMatch && dedupMatch;
+            }) ?? null
+          );
+        },
+      ),
+    },
+    deviceToken: {
+      findMany: jest.fn(
+        ({
+          where,
+        }: {
+          where: {
+            userId: string;
+            isActive: boolean;
+          };
+        }) => {
+          if (!where.isActive) {
+            return [];
+          }
+          return [];
+        },
+      ),
+      upsert: jest.fn(
+        ({
+          create,
+        }: {
+          create: {
+            userId: string;
+            token: string;
+            platform: Platform;
+            isActive: boolean;
+            lastSeenAt: Date;
+          };
+        }) => ({
+          id: `device_${create.userId}`,
+          ...create,
+          createdAt: new Date(),
+        }),
+      ),
+    },
     inviteCode: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -630,6 +762,8 @@ describe('Cycles (e2e)', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(prismaMock)
+      .overrideProvider(FCM_PROVIDER)
+      .useValue(fcmProviderMock)
       .compile();
 
     groupsController = moduleFixture.get<GroupsController>(GroupsController);
@@ -641,6 +775,7 @@ describe('Cycles (e2e)', () => {
     rounds.splice(0, rounds.length);
     schedules.splice(0, schedules.length);
     cycles.splice(0, cycles.length);
+    notifications.splice(0, notifications.length);
     jest.clearAllMocks();
   });
 
@@ -685,6 +820,70 @@ describe('Cycles (e2e)', () => {
       currentCycle?.finalPayoutUserId,
     );
     expect(currentCycle?.status).toBe(CycleStatus.OPEN);
+  });
+
+  it('draw-next creates winner and announcement notifications for round snapshot members', async () => {
+    const group = await groupsController.createGroup(adminUser, {
+      name: 'Lottery Notify Group',
+      contributionAmount: 750,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-01',
+      currency: 'ETB',
+    });
+
+    members.push({
+      id: 'member_2',
+      groupId: group.id,
+      userId: 'user_member',
+      role: MemberRole.MEMBER,
+      status: MemberStatus.ACTIVE,
+      payoutPosition: null,
+      joinedAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    await groupsController.startRound(adminUser, group.id);
+    const createdCycle = await groupsController.drawNextCycle(
+      adminUser,
+      group.id,
+    );
+
+    expect(notifications).toHaveLength(2);
+
+    const winnerNotification = notifications.find(
+      (entry) => entry.type === NotificationType.LOTTERY_WINNER,
+    );
+    const announcementNotification = notifications.find(
+      (entry) => entry.type === NotificationType.LOTTERY_ANNOUNCEMENT,
+    );
+
+    expect(winnerNotification).toBeDefined();
+    expect(announcementNotification).toBeDefined();
+    expect(winnerNotification?.userId).toBe(createdCycle.finalPayoutUserId);
+    expect(announcementNotification?.userId).not.toBe(
+      createdCycle.finalPayoutUserId,
+    );
+    expect(announcementNotification?.body).toContain('won this turn');
+
+    expect(winnerNotification?.dataJson).toMatchObject({
+      groupId: group.id,
+      cycleId: createdCycle.id,
+      roundId: createdCycle.roundId,
+      kind: 'winner',
+      route: `/groups/${group.id}/cycles/${createdCycle.id}`,
+    });
+    expect(announcementNotification?.dataJson).toMatchObject({
+      groupId: group.id,
+      cycleId: createdCycle.id,
+      roundId: createdCycle.roundId,
+      kind: 'announcement',
+      winnerUserId: createdCycle.finalPayoutUserId,
+      route: `/groups/${group.id}/cycles/${createdCycle.id}`,
+    });
+
+    expect((fcmProviderMock.sendToTokens as jest.Mock).mock.calls).toHaveLength(
+      2,
+    );
   });
 
   it('stores draw commitment, exposes schedule, reveals seed, and allows deterministic verification', async () => {

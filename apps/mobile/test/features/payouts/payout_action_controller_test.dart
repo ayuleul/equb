@@ -248,11 +248,6 @@ class _FakeCyclesApi implements CyclesApi {
   }
 
   @override
-  Future<Map<String, dynamic>> getCurrentRoundSchedule(String groupId) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<Map<String, dynamic>> generateCycles(String groupId) {
     throw UnimplementedError();
   }

@@ -1108,6 +1108,13 @@ export class GroupsService {
     };
   }
 
+  async drawNextCycle(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+  ): Promise<GroupCycleResponseDto> {
+    return this.generateCycles(currentUser, groupId, {});
+  }
+
   async generateCycles(
     currentUser: AuthenticatedUser,
     groupId: string,
@@ -1119,7 +1126,7 @@ export class GroupsService {
       );
     }
 
-    const createdCycle = await this.prisma.$transaction(async (tx) => {
+    const drawResult = await this.prisma.$transaction(async (tx) => {
       const group = await tx.equbGroup.findUnique({
         where: {
           id: groupId,
@@ -1164,6 +1171,18 @@ export class GroupsService {
         },
         include: {
           schedules: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  phone: true,
+                  fullName: true,
+                  firstName: true,
+                  middleName: true,
+                  lastName: true,
+                },
+              },
+            },
             orderBy: {
               position: 'asc',
             },
@@ -1225,7 +1244,7 @@ export class GroupsService {
         );
       }
 
-      return tx.equbCycle.create({
+      const createdCycle = await tx.equbCycle.create({
         data: {
           groupId,
           roundId: activeRound.id,
@@ -1261,23 +1280,130 @@ export class GroupsService {
           },
         },
       });
+
+      const roundMemberSnapshot = activeRound.schedules.map(
+        (entry) => entry.userId,
+      );
+      const winnerUserId = createdCycle.finalPayoutUserId;
+      const winnerMember = activeRound.schedules.find(
+        (entry) => entry.userId === winnerUserId,
+      );
+      if (!winnerMember) {
+        throw new BadRequestException('Winner is not part of round snapshot');
+      }
+
+      const winnerFullName = this.formatEthiopianFullName({
+        firstName: winnerMember.user.firstName,
+        middleName: winnerMember.user.middleName,
+        lastName: winnerMember.user.lastName,
+        fullName: winnerMember.user.fullName,
+        phone: winnerMember.user.phone,
+      });
+      const cycleRoute = `/groups/${groupId}/cycles/${createdCycle.id}`;
+
+      const createdNotificationDispatches: Array<{
+        userId: string;
+        title: string;
+        body: string;
+        data: Record<string, unknown>;
+      }> = [];
+
+      for (const memberUserId of roundMemberSnapshot) {
+        const isWinner = memberUserId === winnerUserId;
+        const title = isWinner ? '🎲 You won this turn' : '🎲 Winner drawn';
+        const body = isWinner
+          ? 'You are the recipient for this turn. Keep an eye on contributions and payout.'
+          : `${winnerFullName} won this turn.`;
+        const notificationType = isWinner
+          ? NotificationType.LOTTERY_WINNER
+          : NotificationType.LOTTERY_ANNOUNCEMENT;
+        const eventId = isWinner
+          ? `DRAW_${createdCycle.id}_WINNER`
+          : `DRAW_${createdCycle.id}_ANNOUNCEMENT`;
+        const notificationData: Record<string, unknown> = {
+          groupId,
+          cycleId: createdCycle.id,
+          roundId: activeRound.id,
+          route: cycleRoute,
+          kind: isWinner ? 'winner' : 'announcement',
+          ...(isWinner
+            ? {}
+            : {
+                winnerUserId,
+                winnerFullName,
+              }),
+        };
+
+        try {
+          await tx.notification.create({
+            data: {
+              userId: memberUserId,
+              groupId,
+              eventId,
+              type: notificationType,
+              title,
+              body,
+              dataJson: notificationData as Prisma.InputJsonValue,
+            },
+          });
+
+          createdNotificationDispatches.push({
+            userId: memberUserId,
+            title,
+            body,
+            data: notificationData,
+          });
+        } catch (error) {
+          if (this.isUniqueConstraintViolation(error)) {
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      return {
+        cycle: createdCycle,
+        createdNotificationDispatches,
+      };
     });
 
     await this.auditService.log(
       'CYCLE_GENERATED',
       currentUser.id,
       {
-        roundId: createdCycle.roundId,
-        cycleNo: createdCycle.cycleNo,
-        dueDate: createdCycle.dueDate,
-        scheduledPayoutUserId: createdCycle.scheduledPayoutUserId,
-        finalPayoutUserId: createdCycle.finalPayoutUserId,
-        status: createdCycle.status,
+        roundId: drawResult.cycle.roundId,
+        cycleNo: drawResult.cycle.cycleNo,
+        dueDate: drawResult.cycle.dueDate,
+        scheduledPayoutUserId: drawResult.cycle.scheduledPayoutUserId,
+        finalPayoutUserId: drawResult.cycle.finalPayoutUserId,
+        status: drawResult.cycle.status,
       },
       groupId,
     );
 
-    return this.toCycleResponse(createdCycle);
+    await Promise.all([
+      this.auditService.log(
+        'LOTTERY_DRAW_COMPLETED',
+        currentUser.id,
+        {
+          roundId: drawResult.cycle.roundId,
+          cycleId: drawResult.cycle.id,
+          winnerUserId: drawResult.cycle.finalPayoutUserId,
+          notifiedCount: drawResult.createdNotificationDispatches.length,
+        },
+        groupId,
+      ),
+      ...drawResult.createdNotificationDispatches.map((dispatch) =>
+        this.notificationsService.sendPushToUser(
+          dispatch.userId,
+          dispatch.title,
+          dispatch.body,
+          dispatch.data,
+        ),
+      ),
+    ]);
+
+    return this.toCycleResponse(drawResult.cycle);
   }
 
   async getCurrentCycle(
@@ -1426,6 +1552,53 @@ export class GroupsService {
         );
       }
     }
+  }
+
+  private formatEthiopianFullName(user: {
+    firstName?: string | null;
+    middleName?: string | null;
+    lastName?: string | null;
+    fullName?: string | null;
+    phone?: string | null;
+  }): string {
+    const normalizedParts = [user.firstName, user.middleName, user.lastName]
+      .map((value) => value?.trim() ?? '')
+      .filter((value) => value.length > 0);
+    if (normalizedParts.length > 0) {
+      return normalizedParts.join(' ');
+    }
+
+    const fullName = user.fullName?.trim();
+    if (fullName) {
+      return fullName;
+    }
+
+    const phone = user.phone?.trim();
+    if (phone) {
+      return phone;
+    }
+
+    return 'A member';
+  }
+
+  private isUniqueConstraintViolation(error: unknown): boolean {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      return true;
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2002'
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   private toCycleResponse(cycle: {

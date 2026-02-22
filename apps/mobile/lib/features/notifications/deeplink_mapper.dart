@@ -1,6 +1,11 @@
 import '../../app/router.dart';
 
 String? mapNotificationPayloadToLocation(Map<String, dynamic> payload) {
+  final route = _readString(payload, 'route');
+  if (route != null) {
+    return route;
+  }
+
   final groupId = _readString(payload, 'groupId');
   final cycleId = _readString(payload, 'cycleId');
   final contributionId = _readString(payload, 'contributionId');

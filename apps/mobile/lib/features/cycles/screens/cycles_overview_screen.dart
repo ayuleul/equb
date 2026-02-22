@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
@@ -95,13 +96,13 @@ class _CyclesOverviewBody extends ConsumerWidget {
               onPressed: () =>
                   context.push(AppRoutePaths.groupCyclesGenerate(group.id)),
               icon: Icons.add_circle_outline,
-              label: 'Generate next cycle',
+              label: LotteryCopy.drawWinnerButton,
             ),
           if (isAdmin && currentCycleAsync.valueOrNull != null)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Text(
-                'Finish the current open cycle before generating the next one.',
+                'Finish the current open turn before drawing the next winner.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -124,7 +125,7 @@ class _CyclesOverviewBody extends ConsumerWidget {
             ),
             data: (cycles) {
               if (cycles.isEmpty) {
-                return _EmptyCyclesView(groupId: group.id, isAdmin: isAdmin);
+                return _EmptyCyclesView(isAdmin: isAdmin);
               }
 
               return Column(
@@ -174,11 +175,13 @@ class _CurrentCycleCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Due ${formatDate(cycle.dueDate)}',
+                    'Turn ${cycle.cycleNo}',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  Text('Recipient: ${_recipientLabel(cycle)}'),
+                  Text('Due ${formatDate(cycle.dueDate)}'),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text('🎲 Winner: ${_recipientLabel(cycle)}'),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Progress: --/-- paid',
@@ -189,7 +192,7 @@ class _CurrentCycleCard extends StatelessWidget {
                     onPressed: () => context.push(
                       AppRoutePaths.groupCycleDetail(groupId, cycle.id),
                     ),
-                    label: 'View current cycle',
+                    label: 'View current turn',
                     expand: false,
                   ),
                 ],
@@ -203,9 +206,8 @@ class _CurrentCycleCard extends StatelessWidget {
 }
 
 class _EmptyCyclesView extends StatelessWidget {
-  const _EmptyCyclesView({required this.groupId, required this.isAdmin});
+  const _EmptyCyclesView({required this.isAdmin});
 
-  final String groupId;
   final bool isAdmin;
 
   @override
@@ -214,12 +216,8 @@ class _EmptyCyclesView extends StatelessWidget {
       icon: Icons.timelapse_outlined,
       title: 'No cycles generated',
       message: isAdmin
-          ? 'Set payout order and generate the first cycle.'
-          : 'Ask a group admin to generate the first cycle.',
-      ctaLabel: isAdmin ? 'Set payout order' : null,
-      onCtaPressed: isAdmin
-          ? () => context.push(AppRoutePaths.groupPayoutOrder(groupId))
-          : null,
+          ? 'Draw the first winner to start the round.'
+          : 'Ask a group admin to draw the first winner.',
     );
   }
 }

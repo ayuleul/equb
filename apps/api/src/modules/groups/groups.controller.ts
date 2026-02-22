@@ -273,6 +273,26 @@ export class GroupsController {
     return this.groupsService.revealCurrentRoundSeed(currentUser, groupId);
   }
 
+  @Post(':id/rounds/current/draw-next')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Rounds')
+  @ApiOperation({ summary: 'Draw next cycle recipient for current round' })
+  @ApiOkResponse({ type: GroupCycleResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Cycle generation constraints not satisfied',
+  })
+  @ApiConflictResponse({
+    description: 'Open cycle already exists or round is completed',
+  })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  drawNextCycle(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<GroupCycleResponseDto> {
+    return this.groupsService.drawNextCycle(currentUser, groupId);
+  }
+
   @Get(':id/cycles/current')
   @UseGuards(GroupMemberGuard)
   @ApiTags('Cycles')
