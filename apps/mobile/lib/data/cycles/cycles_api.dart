@@ -2,6 +2,7 @@ import '../api/api_client.dart';
 
 abstract class CyclesApi {
   Future<Map<String, dynamic>> startRound(String groupId);
+  Future<Map<String, dynamic>> getCurrentRoundSchedule(String groupId);
 
   Future<List<Map<String, dynamic>>> setPayoutOrder(
     String groupId,
@@ -23,6 +24,11 @@ class DioCyclesApi implements CyclesApi {
   @override
   Future<Map<String, dynamic>> startRound(String groupId) {
     return _apiClient.postMap('/groups/$groupId/rounds/start');
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCurrentRoundSchedule(String groupId) {
+    return _apiClient.getMap('/groups/$groupId/rounds/current/schedule');
   }
 
   @override

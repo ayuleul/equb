@@ -10,6 +10,7 @@ import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../shared/kit/kit.dart';
+import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/utils/round_status_mapper.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -20,6 +21,9 @@ import '../../cycles/current_cycle_provider.dart';
 import '../../payouts/cycle_payout_provider.dart';
 import '../group_detail_controller.dart';
 import '../widgets/group_more_actions_button.dart';
+import '../../rounds/start_round_controller.dart';
+import '../../rounds/current_round_schedule_provider.dart';
+import '../../rounds/start_round_flow.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
   const GroupDetailScreen({super.key, required this.groupId});
@@ -31,6 +35,15 @@ class GroupDetailScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final group = groupAsync.valueOrNull;
     final isAdmin = group?.membership?.role == MemberRoleModel.admin;
+    ref.listen(startRoundControllerProvider(groupId), (previous, next) {
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+      if (nextError != null &&
+          nextError.isNotEmpty &&
+          previousError != nextError) {
+        AppSnackbars.error(context, nextError);
+      }
+    });
 
     return KitScaffold(
       appBar: KitAppBar(
@@ -134,6 +147,15 @@ class _CurrentRoundCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final startRoundState = ref.watch(startRoundControllerProvider(group.id));
+    final hasLockedOrder =
+        ref
+            .watch(currentRoundScheduleProvider(group.id))
+            .valueOrNull
+            ?.schedule
+            .isNotEmpty ==
+        true;
+
     return KitCard(
       child: currentCycleAsync.when(
         loading: () => const _CurrentRoundSkeleton(),
@@ -164,14 +186,35 @@ class _CurrentRoundCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
-                  label: isAdmin ? 'Start round' : 'Round not started',
+                  label: isAdmin
+                      ? (hasLockedOrder
+                            ? 'Generate next cycle'
+                            : (startRoundState.isSubmitting
+                                  ? 'Starting round...'
+                                  : 'Start round'))
+                      : 'Round not started',
                   icon: isAdmin
-                      ? Icons.play_arrow_rounded
+                      ? (hasLockedOrder
+                            ? Icons.add_circle_outline
+                            : Icons.play_arrow_rounded)
                       : Icons.hourglass_top,
+                  isLoading:
+                      isAdmin &&
+                      !hasLockedOrder &&
+                      startRoundState.isSubmitting,
                   onPressed: isAdmin
-                      ? () => context.push(
-                          AppRoutePaths.groupCyclesGenerate(group.id),
-                        )
+                      ? (hasLockedOrder
+                            ? () => context.push(
+                                AppRoutePaths.groupCyclesGenerate(group.id),
+                              )
+                            : (startRoundState.isSubmitting
+                                  ? null
+                                  : () => startFairDrawFlow(
+                                      context: context,
+                                      ref: ref,
+                                      groupId: group.id,
+                                      navigateToOverview: true,
+                                    )))
                       : null,
                 ),
               ],

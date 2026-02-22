@@ -1,3 +1,5 @@
+import '../api/api_error.dart';
+import '../models/current_round_schedule_model.dart';
 import '../models/cycle_model.dart';
 import '../models/member_model.dart';
 import '../models/payout_order_item.dart';
@@ -13,6 +15,8 @@ class CyclesRepository {
   final Map<String, List<CycleModel>> _cyclesListCache =
       <String, List<CycleModel>>{};
   final Map<String, CycleModel> _cycleDetailCache = <String, CycleModel>{};
+  final Map<String, CurrentRoundScheduleModel?> _roundScheduleCache =
+      <String, CurrentRoundScheduleModel?>{};
 
   Future<CycleModel?> getCurrentCycle(
     String groupId, {
@@ -93,6 +97,38 @@ class CyclesRepository {
     invalidateGroupCache(groupId);
   }
 
+  Future<CurrentRoundScheduleModel?> getCurrentRoundSchedule(
+    String groupId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _roundScheduleCache.containsKey(groupId)) {
+      return _roundScheduleCache[groupId];
+    }
+
+    try {
+      final payload = await _cyclesApi.getCurrentRoundSchedule(groupId);
+      if (payload.isEmpty) {
+        _roundScheduleCache[groupId] = null;
+        return null;
+      }
+
+      final schedule = CurrentRoundScheduleModel.fromJson(payload);
+      if (schedule.roundId.isEmpty || schedule.schedule.isEmpty) {
+        _roundScheduleCache[groupId] = null;
+        return null;
+      }
+
+      _roundScheduleCache[groupId] = schedule;
+      return schedule;
+    } on ApiError catch (error) {
+      if (error.type == ApiErrorType.notFound) {
+        _roundScheduleCache[groupId] = null;
+        return null;
+      }
+      rethrow;
+    }
+  }
+
   Future<CycleModel> generateNextCycle(String groupId) async {
     final payload = await _cyclesApi.generateCycles(groupId);
     final cycle = CycleModel.fromJson(payload);
@@ -107,6 +143,7 @@ class CyclesRepository {
   void invalidateGroupCache(String groupId) {
     _currentCycleCache.remove(groupId);
     _cyclesListCache.remove(groupId);
+    _roundScheduleCache.remove(groupId);
     _cycleDetailCache.removeWhere((key, _) => key.startsWith('$groupId:'));
   }
 

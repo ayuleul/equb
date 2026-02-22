@@ -96,6 +96,11 @@
 - Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); it must not mutate the scheduled recipient or round order.
 - Scheduled recipient (and admins) can open/close cycle auction; non-admin, non-scheduled members can only submit bids while auction is open.
 - Bid visibility in UI is locked to backend scope: admins/scheduled recipient see all bids, other members see only their own bid entries.
+- User-facing random round language is locked to `🎲 Fair Random Draw`.
+- Fair draw shuffle animations are presentation-only; the locked round order source of truth is always backend schedule data.
+- Group Overview `Round order` card must provide loading, retryable error, and replay states.
+- Advanced fairness verification details (for example commitment hash) must stay behind an expandable `Advanced` section in the info sheet.
+- Start-round autoplay into round-order reveal uses in-memory state (`roundJustStartedProvider(groupId)`) rather than route query params.
 
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.

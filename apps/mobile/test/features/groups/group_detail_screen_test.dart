@@ -223,6 +223,22 @@ class _FakeCyclesApi implements CyclesApi {
     return <String, dynamic>{'success': true};
   }
 
+  @override
+  Future<Map<String, dynamic>> getCurrentRoundSchedule(String groupId) async {
+    return <String, dynamic>{
+      'roundId': 'round-1',
+      'roundNo': 1,
+      'drawSeedHash': 'abc123',
+      'schedule': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'position': 1,
+          'userId': 'user-1',
+          'displayName': 'Test User',
+        },
+      ],
+    };
+  }
+
   Map<String, dynamic> _cycle(String groupId, String cycleId) {
     return {
       'id': cycleId,

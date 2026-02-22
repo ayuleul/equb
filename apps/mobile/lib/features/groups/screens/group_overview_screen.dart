@@ -2,17 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/member_model.dart';
+import '../../../shared/copy/fair_draw_copy.dart';
 import '../../../shared/kit/kit.dart';
+import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../group_detail_controller.dart';
+import '../../rounds/current_round_schedule_provider.dart';
+import '../../rounds/round_draw_reveal_state.dart';
+import '../../rounds/start_round_controller.dart';
+import '../../rounds/start_round_flow.dart';
+import '../../rounds/widgets/round_order_card.dart';
 
 class GroupOverviewScreen extends ConsumerWidget {
   const GroupOverviewScreen({super.key, required this.groupId});
@@ -23,6 +31,15 @@ class GroupOverviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final group = groupAsync.valueOrNull;
+    ref.listen(startRoundControllerProvider(groupId), (previous, next) {
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+      if (nextError != null &&
+          nextError.isNotEmpty &&
+          previousError != nextError) {
+        AppSnackbars.error(context, nextError);
+      }
+    });
 
     return KitScaffold(
       appBar: KitAppBar(title: group?.name ?? 'Group overview'),
@@ -39,26 +56,71 @@ class GroupOverviewScreen extends ConsumerWidget {
   }
 }
 
-class _GroupOverviewBody extends ConsumerWidget {
+class _GroupOverviewBody extends ConsumerStatefulWidget {
   const _GroupOverviewBody({required this.group});
 
   final GroupModel group;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GroupOverviewBody> createState() => _GroupOverviewBodyState();
+}
+
+class _GroupOverviewBodyState extends ConsumerState<_GroupOverviewBody> {
+  final _roundOrderKey = GlobalKey();
+  var _didAutoScrollForReveal = false;
+
+  void _scrollToRoundOrderIfNeeded(bool shouldAutoPlay) {
+    if (!shouldAutoPlay) {
+      _didAutoScrollForReveal = false;
+      return;
+    }
+    if (_didAutoScrollForReveal) {
+      return;
+    }
+    _didAutoScrollForReveal = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final targetContext = _roundOrderKey.currentContext;
+      if (targetContext == null || !mounted) {
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final group = widget.group;
     final membersAsync = ref.watch(groupMembersProvider(group.id));
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
+    final shouldAutoPlay = ref.watch(roundJustStartedProvider(group.id));
     final isAdmin = group.membership?.role == MemberRoleModel.admin;
+    _scrollToRoundOrderIfNeeded(shouldAutoPlay);
 
     return RefreshIndicator(
-      onRefresh: () =>
-          ref.read(groupDetailControllerProvider).refreshAll(group.id),
+      onRefresh: () async {
+        await ref.read(groupDetailControllerProvider).refreshAll(group.id);
+        ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
+        ref.invalidate(currentCycleProvider(group.id));
+        ref.invalidate(currentRoundScheduleProvider(group.id));
+      },
       child: ListView(
         children: [
           _GroupSummaryCard(
             group: group,
             membersCount: membersAsync.valueOrNull?.length,
             currentCycle: currentCycleAsync.valueOrNull,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            key: _roundOrderKey,
+            child: RoundOrderCard(groupId: group.id),
           ),
           const SizedBox(height: AppSpacing.md),
           _MembersCard(
@@ -119,10 +181,7 @@ class _GroupSummaryCard extends StatelessWidget {
             value: _frequencyLabel(group.frequency),
           ),
           _SummaryRow(label: 'Members', value: '${membersCount ?? '-'}'),
-          const _SummaryRow(
-            label: 'Payout mode',
-            value: 'Random Draw (Auction-on-turn supported)',
-          ),
+          const _SummaryRow(label: 'Payout mode', value: FairDrawCopy.label),
           _SummaryRow(label: 'Round status', value: roundStatus),
         ],
       ),
@@ -202,7 +261,7 @@ class _MembersCard extends ConsumerWidget {
   }
 }
 
-class _OverviewAdminActionsCard extends StatelessWidget {
+class _OverviewAdminActionsCard extends ConsumerWidget {
   const _OverviewAdminActionsCard({
     required this.groupId,
     required this.hasOpenCycle,
@@ -212,7 +271,16 @@ class _OverviewAdminActionsCard extends StatelessWidget {
   final bool hasOpenCycle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final startRoundState = ref.watch(startRoundControllerProvider(groupId));
+    final hasLockedOrder =
+        ref
+            .watch(currentRoundScheduleProvider(groupId))
+            .valueOrNull
+            ?.schedule
+            .isNotEmpty ==
+        true;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -227,14 +295,25 @@ class _OverviewAdminActionsCard extends StatelessWidget {
                 onPressed: () =>
                     context.push(AppRoutePaths.groupInvite(groupId)),
               ),
-              if (!hasOpenCycle) ...[
+              if (!hasOpenCycle && !hasLockedOrder) ...[
                 const SizedBox(height: AppSpacing.sm),
                 KitPrimaryButton(
-                  label: 'Start round',
+                  label: startRoundState.isSubmitting
+                      ? 'Starting round...'
+                      : 'Start round',
                   icon: Icons.play_arrow_rounded,
-                  onPressed: () =>
-                      context.push(AppRoutePaths.groupCyclesGenerate(groupId)),
+                  isLoading: startRoundState.isSubmitting,
+                  onPressed: startRoundState.isSubmitting
+                      ? null
+                      : () => startFairDrawFlow(
+                          context: context,
+                          ref: ref,
+                          groupId: groupId,
+                          navigateToOverview: false,
+                        ),
                 ),
+              ],
+              if (!hasOpenCycle) ...[
                 const SizedBox(height: AppSpacing.sm),
                 KitSecondaryButton(
                   label: 'Generate next cycle',
