@@ -13,7 +13,7 @@ import '../features/home/home_screen.dart';
 import '../features/groups/screens/create_group_screen.dart';
 import '../features/groups/screens/group_detail_screen.dart';
 import '../features/groups/screens/group_invite_screen.dart';
-import '../features/groups/screens/group_members_screen.dart';
+import '../features/groups/screens/group_overview_screen.dart';
 import '../features/groups/screens/groups_list_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
 import '../features/cycles/screens/cycle_detail_screen.dart';
@@ -44,7 +44,7 @@ class AppRoutePaths {
   static const debugTheme = '/debug/theme';
 
   static String groupDetail(String groupId) => '/groups/$groupId';
-  static String groupMembers(String groupId) => '/groups/$groupId/members';
+  static String groupOverview(String groupId) => '/groups/$groupId/overview';
   static String groupInvite(String groupId) => '/groups/$groupId/invite';
   static String groupCycles(String groupId) => '/groups/$groupId/cycles';
   static String groupCyclesCurrent(String groupId) =>
@@ -142,10 +142,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   },
                   routes: [
                     GoRoute(
-                      path: 'members',
+                      path: 'overview',
                       builder: (context, state) {
                         final groupId = state.pathParameters['id'] ?? '';
-                        return GroupMembersScreen(groupId: groupId);
+                        return GroupOverviewScreen(groupId: groupId);
                       },
                     ),
                     GoRoute(

@@ -81,6 +81,12 @@
 - Authenticated landing route is locked to `/home`.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
+- Group detail header title is tappable and navigates to the full-screen Group Overview route (`/groups/:id/overview`).
+- Members list lives only in Group Overview; there is no standalone Members screen route.
+- Group detail is the current-round hub and must not render the members list.
+- Group detail should favor collapsed summaries and a single primary member CTA over dense list sections.
+- Admin controls in group detail must be grouped inside a collapsed Admin actions container/action sheet.
+- Group Overview content must reuse existing group detail/members providers; do not introduce duplicate fetch pathways.
 
 ## Cycles rules
 - Payout order positions are always saved as contiguous `1..N` after reorder; the UI order is the source of truth.

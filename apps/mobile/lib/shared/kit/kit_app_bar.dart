@@ -14,6 +14,7 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showAvatar = true,
     this.avatar,
     this.onTitleTap,
+    this.showTitleChevron = false,
     this.backgroundColor,
   });
 
@@ -26,6 +27,7 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showAvatar;
   final Widget? avatar;
   final VoidCallback? onTitleTap;
+  final bool showTitleChevron;
   final Color? backgroundColor;
 
   static const double _baseHeight = 76;
@@ -62,11 +64,25 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ? CrossAxisAlignment.center
                 : CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: titleStyle,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
+                  ),
+                  if (showTitleChevron) ...[
+                    const SizedBox(width: AppSpacing.xxs),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ],
               ),
               if (_hasSubtitle)
                 Text(
@@ -180,7 +196,10 @@ class KitBackButton extends StatelessWidget {
         onPressed ?? (navigator.canPop() ? () => navigator.maybePop() : null);
 
     return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.md,
+      ),
       child: SizedBox(
         width: _buttonSize,
         height: _buttonSize,
