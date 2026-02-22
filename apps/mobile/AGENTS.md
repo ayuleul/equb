@@ -82,6 +82,8 @@
 - Authenticated landing route is locked to `/home`.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
+- If a group has an active round, joining and invite acceptance are blocked; join surfaces must explain that joining is available after the round ends.
+- Backend lock responses are source-of-truth; mobile must always handle `409` with reason code `GROUP_LOCKED_ACTIVE_ROUND` even when UI pre-checks exist.
 - Group detail header title is tappable and navigates to the full-screen Group Overview route (`/groups/:id/overview`).
 - Members list lives only in Group Overview; there is no standalone Members screen route.
 - Group detail is the current-round hub and must not render the members list.

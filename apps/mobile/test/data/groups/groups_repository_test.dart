@@ -69,4 +69,9 @@ class _FakeGroupsApi implements GroupsApi {
   Future<List<Map<String, dynamic>>> listMembers(String groupId) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<bool> hasActiveRound(String groupId) async {
+    return false;
+  }
 }

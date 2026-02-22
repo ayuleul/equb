@@ -66,6 +66,8 @@
   - `INVITED` -> can activate membership by joining with invite
   - `LEFT` -> can rejoin with invite and become `ACTIVE`
   - `REMOVED` -> cannot self-rejoin via invite code
+- Membership is locked while a round is active (`EqubRound.closedAt == null`); join/accept-invite/add-member paths must be blocked at API level with `409` (`GROUP_LOCKED_ACTIVE_ROUND`).
+- Invite creation is allowed during an active round, but invite acceptance remains blocked until the round ends.
 
 ## Cycle rules
 - Random draw schedule generation is locked to a seeded deterministic Fisher–Yates shuffle using cryptographic randomness and rejection sampling (no `Math.random`).

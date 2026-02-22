@@ -12,7 +12,9 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../groups_list_controller.dart';
 
 class JoinGroupScreen extends ConsumerStatefulWidget {
-  const JoinGroupScreen({super.key});
+  const JoinGroupScreen({super.key, this.initialCode});
+
+  final String? initialCode;
 
   @override
   ConsumerState<JoinGroupScreen> createState() => _JoinGroupScreenState();
@@ -21,12 +23,23 @@ class JoinGroupScreen extends ConsumerStatefulWidget {
 class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   late final TextEditingController _codeController;
   bool _isSubmitting = false;
+  bool _isLockedByActiveRound = false;
   String? _formError;
 
   @override
   void initState() {
     super.initState();
     _codeController = TextEditingController();
+    final initialCode = widget.initialCode?.trim().toUpperCase() ?? '';
+    if (initialCode.isNotEmpty) {
+      _codeController.text = initialCode;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _submit();
+      });
+    }
   }
 
   @override
@@ -45,6 +58,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     setState(() {
       _isSubmitting = true;
       _formError = null;
+      _isLockedByActiveRound = false;
     });
 
     try {
@@ -67,6 +81,16 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       if (!mounted) {
         return;
       }
+      final openedFromInviteLink =
+          (widget.initialCode?.trim().isNotEmpty ?? false);
+      if (openedFromInviteLink && isGroupLockedActiveRoundError(error)) {
+        setState(() {
+          _isLockedByActiveRound = true;
+          _formError = null;
+        });
+        return;
+      }
+
       final message = mapApiErrorToMessage(error);
       setState(() => _formError = message);
       AppSnackbars.error(context, message);
@@ -79,6 +103,42 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLockedByActiveRound) {
+      return KitScaffold(
+        appBar: const KitAppBar(title: 'Group is locked'),
+        child: Center(
+          child: KitCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Group is locked',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'A round is currently in progress. You can join after it ends.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                KitPrimaryButton(
+                  label: 'OK',
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                      return;
+                    }
+                    context.go(AppRoutePaths.groups);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return KitScaffold(
       appBar: const KitAppBar(
         title: 'Join group',

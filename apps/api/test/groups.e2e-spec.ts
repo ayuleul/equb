@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   GroupFrequency,
@@ -11,6 +11,10 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 import { AuthenticatedUser } from '../src/common/types/authenticated-user.type';
 import { GroupsController } from '../src/modules/groups/groups.controller';
+import {
+  GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
+  GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+} from '../src/modules/groups/groups.constants';
 
 type UserRecord = {
   id: string;
@@ -54,6 +58,12 @@ type InviteRecord = {
   createdAt: Date;
 };
 
+type RoundRecord = {
+  id: string;
+  groupId: string;
+  closedAt: Date | null;
+};
+
 describe('Groups (e2e)', () => {
   let groupsController: GroupsController;
 
@@ -74,6 +84,7 @@ describe('Groups (e2e)', () => {
   const groups: GroupRecord[] = [];
   const members: MemberRecord[] = [];
   const invites: InviteRecord[] = [];
+  const rounds: RoundRecord[] = [];
 
   const actorAdmin: AuthenticatedUser = {
     id: 'user_admin',
@@ -434,6 +445,48 @@ describe('Groups (e2e)', () => {
         },
       ),
     },
+    equbRound: {
+      findFirst: jest.fn(
+        ({
+          where,
+          select,
+        }: {
+          where: { groupId: string; closedAt?: Date | null };
+          select?: { id?: boolean };
+        }) => {
+          const activeOnly = Object.prototype.hasOwnProperty.call(
+            where,
+            'closedAt',
+          )
+            ? where.closedAt === null
+            : false;
+
+          const round =
+            rounds.find((item) => {
+              const sameGroup = item.groupId === where.groupId;
+              if (!sameGroup) {
+                return false;
+              }
+              if (!activeOnly) {
+                return true;
+              }
+              return item.closedAt === null;
+            }) ?? null;
+
+          if (!round) {
+            return null;
+          }
+
+          if (!select) {
+            return round;
+          }
+
+          return {
+            ...(select.id ? { id: round.id } : {}),
+          };
+        },
+      ),
+    },
     auditLog: {
       create: jest.fn(() => ({ id: `audit_${Date.now()}` })),
     },
@@ -468,8 +521,46 @@ describe('Groups (e2e)', () => {
     groups.splice(0, groups.length);
     members.splice(0, members.length);
     invites.splice(0, invites.length);
+    rounds.splice(0, rounds.length);
     jest.clearAllMocks();
   });
+
+  function startActiveRound(groupId: string): string {
+    const roundId = `round_${rounds.length + 1}`;
+    rounds.push({
+      id: roundId,
+      groupId,
+      closedAt: null,
+    });
+    return roundId;
+  }
+
+  function closeRound(roundId: string): void {
+    const round = rounds.find((item) => item.id === roundId);
+    if (!round) {
+      throw new Error(`Round not found: ${roundId}`);
+    }
+    round.closedAt = new Date();
+  }
+
+  async function expectGroupLockedConflict(
+    action: () => Promise<unknown>,
+  ): Promise<void> {
+    try {
+      await action();
+      throw new Error('Expected group lock conflict but request succeeded');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      if (error instanceof ConflictException) {
+        expect(error.getStatus()).toBe(409);
+        expect(error.getResponse()).toMatchObject({
+          message: GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
+          reasonCode: GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+          roundStatus: 'ACTIVE',
+        });
+      }
+    }
+  }
 
   it('create group sets creator as ACTIVE ADMIN member', async () => {
     const group = await groupsController.createGroup(actorAdmin, {
@@ -562,5 +653,65 @@ describe('Groups (e2e)', () => {
         role: MemberRole.MEMBER,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('blocks joining via code while round is active', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Locked Group Join',
+      contributionAmount: 700,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-10',
+      currency: 'ETB',
+    });
+    const invite = await groupsController.createInvite(actorAdmin, group.id, {
+      maxUses: 10,
+    });
+    startActiveRound(group.id);
+
+    await expectGroupLockedConflict(() =>
+      groupsController.joinGroup(actorMember, {
+        code: invite.code,
+      }),
+    );
+  });
+
+  it('blocks invite acceptance endpoint while round is active', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Locked Group Accept',
+      contributionAmount: 700,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-11',
+      currency: 'ETB',
+    });
+    const invite = await groupsController.createInvite(actorAdmin, group.id, {
+      maxUses: 10,
+    });
+    startActiveRound(group.id);
+
+    await expectGroupLockedConflict(() =>
+      groupsController.acceptInvite(actorMember, group.id, invite.code),
+    );
+  });
+
+  it('allows joining after active round ends', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Unlocked Group Join',
+      contributionAmount: 700,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-12',
+      currency: 'ETB',
+    });
+    const invite = await groupsController.createInvite(actorAdmin, group.id, {
+      maxUses: 10,
+    });
+    const roundId = startActiveRound(group.id);
+    closeRound(roundId);
+
+    const joinResult = await groupsController.joinGroup(actorMember, {
+      code: invite.code,
+    });
+
+    expect(joinResult.groupId).toBe(group.id);
+    expect(joinResult.status).toBe(MemberStatus.ACTIVE);
   });
 });

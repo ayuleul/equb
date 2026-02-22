@@ -2,6 +2,10 @@ import 'package:dio/dio.dart';
 
 import '../../data/api/api_error.dart';
 
+const groupLockedActiveRoundReasonCode = 'GROUP_LOCKED_ACTIVE_ROUND';
+const groupLockedActiveRoundFriendlyMessage =
+    'A round is currently in progress. You can join after it ends.';
+
 String mapApiErrorToMessage(Object error) {
   if (error is ApiError) {
     return _mapApiError(error);
@@ -15,7 +19,32 @@ String mapApiErrorToMessage(Object error) {
   return 'Something went wrong. Please try again.';
 }
 
+bool isGroupLockedActiveRoundError(Object error) {
+  final apiError = _normalizeApiError(error);
+  if (apiError == null) {
+    return false;
+  }
+
+  return _isGroupLockedError(apiError);
+}
+
+ApiError? _normalizeApiError(Object error) {
+  if (error is ApiError) {
+    return error;
+  }
+
+  if (error is DioException) {
+    return ApiError.fromDioException(error);
+  }
+
+  return null;
+}
+
 String _mapApiError(ApiError error) {
+  if (_isGroupLockedError(error)) {
+    return groupLockedActiveRoundFriendlyMessage;
+  }
+
   final message = error.message.trim();
   final normalized = message.toLowerCase();
 
@@ -124,4 +153,16 @@ String _mapApiError(ApiError error) {
           ? message
           : 'Unexpected error. Please try again.';
   }
+}
+
+bool _isGroupLockedError(ApiError error) {
+  if (error.statusCode == 409 &&
+      error.reasonCode == groupLockedActiveRoundReasonCode) {
+    return true;
+  }
+
+  final normalizedMessage = error.message.toLowerCase();
+  return normalizedMessage.contains(
+    'group is locked while a round is in progress',
+  );
 }

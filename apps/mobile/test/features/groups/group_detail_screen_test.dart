@@ -187,6 +187,11 @@ class _FakeGroupsApi implements GroupsApi {
       },
     ];
   }
+
+  @override
+  Future<bool> hasActiveRound(String groupId) async {
+    return true;
+  }
 }
 
 class _FakeCyclesApi implements CyclesApi {

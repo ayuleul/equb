@@ -52,6 +52,10 @@ import {
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
 } from './entities/groups.entities';
+import {
+  GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
+  GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+} from './groups.constants';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -275,6 +279,9 @@ export class GroupsService {
   async joinGroup(
     currentUser: AuthenticatedUser,
     dto: JoinGroupDto,
+    options?: {
+      expectedGroupId?: string;
+    },
   ): Promise<GroupJoinResponseDto> {
     const normalizedCode = dto.code.trim().toUpperCase();
 
@@ -299,6 +306,13 @@ export class GroupsService {
         throw new NotFoundException('Invite code not found');
       }
 
+      if (
+        options?.expectedGroupId &&
+        invite.groupId !== options.expectedGroupId
+      ) {
+        throw new NotFoundException('Invite code not found for this group');
+      }
+
       if (invite.isRevoked) {
         throw new BadRequestException('Invite code is revoked');
       }
@@ -314,6 +328,8 @@ export class GroupsService {
       if (invite.group.status !== GroupStatus.ACTIVE) {
         throw new BadRequestException('Cannot join an archived group');
       }
+
+      await this.assertGroupMembershipOpen(invite.groupId, tx);
 
       const existingMembership = await tx.equbMember.findUnique({
         where: {
@@ -425,6 +441,20 @@ export class GroupsService {
     );
 
     return result;
+  }
+
+  async acceptInvite(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    code: string,
+  ): Promise<GroupJoinResponseDto> {
+    return this.joinGroup(
+      currentUser,
+      { code },
+      {
+        expectedGroupId: groupId,
+      },
+    );
   }
 
   async listMembers(groupId: string): Promise<GroupMemberResponseDto[]> {
@@ -1534,6 +1564,34 @@ export class GroupsService {
         role: MemberRole.ADMIN,
         status: MemberStatus.ACTIVE,
       },
+    });
+  }
+
+  private async assertGroupMembershipOpen(
+    groupId: string,
+    prismaClient:
+      | Pick<Prisma.TransactionClient, 'equbRound'>
+      | Pick<PrismaService, 'equbRound'> = this.prisma,
+  ): Promise<void> {
+    const activeRound = await prismaClient.equbRound.findFirst({
+      where: {
+        groupId,
+        closedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!activeRound) {
+      return;
+    }
+
+    throw new ConflictException({
+      message: GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
+      reasonCode: GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+      roundId: activeRound.id,
+      roundStatus: 'ACTIVE',
     });
   }
 

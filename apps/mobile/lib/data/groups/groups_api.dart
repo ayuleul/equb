@@ -1,3 +1,4 @@
+import '../api/api_error.dart';
 import '../api/api_client.dart';
 import '../models/create_group_request.dart';
 import '../models/join_group_request.dart';
@@ -9,6 +10,7 @@ abstract class GroupsApi {
   Future<Map<String, dynamic>> createInvite(String groupId);
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request);
   Future<List<Map<String, dynamic>>> listMembers(String groupId);
+  Future<bool> hasActiveRound(String groupId);
 }
 
 class DioGroupsApi implements GroupsApi {
@@ -49,6 +51,19 @@ class DioGroupsApi implements GroupsApi {
   Future<List<Map<String, dynamic>>> listMembers(String groupId) async {
     final payload = await _apiClient.getList('/groups/$groupId/members');
     return payload.map(_toMap).toList(growable: false);
+  }
+
+  @override
+  Future<bool> hasActiveRound(String groupId) async {
+    try {
+      await _apiClient.getMap('/groups/$groupId/rounds/current/schedule');
+      return true;
+    } on ApiError catch (error) {
+      if (error.statusCode == 404) {
+        return false;
+      }
+      rethrow;
+    }
   }
 
   Map<String, dynamic> _toMap(Object? value) {

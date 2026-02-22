@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/bootstrap.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
 import '../../../shared/kit/kit.dart';
@@ -10,6 +11,14 @@ import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../group_detail_controller.dart';
 import '../invite_controller.dart';
+
+final groupInviteLockStatusProvider = FutureProvider.family<bool, String>((
+  ref,
+  groupId,
+) async {
+  final repository = ref.watch(groupsRepositoryProvider);
+  return repository.hasActiveRound(groupId);
+});
 
 class GroupInviteScreen extends ConsumerWidget {
   const GroupInviteScreen({super.key, required this.groupId});
@@ -53,11 +62,24 @@ class GroupInviteScreen extends ConsumerWidget {
               message: 'Only admins can generate invite codes.',
             );
           }
+          final activeRoundAsync = ref.watch(
+            groupInviteLockStatusProvider(groupId),
+          );
 
           final invite = inviteState.invite;
 
           return ListView(
             children: [
+              if (activeRoundAsync.valueOrNull == true) ...[
+                const KitBanner(
+                  title: 'Round in progress',
+                  message:
+                      'Invites can be sent, but people can’t join until the current round ends.',
+                  tone: KitBadgeTone.info,
+                  icon: Icons.info_outline_rounded,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               FilledButton.icon(
                 onPressed: inviteState.isLoading
                     ? null

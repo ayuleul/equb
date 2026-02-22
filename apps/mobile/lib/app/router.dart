@@ -129,7 +129,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
                 GoRoute(
                   path: 'join',
-                  builder: (context, state) => const JoinGroupScreen(),
+                  builder: (context, state) => JoinGroupScreen(
+                    initialCode: state.uri.queryParameters['code'],
+                  ),
                 ),
                 GoRoute(
                   path: ':id',

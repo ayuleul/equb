@@ -97,6 +97,10 @@ class GroupsRepository {
     return members;
   }
 
+  Future<bool> hasActiveRound(String groupId) {
+    return _groupsApi.hasActiveRound(groupId);
+  }
+
   void invalidateGroup(String groupId) {
     _groupCache.remove(groupId);
   }

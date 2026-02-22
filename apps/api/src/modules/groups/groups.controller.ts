@@ -84,11 +84,33 @@ export class GroupsController {
   @ApiBadRequestResponse({ description: 'Invite is invalid or unusable' })
   @ApiNotFoundResponse({ description: 'Invite code not found' })
   @ApiForbiddenResponse({ description: 'Removed members cannot self-rejoin' })
+  @ApiConflictResponse({
+    description:
+      'Group is locked while a round is in progress or invite became unavailable',
+  })
   joinGroup(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: JoinGroupDto,
   ): Promise<GroupJoinResponseDto> {
     return this.groupsService.joinGroup(currentUser, dto);
+  }
+
+  @Post(':id/invites/:code/accept')
+  @ApiOperation({ summary: 'Accept a group invite by code' })
+  @ApiOkResponse({ type: GroupJoinResponseDto })
+  @ApiBadRequestResponse({ description: 'Invite is invalid or unusable' })
+  @ApiNotFoundResponse({ description: 'Invite code not found for group' })
+  @ApiForbiddenResponse({ description: 'Removed members cannot self-rejoin' })
+  @ApiConflictResponse({
+    description:
+      'Group is locked while a round is in progress or invite became unavailable',
+  })
+  acceptInvite(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Param('code') code: string,
+  ): Promise<GroupJoinResponseDto> {
+    return this.groupsService.acceptInvite(currentUser, groupId, code);
   }
 
   @Get(':id')
