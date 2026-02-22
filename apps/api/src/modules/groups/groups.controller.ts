@@ -35,12 +35,14 @@ import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
+  CurrentRoundScheduleResponseDto,
   GroupCycleResponseDto,
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
+  RoundSeedRevealResponseDto,
   RoundStartResponseDto,
 } from './entities/groups.entities';
 import { GroupsService } from './groups.service';
@@ -228,7 +230,8 @@ export class GroupsController {
   @ApiOkResponse({ type: RoundStartResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
   @ApiBadRequestResponse({
-    description: 'Group is inactive, round already active, or no active members',
+    description:
+      'Group is inactive, round already active, or no active members',
   })
   @ApiNotFoundResponse({ description: 'Group not found' })
   startRound(
@@ -236,6 +239,38 @@ export class GroupsController {
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<RoundStartResponseDto> {
     return this.groupsService.startRound(currentUser, groupId);
+  }
+
+  @Get(':id/rounds/current/schedule')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Rounds')
+  @ApiOperation({ summary: 'Get current round payout schedule commitment' })
+  @ApiOkResponse({ type: CurrentRoundScheduleResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiNotFoundResponse({ description: 'Active round not found' })
+  getCurrentRoundSchedule(
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<CurrentRoundScheduleResponseDto> {
+    return this.groupsService.getCurrentRoundSchedule(groupId);
+  }
+
+  @Post(':id/rounds/current/reveal-seed')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Rounds')
+  @ApiOperation({
+    summary: 'Reveal current round seed for external schedule verification',
+  })
+  @ApiOkResponse({ type: RoundSeedRevealResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Seed reveal is unavailable for this round',
+  })
+  @ApiNotFoundResponse({ description: 'Active round not found' })
+  revealCurrentRoundSeed(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<RoundSeedRevealResponseDto> {
+    return this.groupsService.revealCurrentRoundSeed(currentUser, groupId);
   }
 
   @Get(':id/cycles/current')

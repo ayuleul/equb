@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 
 import { AppModule } from '../src/app.module';
+import { seededShuffle, sha256Hex } from '../src/common/crypto/secure-shuffle';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../src/common/types/authenticated-user.type';
 import { GroupsController } from '../src/modules/groups/groups.controller';
@@ -51,6 +52,10 @@ type RoundRecord = {
   groupId: string;
   roundNo: number;
   payoutMode: PayoutMode;
+  drawSeedHash: string;
+  drawSeedCiphertext: string | null;
+  drawSeedRevealedAt: Date | null;
+  drawSeedRevealedByUserId: string | null;
   startedByUserId: string;
   startedAt: Date;
   closedAt: Date | null;
@@ -252,15 +257,33 @@ describe('Cycles (e2e)', () => {
             closedAt?: Date | null;
             payoutMode?: PayoutMode;
           };
-          select?: { id?: boolean; roundNo?: boolean };
+          select?: {
+            id?: boolean;
+            roundNo?: boolean;
+            drawSeedHash?: boolean;
+            drawSeedCiphertext?: boolean;
+            drawSeedRevealedAt?: boolean;
+            drawSeedRevealedByUserId?: boolean;
+          };
           include?: {
             schedules?: {
+              include?: {
+                user?: {
+                  select: {
+                    id?: true;
+                    phone?: true;
+                    fullName?: true;
+                  };
+                };
+              };
               orderBy: { position: 'asc' | 'desc' };
             };
           };
           orderBy?: { roundNo: 'asc' | 'desc' };
         }) => {
-          let filtered = rounds.filter((round) => round.groupId === where.groupId);
+          let filtered = rounds.filter(
+            (round) => round.groupId === where.groupId,
+          );
           if (where.payoutMode) {
             filtered = filtered.filter(
               (round) => round.payoutMode === where.payoutMode,
@@ -286,6 +309,18 @@ describe('Cycles (e2e)', () => {
             return {
               ...(select.id ? { id: found.id } : {}),
               ...(select.roundNo ? { roundNo: found.roundNo } : {}),
+              ...(select.drawSeedHash
+                ? { drawSeedHash: found.drawSeedHash }
+                : {}),
+              ...(select.drawSeedCiphertext
+                ? { drawSeedCiphertext: found.drawSeedCiphertext }
+                : {}),
+              ...(select.drawSeedRevealedAt
+                ? { drawSeedRevealedAt: found.drawSeedRevealedAt }
+                : {}),
+              ...(select.drawSeedRevealedByUserId
+                ? { drawSeedRevealedByUserId: found.drawSeedRevealedByUserId }
+                : {}),
             };
           }
 
@@ -294,7 +329,13 @@ describe('Cycles (e2e)', () => {
               ...found,
               schedules: schedules
                 .filter((schedule) => schedule.roundId === found.id)
-                .sort((a, b) => a.position - b.position),
+                .sort((a, b) => a.position - b.position)
+                .map((schedule) => ({
+                  ...schedule,
+                  ...(include.schedules?.include?.user
+                    ? { user: findUser(schedule.userId) }
+                    : {}),
+                })),
             };
           }
 
@@ -310,6 +351,8 @@ describe('Cycles (e2e)', () => {
             groupId: string;
             roundNo: number;
             payoutMode: PayoutMode;
+            drawSeedHash: string;
+            drawSeedCiphertext?: string | null;
             startedByUserId: string;
             schedules: {
               create: Array<{ position: number; userId: string }>;
@@ -331,6 +374,10 @@ describe('Cycles (e2e)', () => {
             groupId: data.groupId,
             roundNo: data.roundNo,
             payoutMode: data.payoutMode,
+            drawSeedHash: data.drawSeedHash,
+            drawSeedCiphertext: data.drawSeedCiphertext ?? null,
+            drawSeedRevealedAt: null,
+            drawSeedRevealedByUserId: null,
             startedByUserId: data.startedByUserId,
             startedAt: new Date(),
             closedAt: null,
@@ -367,13 +414,25 @@ describe('Cycles (e2e)', () => {
           data,
         }: {
           where: { id: string };
-          data: { closedAt: Date };
+          data: {
+            closedAt?: Date;
+            drawSeedRevealedAt?: Date;
+            drawSeedRevealedByUserId?: string;
+          };
         }) => {
           const round = rounds.find((item) => item.id === where.id);
           if (!round) {
             throw new Error('Round not found');
           }
-          round.closedAt = data.closedAt;
+          if (data.closedAt) {
+            round.closedAt = data.closedAt;
+          }
+          if (data.drawSeedRevealedAt) {
+            round.drawSeedRevealedAt = data.drawSeedRevealedAt;
+          }
+          if (data.drawSeedRevealedByUserId) {
+            round.drawSeedRevealedByUserId = data.drawSeedRevealedByUserId;
+          }
           return round;
         },
       ),
@@ -401,17 +460,25 @@ describe('Cycles (e2e)', () => {
               select: { id: true; phone: true; fullName: true };
             };
           };
-          orderBy?: Array<{ dueDate?: 'asc' | 'desc'; createdAt?: 'asc' | 'desc' }> | { cycleNo: 'asc' | 'desc' };
+          orderBy?:
+            | Array<{ dueDate?: 'asc' | 'desc'; createdAt?: 'asc' | 'desc' }>
+            | { cycleNo: 'asc' | 'desc' };
         }) => {
           let filtered = cycles;
           if (where.groupId) {
-            filtered = filtered.filter((cycle) => cycle.groupId === where.groupId);
+            filtered = filtered.filter(
+              (cycle) => cycle.groupId === where.groupId,
+            );
           }
           if (where.roundId) {
-            filtered = filtered.filter((cycle) => cycle.roundId === where.roundId);
+            filtered = filtered.filter(
+              (cycle) => cycle.roundId === where.roundId,
+            );
           }
           if (where.status) {
-            filtered = filtered.filter((cycle) => cycle.status === where.status);
+            filtered = filtered.filter(
+              (cycle) => cycle.status === where.status,
+            );
           }
 
           if (filtered.length === 0) {
@@ -426,7 +493,11 @@ describe('Cycles (e2e)', () => {
               }
               return b.createdAt.getTime() - a.createdAt.getTime();
             });
-          } else if (orderBy && 'cycleNo' in orderBy && orderBy.cycleNo === 'desc') {
+          } else if (
+            orderBy &&
+            'cycleNo' in orderBy &&
+            orderBy.cycleNo === 'desc'
+          ) {
             filtered = [...filtered].sort((a, b) => b.cycleNo - a.cycleNo);
           }
 
@@ -442,7 +513,11 @@ describe('Cycles (e2e)', () => {
                 ? { finalPayoutUser: findUser(found.finalPayoutUserId) }
                 : {}),
               ...(include.winningBidUser
-                ? { winningBidUser: found.winningBidUserId ? findUser(found.winningBidUserId) : null }
+                ? {
+                    winningBidUser: found.winningBidUserId
+                      ? findUser(found.winningBidUserId)
+                      : null,
+                  }
                 : {}),
             };
           }
@@ -547,6 +622,9 @@ describe('Cycles (e2e)', () => {
   } as unknown as PrismaService;
 
   beforeAll(async () => {
+    process.env.DRAW_SEED_ENC_KEY =
+      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -607,6 +685,83 @@ describe('Cycles (e2e)', () => {
       currentCycle?.finalPayoutUserId,
     );
     expect(currentCycle?.status).toBe(CycleStatus.OPEN);
+  });
+
+  it('stores draw commitment, exposes schedule, reveals seed, and allows deterministic verification', async () => {
+    const group = await groupsController.createGroup(adminUser, {
+      name: 'Auditable Draw Group',
+      contributionAmount: 800,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-01',
+      currency: 'ETB',
+    });
+
+    members.push({
+      id: 'member_2',
+      groupId: group.id,
+      userId: 'user_member',
+      role: MemberRole.MEMBER,
+      status: MemberStatus.ACTIVE,
+      payoutPosition: null,
+      joinedAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    const startedRound = await groupsController.startRound(adminUser, group.id);
+    expect(startedRound.drawSeedHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(rounds[0]?.drawSeedCiphertext).toBeTruthy();
+
+    const currentSchedule = await groupsController.getCurrentRoundSchedule(
+      group.id,
+    );
+    expect(currentSchedule.roundId).toBe(startedRound.id);
+    expect(currentSchedule.drawSeedHash).toBe(startedRound.drawSeedHash);
+    expect(currentSchedule.schedule).toHaveLength(2);
+    expect(currentSchedule.schedule.map((entry) => entry.position)).toEqual([
+      1, 2,
+    ]);
+
+    const reveal = await groupsController.revealCurrentRoundSeed(
+      adminUser,
+      group.id,
+    );
+    expect(reveal.seedHash).toBe(currentSchedule.drawSeedHash);
+    expect(sha256Hex(Buffer.from(reveal.seedHex, 'hex'))).toBe(
+      currentSchedule.drawSeedHash,
+    );
+
+    const snapshotUserIds = members
+      .filter(
+        (entry) =>
+          entry.groupId === group.id && entry.status === MemberStatus.ACTIVE,
+      )
+      .map((entry) => entry.userId);
+    const expectedOrder = seededShuffle(
+      snapshotUserIds,
+      Buffer.from(reveal.seedHex, 'hex'),
+    );
+    expect(currentSchedule.schedule.map((entry) => entry.userId)).toEqual(
+      expectedOrder,
+    );
+
+    const secondReveal = await groupsController.revealCurrentRoundSeed(
+      adminUser,
+      group.id,
+    );
+    expect(secondReveal.seedHex).toBe(reveal.seedHex);
+    expect(secondReveal.revealedAt).toEqual(reveal.revealedAt);
+    expect(secondReveal.revealedByUserId).toBe(reveal.revealedByUserId);
+
+    const auditCalls = (prismaMock.auditLog.create as unknown as jest.Mock).mock
+      .calls;
+    const seedRevealedCalls = auditCalls.filter(
+      ([payload]: [{ data: { action: string } }]) =>
+        payload.data.action === 'SEED_REVEALED',
+    );
+    expect(seedRevealedCalls).toHaveLength(1);
+    for (const [payload] of auditCalls) {
+      expect(JSON.stringify(payload)).not.toContain(reveal.seedHex);
+    }
   });
 
   it('disallows cycle generation when no active round exists', async () => {
@@ -683,7 +838,11 @@ describe('Cycles (e2e)', () => {
     });
 
     await groupsController.startRound(adminUser, group.id);
-    const firstCycle = await groupsController.generateCycles(adminUser, group.id, {});
+    const firstCycle = await groupsController.generateCycles(
+      adminUser,
+      group.id,
+      {},
+    );
 
     const firstCycleRecord = cycles.find((entry) => entry.id === firstCycle.id);
     if (firstCycleRecord) {
@@ -720,7 +879,11 @@ describe('Cycles (e2e)', () => {
     });
 
     await groupsController.startRound(adminUser, group.id);
-    const firstCycle = await groupsController.generateCycles(adminUser, group.id, {});
+    const firstCycle = await groupsController.generateCycles(
+      adminUser,
+      group.id,
+      {},
+    );
     const firstCycleRecord = cycles.find((entry) => entry.id === firstCycle.id);
     if (firstCycleRecord) {
       firstCycleRecord.status = CycleStatus.CLOSED;
@@ -731,7 +894,9 @@ describe('Cycles (e2e)', () => {
       group.id,
       {},
     );
-    const secondCycleRecord = cycles.find((entry) => entry.id === secondCycle.id);
+    const secondCycleRecord = cycles.find(
+      (entry) => entry.id === secondCycle.id,
+    );
     if (secondCycleRecord) {
       secondCycleRecord.status = CycleStatus.CLOSED;
     }

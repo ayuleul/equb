@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  InternalServerErrorException,
   Injectable,
   Logger,
   NotFoundException,
@@ -17,9 +18,19 @@ import {
   PayoutMode,
   Prisma,
 } from '@prisma/client';
-import { randomBytes, randomInt } from 'crypto';
+import { randomBytes } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
+import {
+  decryptSeed,
+  encryptSeed,
+  parseDrawSeedEncryptionKey,
+} from '../../common/crypto/seed-encryption';
+import {
+  createSecureSeed,
+  seededShuffle,
+  sha256Hex,
+} from '../../common/crypto/secure-shuffle';
 import { DateService } from '../../common/date/date.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
@@ -31,10 +42,12 @@ import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
+  CurrentRoundScheduleResponseDto,
   GroupCycleResponseDto,
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
+  RoundSeedRevealResponseDto,
   RoundStartResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
@@ -755,6 +768,14 @@ export class GroupsService {
     currentUser: AuthenticatedUser,
     groupId: string,
   ): Promise<RoundStartResponseDto> {
+    const drawSeed = createSecureSeed(32);
+    const drawSeedHash = sha256Hex(drawSeed);
+    const encryptedSeed = encryptSeed(
+      drawSeed,
+      this.getDrawSeedEncryptionKey(),
+    );
+    let expectedScheduleCount = 0;
+
     const round = await this.prisma.$transaction(async (tx) => {
       const group = await tx.equbGroup.findUnique({
         where: { id: groupId },
@@ -818,7 +839,8 @@ export class GroupsService {
         throw new BadRequestException('No active members found for this group');
       }
 
-      const shuffledMembers = this.shuffleRandomDrawMembers(activeMembers);
+      const shuffledMembers = seededShuffle(activeMembers, drawSeed);
+      expectedScheduleCount = shuffledMembers.length;
 
       const latestRound = await tx.equbRound.findFirst({
         where: { groupId },
@@ -835,6 +857,8 @@ export class GroupsService {
           groupId,
           roundNo: (latestRound?.roundNo ?? 0) + 1,
           payoutMode: PayoutMode.RANDOM_DRAW,
+          drawSeedHash,
+          drawSeedCiphertext: encryptedSeed,
           startedByUserId: currentUser.id,
           schedules: {
             create: shuffledMembers.map((member, index) => ({
@@ -862,6 +886,24 @@ export class GroupsService {
       });
     });
 
+    if (round.schedules.length !== expectedScheduleCount) {
+      throw new InternalServerErrorException(
+        'Round schedule count mismatch after persistence',
+      );
+    }
+
+    this.assertContiguousPositions(
+      round.schedules.map((entry) => entry.position),
+    );
+    if (
+      new Set(round.schedules.map((entry) => entry.userId)).size !==
+      expectedScheduleCount
+    ) {
+      throw new InternalServerErrorException(
+        'Round schedule contains duplicate members',
+      );
+    }
+
     await this.auditService.log(
       'ROUND_STARTED',
       currentUser.id,
@@ -869,6 +911,7 @@ export class GroupsService {
         roundId: round.id,
         roundNo: round.roundNo,
         payoutMode: round.payoutMode,
+        drawSeedHash: round.drawSeedHash,
       },
       groupId,
     );
@@ -878,6 +921,7 @@ export class GroupsService {
       currentUser.id,
       {
         roundId: round.id,
+        drawSeedHash: round.drawSeedHash,
         schedule: round.schedules.map((entry) => ({
           position: entry.position,
           userId: entry.userId,
@@ -891,6 +935,7 @@ export class GroupsService {
       groupId: round.groupId,
       roundNo: round.roundNo,
       payoutMode: round.payoutMode,
+      drawSeedHash: round.drawSeedHash,
       startedByUserId: round.startedByUserId,
       startedAt: round.startedAt,
       schedule: round.schedules.map((entry) => ({
@@ -898,6 +943,168 @@ export class GroupsService {
         userId: entry.userId,
         user: entry.user,
       })),
+    };
+  }
+
+  async getCurrentRoundSchedule(
+    groupId: string,
+  ): Promise<CurrentRoundScheduleResponseDto> {
+    const activeRound = await this.prisma.equbRound.findFirst({
+      where: {
+        groupId,
+        closedAt: null,
+        payoutMode: PayoutMode.RANDOM_DRAW,
+      },
+      include: {
+        schedules: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: {
+            position: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!activeRound) {
+      throw new NotFoundException('Active round not found');
+    }
+
+    if (activeRound.schedules.length === 0) {
+      throw new BadRequestException('Active round has no payout schedule');
+    }
+
+    this.assertContiguousPositions(
+      activeRound.schedules.map((entry) => entry.position),
+    );
+
+    return {
+      roundId: activeRound.id,
+      roundNo: activeRound.roundNo,
+      drawSeedHash: activeRound.drawSeedHash,
+      schedule: activeRound.schedules.map((entry) => ({
+        position: entry.position,
+        userId: entry.userId,
+        displayName: entry.user.fullName ?? entry.user.phone,
+      })),
+    };
+  }
+
+  async revealCurrentRoundSeed(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+  ): Promise<RoundSeedRevealResponseDto> {
+    const drawSeedEncryptionKey = this.getDrawSeedEncryptionKey();
+    const revealResult = await this.prisma.$transaction(async (tx) => {
+      const activeRound = await tx.equbRound.findFirst({
+        where: {
+          groupId,
+          closedAt: null,
+          payoutMode: PayoutMode.RANDOM_DRAW,
+        },
+        select: {
+          id: true,
+          roundNo: true,
+          drawSeedHash: true,
+          drawSeedCiphertext: true,
+          drawSeedRevealedAt: true,
+          drawSeedRevealedByUserId: true,
+        },
+      });
+
+      if (!activeRound) {
+        throw new NotFoundException('Active round not found');
+      }
+
+      if (!activeRound.drawSeedCiphertext) {
+        throw new BadRequestException(
+          'Seed reveal is unavailable for this round',
+        );
+      }
+
+      let seed: Buffer;
+      try {
+        seed = decryptSeed(
+          activeRound.drawSeedCiphertext,
+          drawSeedEncryptionKey,
+        );
+      } catch {
+        throw new InternalServerErrorException(
+          'Failed to decrypt the current round seed',
+        );
+      }
+
+      const seedHash = sha256Hex(seed);
+      if (seedHash !== activeRound.drawSeedHash) {
+        throw new InternalServerErrorException(
+          'Current round seed commitment verification failed',
+        );
+      }
+
+      let revealedAt = activeRound.drawSeedRevealedAt;
+      let revealedByUserId = activeRound.drawSeedRevealedByUserId;
+      let createdAuditLog = false;
+
+      if (!revealedAt || !revealedByUserId) {
+        const updatedRound = await tx.equbRound.update({
+          where: { id: activeRound.id },
+          data: {
+            drawSeedRevealedAt: new Date(),
+            drawSeedRevealedByUserId: currentUser.id,
+          },
+          select: {
+            drawSeedRevealedAt: true,
+            drawSeedRevealedByUserId: true,
+          },
+        });
+        revealedAt = updatedRound.drawSeedRevealedAt;
+        revealedByUserId = updatedRound.drawSeedRevealedByUserId;
+        createdAuditLog = true;
+      }
+
+      if (!revealedAt || !revealedByUserId) {
+        throw new InternalServerErrorException(
+          'Current round reveal metadata is incomplete',
+        );
+      }
+
+      return {
+        roundId: activeRound.id,
+        roundNo: activeRound.roundNo,
+        seedHex: seed.toString('hex'),
+        seedHash,
+        revealedAt,
+        revealedByUserId,
+        createdAuditLog,
+      };
+    });
+
+    if (revealResult.createdAuditLog) {
+      await this.auditService.log(
+        'SEED_REVEALED',
+        currentUser.id,
+        {
+          roundId: revealResult.roundId,
+          roundNo: revealResult.roundNo,
+          drawSeedHash: revealResult.seedHash,
+        },
+        groupId,
+      );
+    }
+
+    return {
+      roundId: revealResult.roundId,
+      roundNo: revealResult.roundNo,
+      seedHex: revealResult.seedHex,
+      seedHash: revealResult.seedHash,
+      revealedAt: revealResult.revealedAt,
+      revealedByUserId: revealResult.revealedByUserId,
     };
   }
 
@@ -971,10 +1178,12 @@ export class GroupsService {
       }
 
       if (activeRound.schedules.length === 0) {
-        throw new BadRequestException(
-          'Active round has no payout schedule',
-        );
+        throw new BadRequestException('Active round has no payout schedule');
       }
+
+      this.assertContiguousPositions(
+        activeRound.schedules.map((entry) => entry.position),
+      );
 
       const latestRoundCycle = await tx.equbCycle.findFirst({
         where: {
@@ -1271,19 +1480,25 @@ export class GroupsService {
     };
   }
 
-  private shuffleRandomDrawMembers<
-    T extends { userId: string },
-  >(members: T[]): T[] {
-    const shuffled = [...members];
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const swapIndex = randomInt(index + 1);
-      [shuffled[index], shuffled[swapIndex]] = [
-        shuffled[swapIndex],
-        shuffled[index],
-      ];
+  private getDrawSeedEncryptionKey(): Buffer {
+    const rawKey = this.configService.get<string>('DRAW_SEED_ENC_KEY')?.trim();
+    if (!rawKey) {
+      throw new InternalServerErrorException(
+        'DRAW_SEED_ENC_KEY is not configured',
+      );
     }
 
-    return shuffled;
+    try {
+      return parseDrawSeedEncryptionKey(rawKey);
+    } catch (error) {
+      this.logger.error(
+        'Invalid DRAW_SEED_ENC_KEY configuration',
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw new InternalServerErrorException(
+        'DRAW_SEED_ENC_KEY is invalid; expected 32-byte hex/base64',
+      );
+    }
   }
 
   private generateInviteCode(): string {

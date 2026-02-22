@@ -45,6 +45,7 @@
 - Signed upload URLs must be scoped to authenticated user and group membership.
 - Use rate limiting on OTP endpoints.
 - Group role/status transitions must never leave a group with zero ACTIVE admins.
+- Random-draw round seeds must be stored only as encrypted ciphertext at rest; audit logs and API logs must never include plaintext seed values.
 
 ## Profile completion rules
 - Ethiopian-style legal profile names are mandatory before main app access:
@@ -67,6 +68,9 @@
   - `REMOVED` -> cannot self-rejoin via invite code
 
 ## Cycle rules
+- Random draw schedule generation is locked to a seeded deterministic Fisher–Yates shuffle using cryptographic randomness and rejection sampling (no `Math.random`).
+- Random draw round start must persist a SHA-256 seed commitment (`drawSeedHash`) and encrypted seed ciphertext for later verification.
+- Seed reveal endpoints are admin-only and may return plaintext seed only after commitment verification (`sha256(seed) == drawSeedHash`).
 - Random-draw rounds use an immutable per-round schedule; manual payout order is not required for cycle generation in random mode.
 - Only one `OPEN` cycle is allowed per group at any time.
 - Cycle generation is sequential only: each request generates exactly one next cycle; never generate future cycles in bulk.
@@ -170,6 +174,7 @@
   - JOBS_DISABLED
   - JWT_ACCESS_SECRET
   - JWT_REFRESH_SECRET
+  - DRAW_SEED_ENC_KEY
   - OTP_TTL_SECONDS
   - S3_ENDPOINT
   - S3_BUCKET

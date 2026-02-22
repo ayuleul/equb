@@ -94,6 +94,7 @@ model User {
   winningBidCycles EqubCycle[] @relation("CycleWinningBidUser")
   createdCycles  EqubCycle[]    @relation("CycleCreator")
   startedRounds  EqubRound[]    @relation("RoundStarter")
+  revealedSeedRounds EqubRound[] @relation("RoundSeedRevealer")
   payoutSchedules PayoutSchedule[] @relation("ScheduleUser")
   openedAuctions CycleAuction[] @relation("AuctionOpener")
   cycleBids      CycleBid[]
@@ -178,16 +179,22 @@ model EqubRound {
   groupId         String
   roundNo         Int
   payoutMode      PayoutMode  @default(RANDOM_DRAW)
+  drawSeedHash    String
+  drawSeedCiphertext String?
+  drawSeedRevealedAt DateTime?
+  drawSeedRevealedByUserId String?
   startedByUserId String
   startedAt       DateTime    @default(now())
   closedAt        DateTime?
   group           EqubGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   startedByUser   User        @relation("RoundStarter", fields: [startedByUserId], references: [id], onDelete: Restrict)
+  drawSeedRevealedByUser User? @relation("RoundSeedRevealer", fields: [drawSeedRevealedByUserId], references: [id], onDelete: SetNull)
   schedules       PayoutSchedule[]
   cycles          EqubCycle[]
 
   @@unique([groupId, roundNo])
   @@index([groupId, closedAt])
+  @@index([drawSeedRevealedByUserId])
 }
 
 model PayoutSchedule {

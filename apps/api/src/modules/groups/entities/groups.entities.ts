@@ -143,6 +143,9 @@ export class RoundStartResponseDto {
   payoutMode!: PayoutMode;
 
   @ApiProperty()
+  drawSeedHash!: string;
+
+  @ApiProperty()
   startedByUserId!: string;
 
   @ApiProperty()
@@ -150,6 +153,54 @@ export class RoundStartResponseDto {
 
   @ApiProperty({ type: () => RoundScheduleResponseDto, isArray: true })
   schedule!: RoundScheduleResponseDto[];
+}
+
+export class CurrentRoundScheduleItemResponseDto {
+  @ApiProperty()
+  position!: number;
+
+  @ApiProperty()
+  userId!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  displayName!: string | null;
+}
+
+export class CurrentRoundScheduleResponseDto {
+  @ApiProperty()
+  roundId!: string;
+
+  @ApiProperty()
+  roundNo!: number;
+
+  @ApiProperty()
+  drawSeedHash!: string;
+
+  @ApiProperty({
+    type: () => CurrentRoundScheduleItemResponseDto,
+    isArray: true,
+  })
+  schedule!: CurrentRoundScheduleItemResponseDto[];
+}
+
+export class RoundSeedRevealResponseDto {
+  @ApiProperty()
+  roundId!: string;
+
+  @ApiProperty()
+  roundNo!: number;
+
+  @ApiProperty()
+  seedHex!: string;
+
+  @ApiProperty()
+  seedHash!: string;
+
+  @ApiProperty()
+  revealedAt!: Date;
+
+  @ApiProperty()
+  revealedByUserId!: string;
 }
 
 export class GroupCycleResponseDto {
