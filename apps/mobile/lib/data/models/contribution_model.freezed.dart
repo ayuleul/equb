@@ -278,7 +278,7 @@ as String?,
 /// @nodoc
 mixin _$ContributionModel {
 
- String get id; String get groupId; String get cycleId; String get userId;@JsonKey(fromJson: _toInt) int get amount;@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) ContributionStatusModel get status; String? get proofFileKey; String? get paymentRef; String? get note; DateTime? get submittedAt; DateTime? get confirmedAt; DateTime? get rejectedAt; String? get rejectReason; DateTime? get createdAt; ContributionUserModel get user;
+ String get id; String get groupId; String get cycleId; String get userId;@JsonKey(fromJson: _toInt) int get amount;@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) ContributionStatusModel get status;@JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown) GroupPaymentMethodModel? get paymentMethod; String? get proofFileKey; String? get paymentRef; String? get note; DateTime? get submittedAt; DateTime? get confirmedAt; DateTime? get rejectedAt; String? get rejectReason; DateTime? get createdAt; ContributionUserModel get user;
 /// Create a copy of ContributionModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -291,16 +291,16 @@ $ContributionModelCopyWith<ContributionModel> get copyWith => _$ContributionMode
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContributionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.cycleId, cycleId) || other.cycleId == cycleId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.status, status) || other.status == status)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note)&&(identical(other.submittedAt, submittedAt) || other.submittedAt == submittedAt)&&(identical(other.confirmedAt, confirmedAt) || other.confirmedAt == confirmedAt)&&(identical(other.rejectedAt, rejectedAt) || other.rejectedAt == rejectedAt)&&(identical(other.rejectReason, rejectReason) || other.rejectReason == rejectReason)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.user, user) || other.user == user));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContributionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.cycleId, cycleId) || other.cycleId == cycleId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.status, status) || other.status == status)&&(identical(other.paymentMethod, paymentMethod) || other.paymentMethod == paymentMethod)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note)&&(identical(other.submittedAt, submittedAt) || other.submittedAt == submittedAt)&&(identical(other.confirmedAt, confirmedAt) || other.confirmedAt == confirmedAt)&&(identical(other.rejectedAt, rejectedAt) || other.rejectedAt == rejectedAt)&&(identical(other.rejectReason, rejectReason) || other.rejectReason == rejectReason)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.user, user) || other.user == user));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,groupId,cycleId,userId,amount,status,proofFileKey,paymentRef,note,submittedAt,confirmedAt,rejectedAt,rejectReason,createdAt,user);
+int get hashCode => Object.hash(runtimeType,id,groupId,cycleId,userId,amount,status,paymentMethod,proofFileKey,paymentRef,note,submittedAt,confirmedAt,rejectedAt,rejectReason,createdAt,user);
 
 @override
 String toString() {
-  return 'ContributionModel(id: $id, groupId: $groupId, cycleId: $cycleId, userId: $userId, amount: $amount, status: $status, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note, submittedAt: $submittedAt, confirmedAt: $confirmedAt, rejectedAt: $rejectedAt, rejectReason: $rejectReason, createdAt: $createdAt, user: $user)';
+  return 'ContributionModel(id: $id, groupId: $groupId, cycleId: $cycleId, userId: $userId, amount: $amount, status: $status, paymentMethod: $paymentMethod, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note, submittedAt: $submittedAt, confirmedAt: $confirmedAt, rejectedAt: $rejectedAt, rejectReason: $rejectReason, createdAt: $createdAt, user: $user)';
 }
 
 
@@ -311,7 +311,7 @@ abstract mixin class $ContributionModelCopyWith<$Res>  {
   factory $ContributionModelCopyWith(ContributionModel value, $Res Function(ContributionModel) _then) = _$ContributionModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String groupId, String cycleId, String userId,@JsonKey(fromJson: _toInt) int amount,@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) ContributionStatusModel status, String? proofFileKey, String? paymentRef, String? note, DateTime? submittedAt, DateTime? confirmedAt, DateTime? rejectedAt, String? rejectReason, DateTime? createdAt, ContributionUserModel user
+ String id, String groupId, String cycleId, String userId,@JsonKey(fromJson: _toInt) int amount,@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) ContributionStatusModel status,@JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown) GroupPaymentMethodModel? paymentMethod, String? proofFileKey, String? paymentRef, String? note, DateTime? submittedAt, DateTime? confirmedAt, DateTime? rejectedAt, String? rejectReason, DateTime? createdAt, ContributionUserModel user
 });
 
 
@@ -328,7 +328,7 @@ class _$ContributionModelCopyWithImpl<$Res>
 
 /// Create a copy of ContributionModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? groupId = null,Object? cycleId = null,Object? userId = null,Object? amount = null,Object? status = null,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,Object? submittedAt = freezed,Object? confirmedAt = freezed,Object? rejectedAt = freezed,Object? rejectReason = freezed,Object? createdAt = freezed,Object? user = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? groupId = null,Object? cycleId = null,Object? userId = null,Object? amount = null,Object? status = null,Object? paymentMethod = freezed,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,Object? submittedAt = freezed,Object? confirmedAt = freezed,Object? rejectedAt = freezed,Object? rejectReason = freezed,Object? createdAt = freezed,Object? user = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,groupId: null == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
@@ -336,7 +336,8 @@ as String,cycleId: null == cycleId ? _self.cycleId : cycleId // ignore: cast_nul
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as int,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as ContributionStatusModel,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
+as ContributionStatusModel,paymentMethod: freezed == paymentMethod ? _self.paymentMethod : paymentMethod // ignore: cast_nullable_to_non_nullable
+as GroupPaymentMethodModel?,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
 as String?,paymentRef: freezed == paymentRef ? _self.paymentRef : paymentRef // ignore: cast_nullable_to_non_nullable
 as String?,note: freezed == note ? _self.note : note // ignore: cast_nullable_to_non_nullable
 as String?,submittedAt: freezed == submittedAt ? _self.submittedAt : submittedAt // ignore: cast_nullable_to_non_nullable
@@ -436,10 +437,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String groupId,  String cycleId,  String userId, @JsonKey(fromJson: _toInt)  int amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)  ContributionStatusModel status,  String? proofFileKey,  String? paymentRef,  String? note,  DateTime? submittedAt,  DateTime? confirmedAt,  DateTime? rejectedAt,  String? rejectReason,  DateTime? createdAt,  ContributionUserModel user)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String groupId,  String cycleId,  String userId, @JsonKey(fromJson: _toInt)  int amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)  ContributionStatusModel status, @JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown)  GroupPaymentMethodModel? paymentMethod,  String? proofFileKey,  String? paymentRef,  String? note,  DateTime? submittedAt,  DateTime? confirmedAt,  DateTime? rejectedAt,  String? rejectReason,  DateTime? createdAt,  ContributionUserModel user)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ContributionModel() when $default != null:
-return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_that.status,_that.proofFileKey,_that.paymentRef,_that.note,_that.submittedAt,_that.confirmedAt,_that.rejectedAt,_that.rejectReason,_that.createdAt,_that.user);case _:
+return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_that.status,_that.paymentMethod,_that.proofFileKey,_that.paymentRef,_that.note,_that.submittedAt,_that.confirmedAt,_that.rejectedAt,_that.rejectReason,_that.createdAt,_that.user);case _:
   return orElse();
 
 }
@@ -457,10 +458,10 @@ return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String groupId,  String cycleId,  String userId, @JsonKey(fromJson: _toInt)  int amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)  ContributionStatusModel status,  String? proofFileKey,  String? paymentRef,  String? note,  DateTime? submittedAt,  DateTime? confirmedAt,  DateTime? rejectedAt,  String? rejectReason,  DateTime? createdAt,  ContributionUserModel user)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String groupId,  String cycleId,  String userId, @JsonKey(fromJson: _toInt)  int amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)  ContributionStatusModel status, @JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown)  GroupPaymentMethodModel? paymentMethod,  String? proofFileKey,  String? paymentRef,  String? note,  DateTime? submittedAt,  DateTime? confirmedAt,  DateTime? rejectedAt,  String? rejectReason,  DateTime? createdAt,  ContributionUserModel user)  $default,) {final _that = this;
 switch (_that) {
 case _ContributionModel():
-return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_that.status,_that.proofFileKey,_that.paymentRef,_that.note,_that.submittedAt,_that.confirmedAt,_that.rejectedAt,_that.rejectReason,_that.createdAt,_that.user);}
+return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_that.status,_that.paymentMethod,_that.proofFileKey,_that.paymentRef,_that.note,_that.submittedAt,_that.confirmedAt,_that.rejectedAt,_that.rejectReason,_that.createdAt,_that.user);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -474,10 +475,10 @@ return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String groupId,  String cycleId,  String userId, @JsonKey(fromJson: _toInt)  int amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)  ContributionStatusModel status,  String? proofFileKey,  String? paymentRef,  String? note,  DateTime? submittedAt,  DateTime? confirmedAt,  DateTime? rejectedAt,  String? rejectReason,  DateTime? createdAt,  ContributionUserModel user)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String groupId,  String cycleId,  String userId, @JsonKey(fromJson: _toInt)  int amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)  ContributionStatusModel status, @JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown)  GroupPaymentMethodModel? paymentMethod,  String? proofFileKey,  String? paymentRef,  String? note,  DateTime? submittedAt,  DateTime? confirmedAt,  DateTime? rejectedAt,  String? rejectReason,  DateTime? createdAt,  ContributionUserModel user)?  $default,) {final _that = this;
 switch (_that) {
 case _ContributionModel() when $default != null:
-return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_that.status,_that.proofFileKey,_that.paymentRef,_that.note,_that.submittedAt,_that.confirmedAt,_that.rejectedAt,_that.rejectReason,_that.createdAt,_that.user);case _:
+return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_that.status,_that.paymentMethod,_that.proofFileKey,_that.paymentRef,_that.note,_that.submittedAt,_that.confirmedAt,_that.rejectedAt,_that.rejectReason,_that.createdAt,_that.user);case _:
   return null;
 
 }
@@ -489,7 +490,7 @@ return $default(_that.id,_that.groupId,_that.cycleId,_that.userId,_that.amount,_
 @JsonSerializable()
 
 class _ContributionModel extends ContributionModel {
-  const _ContributionModel({required this.id, required this.groupId, required this.cycleId, required this.userId, @JsonKey(fromJson: _toInt) required this.amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown) required this.status, this.proofFileKey, this.paymentRef, this.note, this.submittedAt, this.confirmedAt, this.rejectedAt, this.rejectReason, this.createdAt, required this.user}): super._();
+  const _ContributionModel({required this.id, required this.groupId, required this.cycleId, required this.userId, @JsonKey(fromJson: _toInt) required this.amount, @JsonKey(unknownEnumValue: ContributionStatusModel.unknown) required this.status, @JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown) this.paymentMethod, this.proofFileKey, this.paymentRef, this.note, this.submittedAt, this.confirmedAt, this.rejectedAt, this.rejectReason, this.createdAt, required this.user}): super._();
   factory _ContributionModel.fromJson(Map<String, dynamic> json) => _$ContributionModelFromJson(json);
 
 @override final  String id;
@@ -498,6 +499,7 @@ class _ContributionModel extends ContributionModel {
 @override final  String userId;
 @override@JsonKey(fromJson: _toInt) final  int amount;
 @override@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) final  ContributionStatusModel status;
+@override@JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown) final  GroupPaymentMethodModel? paymentMethod;
 @override final  String? proofFileKey;
 @override final  String? paymentRef;
 @override final  String? note;
@@ -521,16 +523,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContributionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.cycleId, cycleId) || other.cycleId == cycleId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.status, status) || other.status == status)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note)&&(identical(other.submittedAt, submittedAt) || other.submittedAt == submittedAt)&&(identical(other.confirmedAt, confirmedAt) || other.confirmedAt == confirmedAt)&&(identical(other.rejectedAt, rejectedAt) || other.rejectedAt == rejectedAt)&&(identical(other.rejectReason, rejectReason) || other.rejectReason == rejectReason)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.user, user) || other.user == user));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContributionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.cycleId, cycleId) || other.cycleId == cycleId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.status, status) || other.status == status)&&(identical(other.paymentMethod, paymentMethod) || other.paymentMethod == paymentMethod)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note)&&(identical(other.submittedAt, submittedAt) || other.submittedAt == submittedAt)&&(identical(other.confirmedAt, confirmedAt) || other.confirmedAt == confirmedAt)&&(identical(other.rejectedAt, rejectedAt) || other.rejectedAt == rejectedAt)&&(identical(other.rejectReason, rejectReason) || other.rejectReason == rejectReason)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.user, user) || other.user == user));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,groupId,cycleId,userId,amount,status,proofFileKey,paymentRef,note,submittedAt,confirmedAt,rejectedAt,rejectReason,createdAt,user);
+int get hashCode => Object.hash(runtimeType,id,groupId,cycleId,userId,amount,status,paymentMethod,proofFileKey,paymentRef,note,submittedAt,confirmedAt,rejectedAt,rejectReason,createdAt,user);
 
 @override
 String toString() {
-  return 'ContributionModel(id: $id, groupId: $groupId, cycleId: $cycleId, userId: $userId, amount: $amount, status: $status, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note, submittedAt: $submittedAt, confirmedAt: $confirmedAt, rejectedAt: $rejectedAt, rejectReason: $rejectReason, createdAt: $createdAt, user: $user)';
+  return 'ContributionModel(id: $id, groupId: $groupId, cycleId: $cycleId, userId: $userId, amount: $amount, status: $status, paymentMethod: $paymentMethod, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note, submittedAt: $submittedAt, confirmedAt: $confirmedAt, rejectedAt: $rejectedAt, rejectReason: $rejectReason, createdAt: $createdAt, user: $user)';
 }
 
 
@@ -541,7 +543,7 @@ abstract mixin class _$ContributionModelCopyWith<$Res> implements $ContributionM
   factory _$ContributionModelCopyWith(_ContributionModel value, $Res Function(_ContributionModel) _then) = __$ContributionModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String groupId, String cycleId, String userId,@JsonKey(fromJson: _toInt) int amount,@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) ContributionStatusModel status, String? proofFileKey, String? paymentRef, String? note, DateTime? submittedAt, DateTime? confirmedAt, DateTime? rejectedAt, String? rejectReason, DateTime? createdAt, ContributionUserModel user
+ String id, String groupId, String cycleId, String userId,@JsonKey(fromJson: _toInt) int amount,@JsonKey(unknownEnumValue: ContributionStatusModel.unknown) ContributionStatusModel status,@JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown) GroupPaymentMethodModel? paymentMethod, String? proofFileKey, String? paymentRef, String? note, DateTime? submittedAt, DateTime? confirmedAt, DateTime? rejectedAt, String? rejectReason, DateTime? createdAt, ContributionUserModel user
 });
 
 
@@ -558,7 +560,7 @@ class __$ContributionModelCopyWithImpl<$Res>
 
 /// Create a copy of ContributionModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? groupId = null,Object? cycleId = null,Object? userId = null,Object? amount = null,Object? status = null,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,Object? submittedAt = freezed,Object? confirmedAt = freezed,Object? rejectedAt = freezed,Object? rejectReason = freezed,Object? createdAt = freezed,Object? user = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? groupId = null,Object? cycleId = null,Object? userId = null,Object? amount = null,Object? status = null,Object? paymentMethod = freezed,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,Object? submittedAt = freezed,Object? confirmedAt = freezed,Object? rejectedAt = freezed,Object? rejectReason = freezed,Object? createdAt = freezed,Object? user = null,}) {
   return _then(_ContributionModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,groupId: null == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
@@ -566,7 +568,8 @@ as String,cycleId: null == cycleId ? _self.cycleId : cycleId // ignore: cast_nul
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as int,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as ContributionStatusModel,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
+as ContributionStatusModel,paymentMethod: freezed == paymentMethod ? _self.paymentMethod : paymentMethod // ignore: cast_nullable_to_non_nullable
+as GroupPaymentMethodModel?,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
 as String?,paymentRef: freezed == paymentRef ? _self.paymentRef : paymentRef // ignore: cast_nullable_to_non_nullable
 as String?,note: freezed == note ? _self.note : note // ignore: cast_nullable_to_non_nullable
 as String?,submittedAt: freezed == submittedAt ? _self.submittedAt : submittedAt // ignore: cast_nullable_to_non_nullable
@@ -595,7 +598,7 @@ $ContributionUserModelCopyWith<$Res> get user {
 /// @nodoc
 mixin _$ContributionSummaryModel {
 
-@JsonKey(fromJson: _toInt) int get total;@JsonKey(fromJson: _toInt) int get pending;@JsonKey(fromJson: _toInt) int get submitted;@JsonKey(fromJson: _toInt) int get confirmed;@JsonKey(fromJson: _toInt) int get rejected;
+@JsonKey(fromJson: _toInt) int get total;@JsonKey(fromJson: _toInt) int get pending;@JsonKey(fromJson: _toInt) int get submitted;@JsonKey(fromJson: _toInt) int get confirmed;@JsonKey(fromJson: _toInt) int get rejected;@JsonKey(fromJson: _toInt) int get paidSubmitted;@JsonKey(fromJson: _toInt) int get verified;
 /// Create a copy of ContributionSummaryModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -608,16 +611,16 @@ $ContributionSummaryModelCopyWith<ContributionSummaryModel> get copyWith => _$Co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContributionSummaryModel&&(identical(other.total, total) || other.total == total)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.submitted, submitted) || other.submitted == submitted)&&(identical(other.confirmed, confirmed) || other.confirmed == confirmed)&&(identical(other.rejected, rejected) || other.rejected == rejected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContributionSummaryModel&&(identical(other.total, total) || other.total == total)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.submitted, submitted) || other.submitted == submitted)&&(identical(other.confirmed, confirmed) || other.confirmed == confirmed)&&(identical(other.rejected, rejected) || other.rejected == rejected)&&(identical(other.paidSubmitted, paidSubmitted) || other.paidSubmitted == paidSubmitted)&&(identical(other.verified, verified) || other.verified == verified));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,total,pending,submitted,confirmed,rejected);
+int get hashCode => Object.hash(runtimeType,total,pending,submitted,confirmed,rejected,paidSubmitted,verified);
 
 @override
 String toString() {
-  return 'ContributionSummaryModel(total: $total, pending: $pending, submitted: $submitted, confirmed: $confirmed, rejected: $rejected)';
+  return 'ContributionSummaryModel(total: $total, pending: $pending, submitted: $submitted, confirmed: $confirmed, rejected: $rejected, paidSubmitted: $paidSubmitted, verified: $verified)';
 }
 
 
@@ -628,7 +631,7 @@ abstract mixin class $ContributionSummaryModelCopyWith<$Res>  {
   factory $ContributionSummaryModelCopyWith(ContributionSummaryModel value, $Res Function(ContributionSummaryModel) _then) = _$ContributionSummaryModelCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _toInt) int total,@JsonKey(fromJson: _toInt) int pending,@JsonKey(fromJson: _toInt) int submitted,@JsonKey(fromJson: _toInt) int confirmed,@JsonKey(fromJson: _toInt) int rejected
+@JsonKey(fromJson: _toInt) int total,@JsonKey(fromJson: _toInt) int pending,@JsonKey(fromJson: _toInt) int submitted,@JsonKey(fromJson: _toInt) int confirmed,@JsonKey(fromJson: _toInt) int rejected,@JsonKey(fromJson: _toInt) int paidSubmitted,@JsonKey(fromJson: _toInt) int verified
 });
 
 
@@ -645,13 +648,15 @@ class _$ContributionSummaryModelCopyWithImpl<$Res>
 
 /// Create a copy of ContributionSummaryModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? total = null,Object? pending = null,Object? submitted = null,Object? confirmed = null,Object? rejected = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? total = null,Object? pending = null,Object? submitted = null,Object? confirmed = null,Object? rejected = null,Object? paidSubmitted = null,Object? verified = null,}) {
   return _then(_self.copyWith(
 total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
 as int,pending: null == pending ? _self.pending : pending // ignore: cast_nullable_to_non_nullable
 as int,submitted: null == submitted ? _self.submitted : submitted // ignore: cast_nullable_to_non_nullable
 as int,confirmed: null == confirmed ? _self.confirmed : confirmed // ignore: cast_nullable_to_non_nullable
 as int,rejected: null == rejected ? _self.rejected : rejected // ignore: cast_nullable_to_non_nullable
+as int,paidSubmitted: null == paidSubmitted ? _self.paidSubmitted : paidSubmitted // ignore: cast_nullable_to_non_nullable
+as int,verified: null == verified ? _self.verified : verified // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -734,10 +739,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int total, @JsonKey(fromJson: _toInt)  int pending, @JsonKey(fromJson: _toInt)  int submitted, @JsonKey(fromJson: _toInt)  int confirmed, @JsonKey(fromJson: _toInt)  int rejected)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int total, @JsonKey(fromJson: _toInt)  int pending, @JsonKey(fromJson: _toInt)  int submitted, @JsonKey(fromJson: _toInt)  int confirmed, @JsonKey(fromJson: _toInt)  int rejected, @JsonKey(fromJson: _toInt)  int paidSubmitted, @JsonKey(fromJson: _toInt)  int verified)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ContributionSummaryModel() when $default != null:
-return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.rejected);case _:
+return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.rejected,_that.paidSubmitted,_that.verified);case _:
   return orElse();
 
 }
@@ -755,10 +760,10 @@ return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int total, @JsonKey(fromJson: _toInt)  int pending, @JsonKey(fromJson: _toInt)  int submitted, @JsonKey(fromJson: _toInt)  int confirmed, @JsonKey(fromJson: _toInt)  int rejected)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int total, @JsonKey(fromJson: _toInt)  int pending, @JsonKey(fromJson: _toInt)  int submitted, @JsonKey(fromJson: _toInt)  int confirmed, @JsonKey(fromJson: _toInt)  int rejected, @JsonKey(fromJson: _toInt)  int paidSubmitted, @JsonKey(fromJson: _toInt)  int verified)  $default,) {final _that = this;
 switch (_that) {
 case _ContributionSummaryModel():
-return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.rejected);}
+return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.rejected,_that.paidSubmitted,_that.verified);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -772,10 +777,10 @@ return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(fromJson: _toInt)  int total, @JsonKey(fromJson: _toInt)  int pending, @JsonKey(fromJson: _toInt)  int submitted, @JsonKey(fromJson: _toInt)  int confirmed, @JsonKey(fromJson: _toInt)  int rejected)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(fromJson: _toInt)  int total, @JsonKey(fromJson: _toInt)  int pending, @JsonKey(fromJson: _toInt)  int submitted, @JsonKey(fromJson: _toInt)  int confirmed, @JsonKey(fromJson: _toInt)  int rejected, @JsonKey(fromJson: _toInt)  int paidSubmitted, @JsonKey(fromJson: _toInt)  int verified)?  $default,) {final _that = this;
 switch (_that) {
 case _ContributionSummaryModel() when $default != null:
-return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.rejected);case _:
+return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.rejected,_that.paidSubmitted,_that.verified);case _:
   return null;
 
 }
@@ -787,7 +792,7 @@ return $default(_that.total,_that.pending,_that.submitted,_that.confirmed,_that.
 @JsonSerializable()
 
 class _ContributionSummaryModel implements ContributionSummaryModel {
-  const _ContributionSummaryModel({@JsonKey(fromJson: _toInt) this.total = 0, @JsonKey(fromJson: _toInt) this.pending = 0, @JsonKey(fromJson: _toInt) this.submitted = 0, @JsonKey(fromJson: _toInt) this.confirmed = 0, @JsonKey(fromJson: _toInt) this.rejected = 0});
+  const _ContributionSummaryModel({@JsonKey(fromJson: _toInt) this.total = 0, @JsonKey(fromJson: _toInt) this.pending = 0, @JsonKey(fromJson: _toInt) this.submitted = 0, @JsonKey(fromJson: _toInt) this.confirmed = 0, @JsonKey(fromJson: _toInt) this.rejected = 0, @JsonKey(fromJson: _toInt) this.paidSubmitted = 0, @JsonKey(fromJson: _toInt) this.verified = 0});
   factory _ContributionSummaryModel.fromJson(Map<String, dynamic> json) => _$ContributionSummaryModelFromJson(json);
 
 @override@JsonKey(fromJson: _toInt) final  int total;
@@ -795,6 +800,8 @@ class _ContributionSummaryModel implements ContributionSummaryModel {
 @override@JsonKey(fromJson: _toInt) final  int submitted;
 @override@JsonKey(fromJson: _toInt) final  int confirmed;
 @override@JsonKey(fromJson: _toInt) final  int rejected;
+@override@JsonKey(fromJson: _toInt) final  int paidSubmitted;
+@override@JsonKey(fromJson: _toInt) final  int verified;
 
 /// Create a copy of ContributionSummaryModel
 /// with the given fields replaced by the non-null parameter values.
@@ -809,16 +816,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContributionSummaryModel&&(identical(other.total, total) || other.total == total)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.submitted, submitted) || other.submitted == submitted)&&(identical(other.confirmed, confirmed) || other.confirmed == confirmed)&&(identical(other.rejected, rejected) || other.rejected == rejected));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContributionSummaryModel&&(identical(other.total, total) || other.total == total)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.submitted, submitted) || other.submitted == submitted)&&(identical(other.confirmed, confirmed) || other.confirmed == confirmed)&&(identical(other.rejected, rejected) || other.rejected == rejected)&&(identical(other.paidSubmitted, paidSubmitted) || other.paidSubmitted == paidSubmitted)&&(identical(other.verified, verified) || other.verified == verified));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,total,pending,submitted,confirmed,rejected);
+int get hashCode => Object.hash(runtimeType,total,pending,submitted,confirmed,rejected,paidSubmitted,verified);
 
 @override
 String toString() {
-  return 'ContributionSummaryModel(total: $total, pending: $pending, submitted: $submitted, confirmed: $confirmed, rejected: $rejected)';
+  return 'ContributionSummaryModel(total: $total, pending: $pending, submitted: $submitted, confirmed: $confirmed, rejected: $rejected, paidSubmitted: $paidSubmitted, verified: $verified)';
 }
 
 
@@ -829,7 +836,7 @@ abstract mixin class _$ContributionSummaryModelCopyWith<$Res> implements $Contri
   factory _$ContributionSummaryModelCopyWith(_ContributionSummaryModel value, $Res Function(_ContributionSummaryModel) _then) = __$ContributionSummaryModelCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _toInt) int total,@JsonKey(fromJson: _toInt) int pending,@JsonKey(fromJson: _toInt) int submitted,@JsonKey(fromJson: _toInt) int confirmed,@JsonKey(fromJson: _toInt) int rejected
+@JsonKey(fromJson: _toInt) int total,@JsonKey(fromJson: _toInt) int pending,@JsonKey(fromJson: _toInt) int submitted,@JsonKey(fromJson: _toInt) int confirmed,@JsonKey(fromJson: _toInt) int rejected,@JsonKey(fromJson: _toInt) int paidSubmitted,@JsonKey(fromJson: _toInt) int verified
 });
 
 
@@ -846,13 +853,15 @@ class __$ContributionSummaryModelCopyWithImpl<$Res>
 
 /// Create a copy of ContributionSummaryModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? total = null,Object? pending = null,Object? submitted = null,Object? confirmed = null,Object? rejected = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? total = null,Object? pending = null,Object? submitted = null,Object? confirmed = null,Object? rejected = null,Object? paidSubmitted = null,Object? verified = null,}) {
   return _then(_ContributionSummaryModel(
 total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
 as int,pending: null == pending ? _self.pending : pending // ignore: cast_nullable_to_non_nullable
 as int,submitted: null == submitted ? _self.submitted : submitted // ignore: cast_nullable_to_non_nullable
 as int,confirmed: null == confirmed ? _self.confirmed : confirmed // ignore: cast_nullable_to_non_nullable
 as int,rejected: null == rejected ? _self.rejected : rejected // ignore: cast_nullable_to_non_nullable
+as int,paidSubmitted: null == paidSubmitted ? _self.paidSubmitted : paidSubmitted // ignore: cast_nullable_to_non_nullable
+as int,verified: null == verified ? _self.verified : verified // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }

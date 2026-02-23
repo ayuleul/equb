@@ -225,7 +225,9 @@ describe('Groups (e2e)', () => {
         }: {
           where: { groupId?: string; userId?: string; status?: MemberStatus };
           include?: {
-            group?: boolean | { include: { rules: { select: { groupId: true } } } };
+            group?:
+              | boolean
+              | { include: { rules: { select: { groupId: true } } } };
             user?: { select: { id: true; phone: true; fullName: true } };
           };
         }) => {
@@ -238,7 +240,9 @@ describe('Groups (e2e)', () => {
 
           return filtered.map((membership) => {
             if (include?.group) {
-              const group = groups.find((item) => item.id === membership.groupId);
+              const group = groups.find(
+                (item) => item.id === membership.groupId,
+              );
               return {
                 ...membership,
                 group: group
@@ -454,8 +458,9 @@ describe('Groups (e2e)', () => {
                     ...(include.group.select.rules
                       ? {
                           rules:
-                            groupRules.find((item) => item.groupId === group.id) ??
-                            null,
+                            groupRules.find(
+                              (item) => item.groupId === group.id,
+                            ) ?? null,
                         }
                       : {}),
                   }
@@ -534,7 +539,9 @@ describe('Groups (e2e)', () => {
     },
     groupRules: {
       create: jest.fn(({ data }: { data: { groupId: string } }) => {
-        const existing = groupRules.find((item) => item.groupId === data.groupId);
+        const existing = groupRules.find(
+          (item) => item.groupId === data.groupId,
+        );
         if (existing) {
           return existing;
         }
@@ -546,7 +553,9 @@ describe('Groups (e2e)', () => {
         return record;
       }),
       findUnique: jest.fn(({ where }: { where: { groupId: string } }) => {
-        return groupRules.find((item) => item.groupId === where.groupId) ?? null;
+        return (
+          groupRules.find((item) => item.groupId === where.groupId) ?? null
+        );
       }),
       upsert: jest.fn(
         ({

@@ -8,6 +8,7 @@ import 'package:mobile/data/contributions/contributions_repository.dart';
 import 'package:mobile/data/files/files_api.dart';
 import 'package:mobile/data/files/files_repository.dart';
 import 'package:mobile/data/models/contribution_model.dart';
+import 'package:mobile/data/models/group_rules_model.dart';
 import 'package:mobile/data/models/signed_upload_request.dart';
 import 'package:mobile/data/models/signed_upload_response.dart';
 import 'package:mobile/data/models/submit_contribution_request.dart';
@@ -45,6 +46,7 @@ void main() {
 
       await notifier.pickFromGallery();
       final success = await notifier.submit(
+        method: GroupPaymentMethodModel.bank,
         amount: 500,
         paymentRef: 'TX-1',
         note: 'Paid today',
@@ -98,6 +100,14 @@ class _FakeContributionsRepository extends ContributionsRepository {
 class _FakeContributionsApi implements ContributionsApi {
   @override
   Future<Map<String, dynamic>> confirmContribution(
+    String contributionId, {
+    String? note,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyContribution(
     String contributionId, {
     String? note,
   }) {

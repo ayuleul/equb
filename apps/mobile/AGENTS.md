@@ -100,8 +100,9 @@
 ## Cycles rules
 - Payout order positions are always saved as contiguous `1..N` after reorder; the UI order is the source of truth.
 - Admin-only cycle actions (set payout order, generate cycles) must only be shown when `membership.role == ADMIN`.
-- No batch cycle generation in UI; cycle generation is always a single "Generate next cycle" action.
-- After cycle mutations (`setPayoutOrder`, `generateCycles`), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
+- No batch cycle generation in UI; cycle start is always a single "Start cycle" action (`POST /groups/:id/cycles/start`).
+- After cycle mutations (`setPayoutOrder`, `generateCycles`/start-cycle), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
+- Group detail current-turn summary must show due-date context and keep member payment entry as a primary `Pay now` CTA.
 - Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); it must not mutate the scheduled recipient or round order.
 - Scheduled recipient (and admins) can open/close cycle auction; non-admin, non-scheduled members can only submit bids while auction is open.
 - Bid visibility in UI is locked to backend scope: admins/scheduled recipient see all bids, other members see only their own bid entries.
@@ -115,8 +116,9 @@
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.
 - The `Content-Type` used for signed upload request must exactly match the `Content-Type` sent in signed PUT upload.
-- Contribution state transitions are backend-authoritative: submit/resubmit to `SUBMITTED`, admin confirm to `CONFIRMED`, admin reject to `REJECTED`; treat `CONFIRMED` as immutable.
-- Resubmission UX should only be offered when contribution is not `CONFIRMED`, and primarily after `REJECTED` as permitted by backend rules.
+- Contribution payment submit payload is locked to include payment rail (`BANK` | `TELEBIRR` | `CASH_ACK`) plus receipt upload key (`receiptFileKey`) and optional reference.
+- Contribution state transitions are backend-authoritative: submit/resubmit payment to `PAID_SUBMITTED`, admin verify to `VERIFIED`, admin reject to `REJECTED`; legacy `SUBMITTED`/`CONFIRMED` remain compatibility states.
+- Resubmission UX should only be offered when contribution is not `VERIFIED|CONFIRMED`, and primarily after `REJECTED` as permitted by backend rules.
 
 ## Payout rules
 - Payout flow order is locked to: create payout -> confirm payout -> close cycle.

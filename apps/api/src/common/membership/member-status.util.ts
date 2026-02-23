@@ -51,10 +51,7 @@ export function normalizeMemberStatus(status: MemberStatus): MemberStatus {
     return MemberStatus.VERIFIED;
   }
 
-  if (
-    status === MemberStatus.LEFT ||
-    status === MemberStatus.REMOVED
-  ) {
+  if (status === MemberStatus.LEFT || status === MemberStatus.REMOVED) {
     return MemberStatus.SUSPENDED;
   }
 

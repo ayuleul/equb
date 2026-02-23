@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SubmitContributionRequest {
 
-@JsonKey(includeIfNull: false) int? get amount;@JsonKey(includeIfNull: false) String? get proofFileKey;@JsonKey(includeIfNull: false) String? get paymentRef;@JsonKey(includeIfNull: false) String? get note;
+ GroupPaymentMethodModel get method;@JsonKey(includeIfNull: false) int? get amount;@JsonKey(includeIfNull: false) String? get receiptFileKey;@JsonKey(includeIfNull: false) String? get reference;// legacy compatibility aliases retained by backend
+@JsonKey(includeIfNull: false) String? get proofFileKey;@JsonKey(includeIfNull: false) String? get paymentRef;@JsonKey(includeIfNull: false) String? get note;
 /// Create a copy of SubmitContributionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +29,16 @@ $SubmitContributionRequestCopyWith<SubmitContributionRequest> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SubmitContributionRequest&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SubmitContributionRequest&&(identical(other.method, method) || other.method == method)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.receiptFileKey, receiptFileKey) || other.receiptFileKey == receiptFileKey)&&(identical(other.reference, reference) || other.reference == reference)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,amount,proofFileKey,paymentRef,note);
+int get hashCode => Object.hash(runtimeType,method,amount,receiptFileKey,reference,proofFileKey,paymentRef,note);
 
 @override
 String toString() {
-  return 'SubmitContributionRequest(amount: $amount, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note)';
+  return 'SubmitContributionRequest(method: $method, amount: $amount, receiptFileKey: $receiptFileKey, reference: $reference, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note)';
 }
 
 
@@ -48,7 +49,7 @@ abstract mixin class $SubmitContributionRequestCopyWith<$Res>  {
   factory $SubmitContributionRequestCopyWith(SubmitContributionRequest value, $Res Function(SubmitContributionRequest) _then) = _$SubmitContributionRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? amount,@JsonKey(includeIfNull: false) String? proofFileKey,@JsonKey(includeIfNull: false) String? paymentRef,@JsonKey(includeIfNull: false) String? note
+ GroupPaymentMethodModel method,@JsonKey(includeIfNull: false) int? amount,@JsonKey(includeIfNull: false) String? receiptFileKey,@JsonKey(includeIfNull: false) String? reference,@JsonKey(includeIfNull: false) String? proofFileKey,@JsonKey(includeIfNull: false) String? paymentRef,@JsonKey(includeIfNull: false) String? note
 });
 
 
@@ -65,10 +66,13 @@ class _$SubmitContributionRequestCopyWithImpl<$Res>
 
 /// Create a copy of SubmitContributionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? amount = freezed,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? method = null,Object? amount = freezed,Object? receiptFileKey = freezed,Object? reference = freezed,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,}) {
   return _then(_self.copyWith(
-amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
-as int?,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
+method: null == method ? _self.method : method // ignore: cast_nullable_to_non_nullable
+as GroupPaymentMethodModel,amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as int?,receiptFileKey: freezed == receiptFileKey ? _self.receiptFileKey : receiptFileKey // ignore: cast_nullable_to_non_nullable
+as String?,reference: freezed == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
+as String?,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
 as String?,paymentRef: freezed == paymentRef ? _self.paymentRef : paymentRef // ignore: cast_nullable_to_non_nullable
 as String?,note: freezed == note ? _self.note : note // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -153,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? amount, @JsonKey(includeIfNull: false)  String? proofFileKey, @JsonKey(includeIfNull: false)  String? paymentRef, @JsonKey(includeIfNull: false)  String? note)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( GroupPaymentMethodModel method, @JsonKey(includeIfNull: false)  int? amount, @JsonKey(includeIfNull: false)  String? receiptFileKey, @JsonKey(includeIfNull: false)  String? reference, @JsonKey(includeIfNull: false)  String? proofFileKey, @JsonKey(includeIfNull: false)  String? paymentRef, @JsonKey(includeIfNull: false)  String? note)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SubmitContributionRequest() when $default != null:
-return $default(_that.amount,_that.proofFileKey,_that.paymentRef,_that.note);case _:
+return $default(_that.method,_that.amount,_that.receiptFileKey,_that.reference,_that.proofFileKey,_that.paymentRef,_that.note);case _:
   return orElse();
 
 }
@@ -174,10 +178,10 @@ return $default(_that.amount,_that.proofFileKey,_that.paymentRef,_that.note);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? amount, @JsonKey(includeIfNull: false)  String? proofFileKey, @JsonKey(includeIfNull: false)  String? paymentRef, @JsonKey(includeIfNull: false)  String? note)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( GroupPaymentMethodModel method, @JsonKey(includeIfNull: false)  int? amount, @JsonKey(includeIfNull: false)  String? receiptFileKey, @JsonKey(includeIfNull: false)  String? reference, @JsonKey(includeIfNull: false)  String? proofFileKey, @JsonKey(includeIfNull: false)  String? paymentRef, @JsonKey(includeIfNull: false)  String? note)  $default,) {final _that = this;
 switch (_that) {
 case _SubmitContributionRequest():
-return $default(_that.amount,_that.proofFileKey,_that.paymentRef,_that.note);}
+return $default(_that.method,_that.amount,_that.receiptFileKey,_that.reference,_that.proofFileKey,_that.paymentRef,_that.note);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -191,10 +195,10 @@ return $default(_that.amount,_that.proofFileKey,_that.paymentRef,_that.note);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? amount, @JsonKey(includeIfNull: false)  String? proofFileKey, @JsonKey(includeIfNull: false)  String? paymentRef, @JsonKey(includeIfNull: false)  String? note)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( GroupPaymentMethodModel method, @JsonKey(includeIfNull: false)  int? amount, @JsonKey(includeIfNull: false)  String? receiptFileKey, @JsonKey(includeIfNull: false)  String? reference, @JsonKey(includeIfNull: false)  String? proofFileKey, @JsonKey(includeIfNull: false)  String? paymentRef, @JsonKey(includeIfNull: false)  String? note)?  $default,) {final _that = this;
 switch (_that) {
 case _SubmitContributionRequest() when $default != null:
-return $default(_that.amount,_that.proofFileKey,_that.paymentRef,_that.note);case _:
+return $default(_that.method,_that.amount,_that.receiptFileKey,_that.reference,_that.proofFileKey,_that.paymentRef,_that.note);case _:
   return null;
 
 }
@@ -206,10 +210,14 @@ return $default(_that.amount,_that.proofFileKey,_that.paymentRef,_that.note);cas
 @JsonSerializable()
 
 class _SubmitContributionRequest implements SubmitContributionRequest {
-  const _SubmitContributionRequest({@JsonKey(includeIfNull: false) this.amount, @JsonKey(includeIfNull: false) this.proofFileKey, @JsonKey(includeIfNull: false) this.paymentRef, @JsonKey(includeIfNull: false) this.note});
+  const _SubmitContributionRequest({required this.method, @JsonKey(includeIfNull: false) this.amount, @JsonKey(includeIfNull: false) this.receiptFileKey, @JsonKey(includeIfNull: false) this.reference, @JsonKey(includeIfNull: false) this.proofFileKey, @JsonKey(includeIfNull: false) this.paymentRef, @JsonKey(includeIfNull: false) this.note});
   factory _SubmitContributionRequest.fromJson(Map<String, dynamic> json) => _$SubmitContributionRequestFromJson(json);
 
+@override final  GroupPaymentMethodModel method;
 @override@JsonKey(includeIfNull: false) final  int? amount;
+@override@JsonKey(includeIfNull: false) final  String? receiptFileKey;
+@override@JsonKey(includeIfNull: false) final  String? reference;
+// legacy compatibility aliases retained by backend
 @override@JsonKey(includeIfNull: false) final  String? proofFileKey;
 @override@JsonKey(includeIfNull: false) final  String? paymentRef;
 @override@JsonKey(includeIfNull: false) final  String? note;
@@ -227,16 +235,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SubmitContributionRequest&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SubmitContributionRequest&&(identical(other.method, method) || other.method == method)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.receiptFileKey, receiptFileKey) || other.receiptFileKey == receiptFileKey)&&(identical(other.reference, reference) || other.reference == reference)&&(identical(other.proofFileKey, proofFileKey) || other.proofFileKey == proofFileKey)&&(identical(other.paymentRef, paymentRef) || other.paymentRef == paymentRef)&&(identical(other.note, note) || other.note == note));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,amount,proofFileKey,paymentRef,note);
+int get hashCode => Object.hash(runtimeType,method,amount,receiptFileKey,reference,proofFileKey,paymentRef,note);
 
 @override
 String toString() {
-  return 'SubmitContributionRequest(amount: $amount, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note)';
+  return 'SubmitContributionRequest(method: $method, amount: $amount, receiptFileKey: $receiptFileKey, reference: $reference, proofFileKey: $proofFileKey, paymentRef: $paymentRef, note: $note)';
 }
 
 
@@ -247,7 +255,7 @@ abstract mixin class _$SubmitContributionRequestCopyWith<$Res> implements $Submi
   factory _$SubmitContributionRequestCopyWith(_SubmitContributionRequest value, $Res Function(_SubmitContributionRequest) _then) = __$SubmitContributionRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? amount,@JsonKey(includeIfNull: false) String? proofFileKey,@JsonKey(includeIfNull: false) String? paymentRef,@JsonKey(includeIfNull: false) String? note
+ GroupPaymentMethodModel method,@JsonKey(includeIfNull: false) int? amount,@JsonKey(includeIfNull: false) String? receiptFileKey,@JsonKey(includeIfNull: false) String? reference,@JsonKey(includeIfNull: false) String? proofFileKey,@JsonKey(includeIfNull: false) String? paymentRef,@JsonKey(includeIfNull: false) String? note
 });
 
 
@@ -264,10 +272,13 @@ class __$SubmitContributionRequestCopyWithImpl<$Res>
 
 /// Create a copy of SubmitContributionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? amount = freezed,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? method = null,Object? amount = freezed,Object? receiptFileKey = freezed,Object? reference = freezed,Object? proofFileKey = freezed,Object? paymentRef = freezed,Object? note = freezed,}) {
   return _then(_SubmitContributionRequest(
-amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
-as int?,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
+method: null == method ? _self.method : method // ignore: cast_nullable_to_non_nullable
+as GroupPaymentMethodModel,amount: freezed == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as int?,receiptFileKey: freezed == receiptFileKey ? _self.receiptFileKey : receiptFileKey // ignore: cast_nullable_to_non_nullable
+as String?,reference: freezed == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
+as String?,proofFileKey: freezed == proofFileKey ? _self.proofFileKey : proofFileKey // ignore: cast_nullable_to_non_nullable
 as String?,paymentRef: freezed == paymentRef ? _self.paymentRef : paymentRef // ignore: cast_nullable_to_non_nullable
 as String?,note: freezed == note ? _self.note : note // ignore: cast_nullable_to_non_nullable
 as String?,

@@ -327,7 +327,6 @@ describe('Auctions (e2e)', () => {
         ({
           where,
           include,
-          orderBy,
           take,
         }: {
           where: { cycleId: string; userId?: string };
@@ -336,10 +335,6 @@ describe('Auctions (e2e)', () => {
               select: { id: true; phone: true; fullName: true };
             };
           };
-          orderBy: Array<{
-            amount?: 'asc' | 'desc';
-            createdAt?: 'asc' | 'desc';
-          }>;
           take?: number;
         }) => {
           let filtered = bids.filter(

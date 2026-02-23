@@ -13,7 +13,6 @@ import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../groups/group_detail_controller.dart';
-import '../../rounds/start_round_controller.dart';
 import '../../rounds/widgets/lottery_reveal_animation.dart';
 import '../current_cycle_provider.dart';
 import '../generate_cycle_controller.dart';
@@ -28,7 +27,7 @@ class GenerateCycleScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
 
     return KitScaffold(
-      appBar: const KitAppBar(title: '🎲 Draw winner'),
+      appBar: const KitAppBar(title: 'Start cycle'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -42,7 +41,7 @@ class GenerateCycleScreen extends ConsumerWidget {
             return const EmptyState(
               icon: Icons.lock_outline,
               title: 'Admin only',
-              message: 'Only admins can draw a winner.',
+              message: 'Only admins can start a cycle.',
             );
           }
 
@@ -51,7 +50,7 @@ class GenerateCycleScreen extends ConsumerWidget {
               icon: Icons.rule_folder_outlined,
               title: 'Setup required',
               message:
-                  'Complete setup and ensure at least 2 eligible members before drawing the first winner.',
+                  'Complete setup and ensure at least 2 eligible members before starting the first cycle.',
               ctaLabel: 'Open setup',
               onCtaPressed: () =>
                   context.push(AppRoutePaths.groupSetup(groupId)),
@@ -92,25 +91,7 @@ class _DrawWinnerBodyState extends ConsumerState<_DrawWinnerBody> {
     final drawController = ref.read(
       generateCycleControllerProvider(widget.groupId).notifier,
     );
-    CycleModel? created = await drawController.generateNextCycle();
-
-    if (created == null) {
-      final drawError =
-          ref
-              .read(generateCycleControllerProvider(widget.groupId))
-              .errorMessage ??
-          '';
-      final normalized = drawError.toLowerCase();
-
-      if (normalized.contains('active round is required')) {
-        final startedRound = await ref
-            .read(startRoundControllerProvider(widget.groupId).notifier)
-            .startRound();
-        if (startedRound) {
-          created = await drawController.generateNextCycle();
-        }
-      }
-    }
+    final created = await drawController.generateNextCycle();
 
     final elapsed = DateTime.now().difference(startedAt);
     if (elapsed < _minRevealDuration) {
@@ -127,12 +108,9 @@ class _DrawWinnerBodyState extends ConsumerState<_DrawWinnerBody> {
       final drawMessage = ref
           .read(generateCycleControllerProvider(widget.groupId))
           .errorMessage;
-      final startMessage = ref
-          .read(startRoundControllerProvider(widget.groupId))
-          .errorMessage;
       AppSnackbars.error(
         context,
-        drawMessage ?? startMessage ?? 'Could not draw a winner right now.',
+        drawMessage ?? 'Could not start a cycle right now.',
       );
       return;
     }
@@ -196,7 +174,7 @@ class _DrawWinnerBodyState extends ConsumerState<_DrawWinnerBody> {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Turn ${currentCycle.cycleNo} is still open. Finish it before drawing the next winner.',
+                      'Turn ${currentCycle.cycleNo} is still open. Finish it before starting the next cycle.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: AppSpacing.sm),

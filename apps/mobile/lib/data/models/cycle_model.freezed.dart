@@ -278,7 +278,7 @@ as String?,
 /// @nodoc
 mixin _$CycleModel {
 
- String get id; String get groupId; String? get roundId;@JsonKey(fromJson: _toInt) int get cycleNo; DateTime get dueDate; String? get scheduledPayoutUserId; String? get finalPayoutUserId; String get payoutUserId;@JsonKey(unknownEnumValue: AuctionStatusModel.unknown) AuctionStatusModel? get auctionStatus;@JsonKey(fromJson: _toNullableInt) int? get winningBidAmount; String? get winningBidUserId;@JsonKey(unknownEnumValue: CycleStatusModel.unknown) CycleStatusModel get status; String? get createdByUserId; DateTime? get createdAt; CyclePayoutUserModel? get scheduledPayoutUser; CyclePayoutUserModel? get finalPayoutUser; CyclePayoutUserModel? get winningBidUser; CyclePayoutUserModel? get payoutUser;
+ String get id; String get groupId; String? get roundId;@JsonKey(fromJson: _toInt) int get cycleNo; DateTime get dueDate; DateTime? get dueAt;@JsonKey(unknownEnumValue: CycleStateModel.unknown) CycleStateModel? get state; String? get scheduledPayoutUserId; String? get finalPayoutUserId; String get payoutUserId;@JsonKey(unknownEnumValue: AuctionStatusModel.unknown) AuctionStatusModel? get auctionStatus;@JsonKey(fromJson: _toNullableInt) int? get winningBidAmount; String? get winningBidUserId;@JsonKey(unknownEnumValue: CycleStatusModel.unknown) CycleStatusModel get status; String? get createdByUserId; DateTime? get createdAt; CyclePayoutUserModel? get scheduledPayoutUser; CyclePayoutUserModel? get finalPayoutUser; CyclePayoutUserModel? get winningBidUser; CyclePayoutUserModel? get payoutUser;
 /// Create a copy of CycleModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -291,16 +291,16 @@ $CycleModelCopyWith<CycleModel> get copyWith => _$CycleModelCopyWithImpl<CycleMo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CycleModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.roundId, roundId) || other.roundId == roundId)&&(identical(other.cycleNo, cycleNo) || other.cycleNo == cycleNo)&&(identical(other.dueDate, dueDate) || other.dueDate == dueDate)&&(identical(other.scheduledPayoutUserId, scheduledPayoutUserId) || other.scheduledPayoutUserId == scheduledPayoutUserId)&&(identical(other.finalPayoutUserId, finalPayoutUserId) || other.finalPayoutUserId == finalPayoutUserId)&&(identical(other.payoutUserId, payoutUserId) || other.payoutUserId == payoutUserId)&&(identical(other.auctionStatus, auctionStatus) || other.auctionStatus == auctionStatus)&&(identical(other.winningBidAmount, winningBidAmount) || other.winningBidAmount == winningBidAmount)&&(identical(other.winningBidUserId, winningBidUserId) || other.winningBidUserId == winningBidUserId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.scheduledPayoutUser, scheduledPayoutUser) || other.scheduledPayoutUser == scheduledPayoutUser)&&(identical(other.finalPayoutUser, finalPayoutUser) || other.finalPayoutUser == finalPayoutUser)&&(identical(other.winningBidUser, winningBidUser) || other.winningBidUser == winningBidUser)&&(identical(other.payoutUser, payoutUser) || other.payoutUser == payoutUser));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CycleModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.roundId, roundId) || other.roundId == roundId)&&(identical(other.cycleNo, cycleNo) || other.cycleNo == cycleNo)&&(identical(other.dueDate, dueDate) || other.dueDate == dueDate)&&(identical(other.dueAt, dueAt) || other.dueAt == dueAt)&&(identical(other.state, state) || other.state == state)&&(identical(other.scheduledPayoutUserId, scheduledPayoutUserId) || other.scheduledPayoutUserId == scheduledPayoutUserId)&&(identical(other.finalPayoutUserId, finalPayoutUserId) || other.finalPayoutUserId == finalPayoutUserId)&&(identical(other.payoutUserId, payoutUserId) || other.payoutUserId == payoutUserId)&&(identical(other.auctionStatus, auctionStatus) || other.auctionStatus == auctionStatus)&&(identical(other.winningBidAmount, winningBidAmount) || other.winningBidAmount == winningBidAmount)&&(identical(other.winningBidUserId, winningBidUserId) || other.winningBidUserId == winningBidUserId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.scheduledPayoutUser, scheduledPayoutUser) || other.scheduledPayoutUser == scheduledPayoutUser)&&(identical(other.finalPayoutUser, finalPayoutUser) || other.finalPayoutUser == finalPayoutUser)&&(identical(other.winningBidUser, winningBidUser) || other.winningBidUser == winningBidUser)&&(identical(other.payoutUser, payoutUser) || other.payoutUser == payoutUser));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,groupId,roundId,cycleNo,dueDate,scheduledPayoutUserId,finalPayoutUserId,payoutUserId,auctionStatus,winningBidAmount,winningBidUserId,status,createdByUserId,createdAt,scheduledPayoutUser,finalPayoutUser,winningBidUser,payoutUser);
+int get hashCode => Object.hashAll([runtimeType,id,groupId,roundId,cycleNo,dueDate,dueAt,state,scheduledPayoutUserId,finalPayoutUserId,payoutUserId,auctionStatus,winningBidAmount,winningBidUserId,status,createdByUserId,createdAt,scheduledPayoutUser,finalPayoutUser,winningBidUser,payoutUser]);
 
 @override
 String toString() {
-  return 'CycleModel(id: $id, groupId: $groupId, roundId: $roundId, cycleNo: $cycleNo, dueDate: $dueDate, scheduledPayoutUserId: $scheduledPayoutUserId, finalPayoutUserId: $finalPayoutUserId, payoutUserId: $payoutUserId, auctionStatus: $auctionStatus, winningBidAmount: $winningBidAmount, winningBidUserId: $winningBidUserId, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, scheduledPayoutUser: $scheduledPayoutUser, finalPayoutUser: $finalPayoutUser, winningBidUser: $winningBidUser, payoutUser: $payoutUser)';
+  return 'CycleModel(id: $id, groupId: $groupId, roundId: $roundId, cycleNo: $cycleNo, dueDate: $dueDate, dueAt: $dueAt, state: $state, scheduledPayoutUserId: $scheduledPayoutUserId, finalPayoutUserId: $finalPayoutUserId, payoutUserId: $payoutUserId, auctionStatus: $auctionStatus, winningBidAmount: $winningBidAmount, winningBidUserId: $winningBidUserId, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, scheduledPayoutUser: $scheduledPayoutUser, finalPayoutUser: $finalPayoutUser, winningBidUser: $winningBidUser, payoutUser: $payoutUser)';
 }
 
 
@@ -311,7 +311,7 @@ abstract mixin class $CycleModelCopyWith<$Res>  {
   factory $CycleModelCopyWith(CycleModel value, $Res Function(CycleModel) _then) = _$CycleModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String groupId, String? roundId,@JsonKey(fromJson: _toInt) int cycleNo, DateTime dueDate, String? scheduledPayoutUserId, String? finalPayoutUserId, String payoutUserId,@JsonKey(unknownEnumValue: AuctionStatusModel.unknown) AuctionStatusModel? auctionStatus,@JsonKey(fromJson: _toNullableInt) int? winningBidAmount, String? winningBidUserId,@JsonKey(unknownEnumValue: CycleStatusModel.unknown) CycleStatusModel status, String? createdByUserId, DateTime? createdAt, CyclePayoutUserModel? scheduledPayoutUser, CyclePayoutUserModel? finalPayoutUser, CyclePayoutUserModel? winningBidUser, CyclePayoutUserModel? payoutUser
+ String id, String groupId, String? roundId,@JsonKey(fromJson: _toInt) int cycleNo, DateTime dueDate, DateTime? dueAt,@JsonKey(unknownEnumValue: CycleStateModel.unknown) CycleStateModel? state, String? scheduledPayoutUserId, String? finalPayoutUserId, String payoutUserId,@JsonKey(unknownEnumValue: AuctionStatusModel.unknown) AuctionStatusModel? auctionStatus,@JsonKey(fromJson: _toNullableInt) int? winningBidAmount, String? winningBidUserId,@JsonKey(unknownEnumValue: CycleStatusModel.unknown) CycleStatusModel status, String? createdByUserId, DateTime? createdAt, CyclePayoutUserModel? scheduledPayoutUser, CyclePayoutUserModel? finalPayoutUser, CyclePayoutUserModel? winningBidUser, CyclePayoutUserModel? payoutUser
 });
 
 
@@ -328,14 +328,16 @@ class _$CycleModelCopyWithImpl<$Res>
 
 /// Create a copy of CycleModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? groupId = null,Object? roundId = freezed,Object? cycleNo = null,Object? dueDate = null,Object? scheduledPayoutUserId = freezed,Object? finalPayoutUserId = freezed,Object? payoutUserId = null,Object? auctionStatus = freezed,Object? winningBidAmount = freezed,Object? winningBidUserId = freezed,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? scheduledPayoutUser = freezed,Object? finalPayoutUser = freezed,Object? winningBidUser = freezed,Object? payoutUser = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? groupId = null,Object? roundId = freezed,Object? cycleNo = null,Object? dueDate = null,Object? dueAt = freezed,Object? state = freezed,Object? scheduledPayoutUserId = freezed,Object? finalPayoutUserId = freezed,Object? payoutUserId = null,Object? auctionStatus = freezed,Object? winningBidAmount = freezed,Object? winningBidUserId = freezed,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? scheduledPayoutUser = freezed,Object? finalPayoutUser = freezed,Object? winningBidUser = freezed,Object? payoutUser = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,groupId: null == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
 as String,roundId: freezed == roundId ? _self.roundId : roundId // ignore: cast_nullable_to_non_nullable
 as String?,cycleNo: null == cycleNo ? _self.cycleNo : cycleNo // ignore: cast_nullable_to_non_nullable
 as int,dueDate: null == dueDate ? _self.dueDate : dueDate // ignore: cast_nullable_to_non_nullable
-as DateTime,scheduledPayoutUserId: freezed == scheduledPayoutUserId ? _self.scheduledPayoutUserId : scheduledPayoutUserId // ignore: cast_nullable_to_non_nullable
+as DateTime,dueAt: freezed == dueAt ? _self.dueAt : dueAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as CycleStateModel?,scheduledPayoutUserId: freezed == scheduledPayoutUserId ? _self.scheduledPayoutUserId : scheduledPayoutUserId // ignore: cast_nullable_to_non_nullable
 as String?,finalPayoutUserId: freezed == finalPayoutUserId ? _self.finalPayoutUserId : finalPayoutUserId // ignore: cast_nullable_to_non_nullable
 as String?,payoutUserId: null == payoutUserId ? _self.payoutUserId : payoutUserId // ignore: cast_nullable_to_non_nullable
 as String,auctionStatus: freezed == auctionStatus ? _self.auctionStatus : auctionStatus // ignore: cast_nullable_to_non_nullable
@@ -478,10 +480,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String groupId,  String? roundId, @JsonKey(fromJson: _toInt)  int cycleNo,  DateTime dueDate,  String? scheduledPayoutUserId,  String? finalPayoutUserId,  String payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)  AuctionStatusModel? auctionStatus, @JsonKey(fromJson: _toNullableInt)  int? winningBidAmount,  String? winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown)  CycleStatusModel status,  String? createdByUserId,  DateTime? createdAt,  CyclePayoutUserModel? scheduledPayoutUser,  CyclePayoutUserModel? finalPayoutUser,  CyclePayoutUserModel? winningBidUser,  CyclePayoutUserModel? payoutUser)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String groupId,  String? roundId, @JsonKey(fromJson: _toInt)  int cycleNo,  DateTime dueDate,  DateTime? dueAt, @JsonKey(unknownEnumValue: CycleStateModel.unknown)  CycleStateModel? state,  String? scheduledPayoutUserId,  String? finalPayoutUserId,  String payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)  AuctionStatusModel? auctionStatus, @JsonKey(fromJson: _toNullableInt)  int? winningBidAmount,  String? winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown)  CycleStatusModel status,  String? createdByUserId,  DateTime? createdAt,  CyclePayoutUserModel? scheduledPayoutUser,  CyclePayoutUserModel? finalPayoutUser,  CyclePayoutUserModel? winningBidUser,  CyclePayoutUserModel? payoutUser)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CycleModel() when $default != null:
-return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate,_that.scheduledPayoutUserId,_that.finalPayoutUserId,_that.payoutUserId,_that.auctionStatus,_that.winningBidAmount,_that.winningBidUserId,_that.status,_that.createdByUserId,_that.createdAt,_that.scheduledPayoutUser,_that.finalPayoutUser,_that.winningBidUser,_that.payoutUser);case _:
+return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate,_that.dueAt,_that.state,_that.scheduledPayoutUserId,_that.finalPayoutUserId,_that.payoutUserId,_that.auctionStatus,_that.winningBidAmount,_that.winningBidUserId,_that.status,_that.createdByUserId,_that.createdAt,_that.scheduledPayoutUser,_that.finalPayoutUser,_that.winningBidUser,_that.payoutUser);case _:
   return orElse();
 
 }
@@ -499,10 +501,10 @@ return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String groupId,  String? roundId, @JsonKey(fromJson: _toInt)  int cycleNo,  DateTime dueDate,  String? scheduledPayoutUserId,  String? finalPayoutUserId,  String payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)  AuctionStatusModel? auctionStatus, @JsonKey(fromJson: _toNullableInt)  int? winningBidAmount,  String? winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown)  CycleStatusModel status,  String? createdByUserId,  DateTime? createdAt,  CyclePayoutUserModel? scheduledPayoutUser,  CyclePayoutUserModel? finalPayoutUser,  CyclePayoutUserModel? winningBidUser,  CyclePayoutUserModel? payoutUser)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String groupId,  String? roundId, @JsonKey(fromJson: _toInt)  int cycleNo,  DateTime dueDate,  DateTime? dueAt, @JsonKey(unknownEnumValue: CycleStateModel.unknown)  CycleStateModel? state,  String? scheduledPayoutUserId,  String? finalPayoutUserId,  String payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)  AuctionStatusModel? auctionStatus, @JsonKey(fromJson: _toNullableInt)  int? winningBidAmount,  String? winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown)  CycleStatusModel status,  String? createdByUserId,  DateTime? createdAt,  CyclePayoutUserModel? scheduledPayoutUser,  CyclePayoutUserModel? finalPayoutUser,  CyclePayoutUserModel? winningBidUser,  CyclePayoutUserModel? payoutUser)  $default,) {final _that = this;
 switch (_that) {
 case _CycleModel():
-return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate,_that.scheduledPayoutUserId,_that.finalPayoutUserId,_that.payoutUserId,_that.auctionStatus,_that.winningBidAmount,_that.winningBidUserId,_that.status,_that.createdByUserId,_that.createdAt,_that.scheduledPayoutUser,_that.finalPayoutUser,_that.winningBidUser,_that.payoutUser);}
+return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate,_that.dueAt,_that.state,_that.scheduledPayoutUserId,_that.finalPayoutUserId,_that.payoutUserId,_that.auctionStatus,_that.winningBidAmount,_that.winningBidUserId,_that.status,_that.createdByUserId,_that.createdAt,_that.scheduledPayoutUser,_that.finalPayoutUser,_that.winningBidUser,_that.payoutUser);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -516,10 +518,10 @@ return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String groupId,  String? roundId, @JsonKey(fromJson: _toInt)  int cycleNo,  DateTime dueDate,  String? scheduledPayoutUserId,  String? finalPayoutUserId,  String payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)  AuctionStatusModel? auctionStatus, @JsonKey(fromJson: _toNullableInt)  int? winningBidAmount,  String? winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown)  CycleStatusModel status,  String? createdByUserId,  DateTime? createdAt,  CyclePayoutUserModel? scheduledPayoutUser,  CyclePayoutUserModel? finalPayoutUser,  CyclePayoutUserModel? winningBidUser,  CyclePayoutUserModel? payoutUser)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String groupId,  String? roundId, @JsonKey(fromJson: _toInt)  int cycleNo,  DateTime dueDate,  DateTime? dueAt, @JsonKey(unknownEnumValue: CycleStateModel.unknown)  CycleStateModel? state,  String? scheduledPayoutUserId,  String? finalPayoutUserId,  String payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)  AuctionStatusModel? auctionStatus, @JsonKey(fromJson: _toNullableInt)  int? winningBidAmount,  String? winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown)  CycleStatusModel status,  String? createdByUserId,  DateTime? createdAt,  CyclePayoutUserModel? scheduledPayoutUser,  CyclePayoutUserModel? finalPayoutUser,  CyclePayoutUserModel? winningBidUser,  CyclePayoutUserModel? payoutUser)?  $default,) {final _that = this;
 switch (_that) {
 case _CycleModel() when $default != null:
-return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate,_that.scheduledPayoutUserId,_that.finalPayoutUserId,_that.payoutUserId,_that.auctionStatus,_that.winningBidAmount,_that.winningBidUserId,_that.status,_that.createdByUserId,_that.createdAt,_that.scheduledPayoutUser,_that.finalPayoutUser,_that.winningBidUser,_that.payoutUser);case _:
+return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate,_that.dueAt,_that.state,_that.scheduledPayoutUserId,_that.finalPayoutUserId,_that.payoutUserId,_that.auctionStatus,_that.winningBidAmount,_that.winningBidUserId,_that.status,_that.createdByUserId,_that.createdAt,_that.scheduledPayoutUser,_that.finalPayoutUser,_that.winningBidUser,_that.payoutUser);case _:
   return null;
 
 }
@@ -531,7 +533,7 @@ return $default(_that.id,_that.groupId,_that.roundId,_that.cycleNo,_that.dueDate
 @JsonSerializable()
 
 class _CycleModel implements CycleModel {
-  const _CycleModel({required this.id, required this.groupId, this.roundId, @JsonKey(fromJson: _toInt) required this.cycleNo, required this.dueDate, this.scheduledPayoutUserId, this.finalPayoutUserId, required this.payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown) this.auctionStatus, @JsonKey(fromJson: _toNullableInt) this.winningBidAmount, this.winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown) required this.status, this.createdByUserId, this.createdAt, this.scheduledPayoutUser, this.finalPayoutUser, this.winningBidUser, this.payoutUser});
+  const _CycleModel({required this.id, required this.groupId, this.roundId, @JsonKey(fromJson: _toInt) required this.cycleNo, required this.dueDate, this.dueAt, @JsonKey(unknownEnumValue: CycleStateModel.unknown) this.state, this.scheduledPayoutUserId, this.finalPayoutUserId, required this.payoutUserId, @JsonKey(unknownEnumValue: AuctionStatusModel.unknown) this.auctionStatus, @JsonKey(fromJson: _toNullableInt) this.winningBidAmount, this.winningBidUserId, @JsonKey(unknownEnumValue: CycleStatusModel.unknown) required this.status, this.createdByUserId, this.createdAt, this.scheduledPayoutUser, this.finalPayoutUser, this.winningBidUser, this.payoutUser});
   factory _CycleModel.fromJson(Map<String, dynamic> json) => _$CycleModelFromJson(json);
 
 @override final  String id;
@@ -539,6 +541,8 @@ class _CycleModel implements CycleModel {
 @override final  String? roundId;
 @override@JsonKey(fromJson: _toInt) final  int cycleNo;
 @override final  DateTime dueDate;
+@override final  DateTime? dueAt;
+@override@JsonKey(unknownEnumValue: CycleStateModel.unknown) final  CycleStateModel? state;
 @override final  String? scheduledPayoutUserId;
 @override final  String? finalPayoutUserId;
 @override final  String payoutUserId;
@@ -566,16 +570,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CycleModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.roundId, roundId) || other.roundId == roundId)&&(identical(other.cycleNo, cycleNo) || other.cycleNo == cycleNo)&&(identical(other.dueDate, dueDate) || other.dueDate == dueDate)&&(identical(other.scheduledPayoutUserId, scheduledPayoutUserId) || other.scheduledPayoutUserId == scheduledPayoutUserId)&&(identical(other.finalPayoutUserId, finalPayoutUserId) || other.finalPayoutUserId == finalPayoutUserId)&&(identical(other.payoutUserId, payoutUserId) || other.payoutUserId == payoutUserId)&&(identical(other.auctionStatus, auctionStatus) || other.auctionStatus == auctionStatus)&&(identical(other.winningBidAmount, winningBidAmount) || other.winningBidAmount == winningBidAmount)&&(identical(other.winningBidUserId, winningBidUserId) || other.winningBidUserId == winningBidUserId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.scheduledPayoutUser, scheduledPayoutUser) || other.scheduledPayoutUser == scheduledPayoutUser)&&(identical(other.finalPayoutUser, finalPayoutUser) || other.finalPayoutUser == finalPayoutUser)&&(identical(other.winningBidUser, winningBidUser) || other.winningBidUser == winningBidUser)&&(identical(other.payoutUser, payoutUser) || other.payoutUser == payoutUser));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CycleModel&&(identical(other.id, id) || other.id == id)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.roundId, roundId) || other.roundId == roundId)&&(identical(other.cycleNo, cycleNo) || other.cycleNo == cycleNo)&&(identical(other.dueDate, dueDate) || other.dueDate == dueDate)&&(identical(other.dueAt, dueAt) || other.dueAt == dueAt)&&(identical(other.state, state) || other.state == state)&&(identical(other.scheduledPayoutUserId, scheduledPayoutUserId) || other.scheduledPayoutUserId == scheduledPayoutUserId)&&(identical(other.finalPayoutUserId, finalPayoutUserId) || other.finalPayoutUserId == finalPayoutUserId)&&(identical(other.payoutUserId, payoutUserId) || other.payoutUserId == payoutUserId)&&(identical(other.auctionStatus, auctionStatus) || other.auctionStatus == auctionStatus)&&(identical(other.winningBidAmount, winningBidAmount) || other.winningBidAmount == winningBidAmount)&&(identical(other.winningBidUserId, winningBidUserId) || other.winningBidUserId == winningBidUserId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.scheduledPayoutUser, scheduledPayoutUser) || other.scheduledPayoutUser == scheduledPayoutUser)&&(identical(other.finalPayoutUser, finalPayoutUser) || other.finalPayoutUser == finalPayoutUser)&&(identical(other.winningBidUser, winningBidUser) || other.winningBidUser == winningBidUser)&&(identical(other.payoutUser, payoutUser) || other.payoutUser == payoutUser));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,groupId,roundId,cycleNo,dueDate,scheduledPayoutUserId,finalPayoutUserId,payoutUserId,auctionStatus,winningBidAmount,winningBidUserId,status,createdByUserId,createdAt,scheduledPayoutUser,finalPayoutUser,winningBidUser,payoutUser);
+int get hashCode => Object.hashAll([runtimeType,id,groupId,roundId,cycleNo,dueDate,dueAt,state,scheduledPayoutUserId,finalPayoutUserId,payoutUserId,auctionStatus,winningBidAmount,winningBidUserId,status,createdByUserId,createdAt,scheduledPayoutUser,finalPayoutUser,winningBidUser,payoutUser]);
 
 @override
 String toString() {
-  return 'CycleModel(id: $id, groupId: $groupId, roundId: $roundId, cycleNo: $cycleNo, dueDate: $dueDate, scheduledPayoutUserId: $scheduledPayoutUserId, finalPayoutUserId: $finalPayoutUserId, payoutUserId: $payoutUserId, auctionStatus: $auctionStatus, winningBidAmount: $winningBidAmount, winningBidUserId: $winningBidUserId, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, scheduledPayoutUser: $scheduledPayoutUser, finalPayoutUser: $finalPayoutUser, winningBidUser: $winningBidUser, payoutUser: $payoutUser)';
+  return 'CycleModel(id: $id, groupId: $groupId, roundId: $roundId, cycleNo: $cycleNo, dueDate: $dueDate, dueAt: $dueAt, state: $state, scheduledPayoutUserId: $scheduledPayoutUserId, finalPayoutUserId: $finalPayoutUserId, payoutUserId: $payoutUserId, auctionStatus: $auctionStatus, winningBidAmount: $winningBidAmount, winningBidUserId: $winningBidUserId, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, scheduledPayoutUser: $scheduledPayoutUser, finalPayoutUser: $finalPayoutUser, winningBidUser: $winningBidUser, payoutUser: $payoutUser)';
 }
 
 
@@ -586,7 +590,7 @@ abstract mixin class _$CycleModelCopyWith<$Res> implements $CycleModelCopyWith<$
   factory _$CycleModelCopyWith(_CycleModel value, $Res Function(_CycleModel) _then) = __$CycleModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String groupId, String? roundId,@JsonKey(fromJson: _toInt) int cycleNo, DateTime dueDate, String? scheduledPayoutUserId, String? finalPayoutUserId, String payoutUserId,@JsonKey(unknownEnumValue: AuctionStatusModel.unknown) AuctionStatusModel? auctionStatus,@JsonKey(fromJson: _toNullableInt) int? winningBidAmount, String? winningBidUserId,@JsonKey(unknownEnumValue: CycleStatusModel.unknown) CycleStatusModel status, String? createdByUserId, DateTime? createdAt, CyclePayoutUserModel? scheduledPayoutUser, CyclePayoutUserModel? finalPayoutUser, CyclePayoutUserModel? winningBidUser, CyclePayoutUserModel? payoutUser
+ String id, String groupId, String? roundId,@JsonKey(fromJson: _toInt) int cycleNo, DateTime dueDate, DateTime? dueAt,@JsonKey(unknownEnumValue: CycleStateModel.unknown) CycleStateModel? state, String? scheduledPayoutUserId, String? finalPayoutUserId, String payoutUserId,@JsonKey(unknownEnumValue: AuctionStatusModel.unknown) AuctionStatusModel? auctionStatus,@JsonKey(fromJson: _toNullableInt) int? winningBidAmount, String? winningBidUserId,@JsonKey(unknownEnumValue: CycleStatusModel.unknown) CycleStatusModel status, String? createdByUserId, DateTime? createdAt, CyclePayoutUserModel? scheduledPayoutUser, CyclePayoutUserModel? finalPayoutUser, CyclePayoutUserModel? winningBidUser, CyclePayoutUserModel? payoutUser
 });
 
 
@@ -603,14 +607,16 @@ class __$CycleModelCopyWithImpl<$Res>
 
 /// Create a copy of CycleModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? groupId = null,Object? roundId = freezed,Object? cycleNo = null,Object? dueDate = null,Object? scheduledPayoutUserId = freezed,Object? finalPayoutUserId = freezed,Object? payoutUserId = null,Object? auctionStatus = freezed,Object? winningBidAmount = freezed,Object? winningBidUserId = freezed,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? scheduledPayoutUser = freezed,Object? finalPayoutUser = freezed,Object? winningBidUser = freezed,Object? payoutUser = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? groupId = null,Object? roundId = freezed,Object? cycleNo = null,Object? dueDate = null,Object? dueAt = freezed,Object? state = freezed,Object? scheduledPayoutUserId = freezed,Object? finalPayoutUserId = freezed,Object? payoutUserId = null,Object? auctionStatus = freezed,Object? winningBidAmount = freezed,Object? winningBidUserId = freezed,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? scheduledPayoutUser = freezed,Object? finalPayoutUser = freezed,Object? winningBidUser = freezed,Object? payoutUser = freezed,}) {
   return _then(_CycleModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,groupId: null == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
 as String,roundId: freezed == roundId ? _self.roundId : roundId // ignore: cast_nullable_to_non_nullable
 as String?,cycleNo: null == cycleNo ? _self.cycleNo : cycleNo // ignore: cast_nullable_to_non_nullable
 as int,dueDate: null == dueDate ? _self.dueDate : dueDate // ignore: cast_nullable_to_non_nullable
-as DateTime,scheduledPayoutUserId: freezed == scheduledPayoutUserId ? _self.scheduledPayoutUserId : scheduledPayoutUserId // ignore: cast_nullable_to_non_nullable
+as DateTime,dueAt: freezed == dueAt ? _self.dueAt : dueAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as CycleStateModel?,scheduledPayoutUserId: freezed == scheduledPayoutUserId ? _self.scheduledPayoutUserId : scheduledPayoutUserId // ignore: cast_nullable_to_non_nullable
 as String?,finalPayoutUserId: freezed == finalPayoutUserId ? _self.finalPayoutUserId : finalPayoutUserId // ignore: cast_nullable_to_non_nullable
 as String?,payoutUserId: null == payoutUserId ? _self.payoutUserId : payoutUserId // ignore: cast_nullable_to_non_nullable
 as String,auctionStatus: freezed == auctionStatus ? _self.auctionStatus : auctionStatus // ignore: cast_nullable_to_non_nullable

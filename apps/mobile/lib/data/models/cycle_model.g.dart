@@ -28,6 +28,12 @@ _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
   roundId: json['roundId'] as String?,
   cycleNo: _toInt(json['cycleNo']),
   dueDate: DateTime.parse(json['dueDate'] as String),
+  dueAt: json['dueAt'] == null ? null : DateTime.parse(json['dueAt'] as String),
+  state: $enumDecodeNullable(
+    _$CycleStateModelEnumMap,
+    json['state'],
+    unknownValue: CycleStateModel.unknown,
+  ),
   scheduledPayoutUserId: json['scheduledPayoutUserId'] as String?,
   finalPayoutUserId: json['finalPayoutUserId'] as String?,
   payoutUserId: json['payoutUserId'] as String,
@@ -76,6 +82,8 @@ Map<String, dynamic> _$CycleModelToJson(_CycleModel instance) =>
       'roundId': instance.roundId,
       'cycleNo': instance.cycleNo,
       'dueDate': instance.dueDate.toIso8601String(),
+      'dueAt': instance.dueAt?.toIso8601String(),
+      'state': _$CycleStateModelEnumMap[instance.state],
       'scheduledPayoutUserId': instance.scheduledPayoutUserId,
       'finalPayoutUserId': instance.finalPayoutUserId,
       'payoutUserId': instance.payoutUserId,
@@ -90,6 +98,15 @@ Map<String, dynamic> _$CycleModelToJson(_CycleModel instance) =>
       'winningBidUser': instance.winningBidUser,
       'payoutUser': instance.payoutUser,
     };
+
+const _$CycleStateModelEnumMap = {
+  CycleStateModel.due: 'DUE',
+  CycleStateModel.collecting: 'COLLECTING',
+  CycleStateModel.readyForPayout: 'READY_FOR_PAYOUT',
+  CycleStateModel.disbursed: 'DISBURSED',
+  CycleStateModel.closed: 'CLOSED',
+  CycleStateModel.unknown: 'unknown',
+};
 
 const _$AuctionStatusModelEnumMap = {
   AuctionStatusModel.none: 'NONE',

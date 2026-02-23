@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/group_rules_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
@@ -34,6 +35,7 @@ class _SubmitContributionScreenState
   late final TextEditingController _amountController;
   late final TextEditingController _paymentRefController;
   late final TextEditingController _noteController;
+  var _method = GroupPaymentMethodModel.bank;
   String? _formError;
 
   @override
@@ -77,7 +79,7 @@ class _SubmitContributionScreenState
     }
 
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Submit contribution'),
+      appBar: const KitAppBar(title: 'Pay now'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -102,6 +104,10 @@ class _SubmitContributionScreenState
               args: args,
               group: groupData,
               cycle: cycleData,
+              method: _method,
+              onMethodChanged: (value) {
+                setState(() => _method = value);
+              },
               amountController: _amountController,
               paymentRefController: _paymentRefController,
               noteController: _noteController,
@@ -123,6 +129,8 @@ class _SubmitForm extends ConsumerWidget {
     required this.args,
     required this.group,
     required this.cycle,
+    required this.method,
+    required this.onMethodChanged,
     required this.amountController,
     required this.paymentRefController,
     required this.noteController,
@@ -134,6 +142,8 @@ class _SubmitForm extends ConsumerWidget {
   final CycleContributionsArgs args;
   final GroupModel group;
   final CycleModel cycle;
+  final GroupPaymentMethodModel method;
+  final ValueChanged<GroupPaymentMethodModel> onMethodChanged;
   final TextEditingController amountController;
   final TextEditingController paymentRefController;
   final TextEditingController noteController;
@@ -164,6 +174,7 @@ class _SubmitForm extends ConsumerWidget {
       onFormErrorChanged(null);
 
       final success = await controller.submit(
+        method: method,
         amount: amount,
         paymentRef: paymentRefController.text,
         note: noteController.text,
@@ -211,7 +222,7 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(title: '1) Upload proof'),
+              const KitSectionHeader(title: '1) Upload receipt'),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
@@ -277,6 +288,32 @@ class _SubmitForm extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const KitSectionHeader(title: '2) Payment details'),
+              DropdownButtonFormField<GroupPaymentMethodModel>(
+                initialValue: method,
+                decoration: const InputDecoration(labelText: 'Payment method'),
+                items: const [
+                  DropdownMenuItem(
+                    value: GroupPaymentMethodModel.bank,
+                    child: Text('BANK'),
+                  ),
+                  DropdownMenuItem(
+                    value: GroupPaymentMethodModel.telebirr,
+                    child: Text('TELEBIRR'),
+                  ),
+                  DropdownMenuItem(
+                    value: GroupPaymentMethodModel.cashAck,
+                    child: Text('CASH_ACK'),
+                  ),
+                ],
+                onChanged: !isCycleOpen || submitState.isBusy
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          onMethodChanged(value);
+                        }
+                      },
+              ),
+              const SizedBox(height: AppSpacing.md),
               KitNumberField(
                 controller: amountController,
                 label: 'Amount',
@@ -315,7 +352,7 @@ class _SubmitForm extends ConsumerWidget {
               ],
               KitPrimaryButton(
                 onPressed: submitState.isBusy || !isCycleOpen ? null : submit,
-                label: submitState.isBusy ? 'Submitting...' : 'Submit proof',
+                label: submitState.isBusy ? 'Submitting...' : 'Submit payment',
                 isLoading: submitState.isBusy,
               ),
             ],

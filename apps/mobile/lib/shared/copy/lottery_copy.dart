@@ -2,9 +2,9 @@ class LotteryCopy {
   const LotteryCopy._();
 
   static const label = '🎲 Lottery';
-  static const drawWinnerButton = '🎲 Draw winner';
-  static const drawingWinnerLabel = 'Drawing winner...';
-  static const drawingWinnerDialogLabel = 'Drawing winner…';
+  static const drawWinnerButton = 'Start cycle';
+  static const drawingWinnerLabel = 'Starting cycle...';
+  static const drawingWinnerDialogLabel = 'Starting cycle…';
   static const drawSuccessPrefix = '🎉';
   static const winnerHeadline = '🎲 This turn\'s winner';
   static const drawSuccessMessageSuffix = 'won this turn!';
@@ -30,11 +30,11 @@ class LotteryCopy {
 
   static const noTurnYetTitle = 'Current turn';
   static const noTurnYetMessage =
-      'No open turn right now. Admin can draw a winner for the next turn.';
+      'No open turn right now. Admin can start the next cycle.';
   static const noWinnerYet = 'No winner yet';
 
   static const noOpenTurnMessage =
-      'No open turn right now. Draw a winner to begin this turn.';
+      'No open turn right now. Start a cycle to begin this turn.';
   static const roundCompletedTitle = 'Round completed';
   static const roundCompletedMessage =
       'All members have received once. Start a new round to continue.';

@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import {
   ContributionStatus,
+  CycleState,
   CycleStatus,
+  LedgerEntryType,
   NotificationType,
   Prisma,
   PayoutStatus,
@@ -33,6 +35,14 @@ type PayoutWithUser = Prisma.PayoutGetPayload<{
     };
   };
 }>;
+
+type OptionalLedgerEntryDelegate = {
+  create(args: Prisma.LedgerEntryCreateArgs): Promise<unknown>;
+};
+
+type TxCompatibility = Prisma.TransactionClient & {
+  ledgerEntry?: OptionalLedgerEntryDelegate;
+};
 
 @Injectable()
 export class PayoutsService {
@@ -67,6 +77,51 @@ export class PayoutsService {
         throw new BadRequestException(
           'Payout can only be created for open cycle',
         );
+      }
+
+      if (
+        cycle.state !== CycleState.READY_FOR_PAYOUT &&
+        cycle.state !== CycleState.DISBURSED
+      ) {
+        const unresolvedWhere: Prisma.ContributionWhereInput = {
+          cycleId: cycle.id,
+          status: {
+            in: [
+              ContributionStatus.PENDING,
+              ContributionStatus.REJECTED,
+              ContributionStatus.PAID_SUBMITTED,
+              ContributionStatus.SUBMITTED,
+            ],
+          },
+        };
+
+        const contributionDelegate = tx.contribution as {
+          count?: (args: Prisma.ContributionCountArgs) => Promise<number>;
+          findMany: (
+            args: Prisma.ContributionFindManyArgs,
+          ) => Promise<Array<{ id: string }>>;
+        };
+
+        const unresolvedCount =
+          contributionDelegate.count != null
+            ? await contributionDelegate.count({ where: unresolvedWhere })
+            : (
+                await contributionDelegate.findMany({
+                  where: unresolvedWhere,
+                  select: { id: true },
+                })
+              ).length;
+
+        if (unresolvedCount === 0) {
+          await tx.equbCycle.update({
+            where: { id: cycle.id },
+            data: { state: CycleState.READY_FOR_PAYOUT },
+          });
+        } else {
+          throw new BadRequestException(
+            'Cycle must be READY_FOR_PAYOUT before creating payout',
+          );
+        }
       }
 
       if (
@@ -130,6 +185,7 @@ export class PayoutsService {
   ): Promise<PayoutResponseDto> {
     const payout = await this.prisma.$transaction(
       async (tx): Promise<PayoutWithUser> => {
+        const txCompat = tx as TxCompatibility;
         const existing = await tx.payout.findUnique({
           where: { id: payoutId },
           include: {
@@ -196,7 +252,9 @@ export class PayoutsService {
           await tx.contribution.findMany({
             where: {
               cycleId: existing.cycleId,
-              status: ContributionStatus.CONFIRMED,
+              status: {
+                in: [ContributionStatus.VERIFIED, ContributionStatus.CONFIRMED],
+              },
             },
             select: { userId: true },
           })
@@ -231,6 +289,29 @@ export class PayoutsService {
                 phone: true,
               },
             },
+          },
+        });
+
+        await tx.equbCycle.update({
+          where: { id: existing.cycleId },
+          data: {
+            state: CycleState.DISBURSED,
+          },
+        });
+
+        await txCompat.ledgerEntry?.create({
+          data: {
+            groupId: confirmedPayout.groupId,
+            cycleId: confirmedPayout.cycleId,
+            payoutId: confirmedPayout.id,
+            userId: confirmedPayout.toUserId,
+            type: LedgerEntryType.PAYOUT_DISBURSED,
+            amount: confirmedPayout.amount,
+            note: confirmedPayout.note,
+            reference: confirmedPayout.paymentRef,
+            receiptFileKey: confirmedPayout.proofFileKey,
+            confirmedAt: confirmedPayout.confirmedAt,
+            confirmedByUserId: currentUser.id,
           },
         });
 
@@ -303,6 +384,7 @@ export class PayoutsService {
         },
         data: {
           status: CycleStatus.CLOSED,
+          state: CycleState.CLOSED,
           closedAt: new Date(),
           closedByUserId: currentUser.id,
         },

@@ -8,6 +8,7 @@ import 'package:mime/mime.dart';
 import '../../app/bootstrap.dart';
 import '../../data/contributions/contributions_repository.dart';
 import '../../data/files/files_repository.dart';
+import '../../data/models/group_rules_model.dart';
 import '../../data/models/signed_upload_request.dart';
 import '../../data/models/submit_contribution_request.dart';
 import '../../shared/utils/api_error_mapper.dart';
@@ -180,6 +181,7 @@ class SubmitContributionController
   }
 
   Future<bool> submit({
+    required GroupPaymentMethodModel method,
     required int amount,
     String? paymentRef,
     String? note,
@@ -236,7 +238,13 @@ class SubmitContributionController
       await _contributionsRepository.submitContribution(
         args.cycleId,
         SubmitContributionRequest(
+          method: method,
           amount: amount,
+          receiptFileKey: signedUpload.key,
+          reference:
+              (normalizedPaymentRef == null || normalizedPaymentRef.isEmpty)
+              ? null
+              : normalizedPaymentRef,
           proofFileKey: signedUpload.key,
           paymentRef:
               (normalizedPaymentRef == null || normalizedPaymentRef.isEmpty)

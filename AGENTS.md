@@ -86,6 +86,10 @@
 - Random-draw rounds use an immutable per-round schedule; manual payout order is not required for cycle generation in random mode.
 - Only one `OPEN` cycle is allowed per group at any time.
 - Cycle generation is sequential only: each request generates exactly one next cycle; never generate future cycles in bulk.
+- Admin cycle start endpoint is locked to `POST /groups/:id/cycles/start`; legacy cycle-generation/draw-next routes are temporary compatibility aliases only.
+- Cycle lifecycle state machine is locked to:
+  - `DUE -> COLLECTING -> READY_FOR_PAYOUT -> DISBURSED -> CLOSED`
+- Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.
 - Due-date progression rules:
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
@@ -107,15 +111,18 @@
 - Presigned `PutObject` upload URLs must be generated without flexible-checksum query params for MinIO compatibility (set S3 client `requestChecksumCalculation` to `WHEN_REQUIRED`).
 - Upload signing must defensively re-presign via `S3RequestPresigner` when checksum query params are detected, to guarantee MinIO-compatible `PUT` URLs.
 - Contribution state transitions:
-  - submit/resubmit: `PENDING|REJECTED|SUBMITTED -> SUBMITTED`
-  - confirm: `SUBMITTED -> CONFIRMED`
-  - reject: `SUBMITTED -> REJECTED`
-- `CONFIRMED` contributions are immutable (no resubmit/update).
+  - submit/resubmit payment: `PENDING|REJECTED|PAID_SUBMITTED|SUBMITTED -> PAID_SUBMITTED`
+  - verify: `PAID_SUBMITTED|SUBMITTED -> VERIFIED`
+  - reject: `PAID_SUBMITTED|SUBMITTED -> REJECTED`
+  - legacy confirm endpoint is compatibility-only and maps to verification behavior.
+- Verified/confirmed contributions are immutable (no resubmit/update).
+- Each payment submission must create/update a `ContributionReceipt` record and append a `LedgerEntry` of type `MEMBER_PAYMENT`.
+- Each admin verification must append a `LedgerEntry` of type `CONTRIBUTION_VERIFIED` with confirmer metadata.
 - Privacy rule: contribution list responses expose member phone numbers only to ACTIVE admins; non-admin members receive `phone = null`.
 
 ## Payout rules
 - Payout recipient is strict: payout `toUserId` must match `EqubCycle.finalPayoutUserId` (no override in MVP).
-- Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `CONFIRMED` contribution for the cycle.
+- Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `VERIFIED|CONFIRMED` contribution for the cycle.
 - In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
 - Cycle closure prerequisites:
   - `EqubCycle` must be `OPEN`
@@ -140,7 +147,7 @@
   - `CONTRIBUTION_SUBMITTED` -> notify active group admins
   - `CONTRIBUTION_CONFIRMED` / `CONTRIBUTION_REJECTED` -> notify contributor
   - `PAYOUT_CONFIRMED` -> notify active group members
-  - `DUE_REMINDER` -> notify active members missing `SUBMITTED|CONFIRMED` contribution
+  - `DUE_REMINDER` -> notify active members missing `PAID_SUBMITTED|SUBMITTED|VERIFIED|CONFIRMED` contribution
   - `LOTTERY_WINNER` -> notify drawn cycle winner
   - `LOTTERY_ANNOUNCEMENT` -> notify all other round snapshot members
 - Lottery draw notifications are idempotent per user/event via `Notification.eventId` (for example `DRAW_<cycleId>_WINNER` and `DRAW_<cycleId>_ANNOUNCEMENT`).

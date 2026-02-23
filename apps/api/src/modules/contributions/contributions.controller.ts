@@ -42,9 +42,9 @@ import { ContributionsService } from './contributions.service';
 export class ContributionsController {
   constructor(private readonly contributionsService: ContributionsService) {}
 
-  @Post('cycles/:cycleId/contributions')
+  @Post('cycles/:cycleId/contributions/submit')
   @ApiOperation({
-    summary: 'Submit or resubmit contribution for an open cycle',
+    summary: 'Submit contribution payment for a cycle due row',
   })
   @ApiBody({ type: SubmitContributionDto })
   @ApiOkResponse({ type: ContributionResponseDto })
@@ -67,9 +67,59 @@ export class ContributionsController {
     );
   }
 
+  @Post('cycles/:cycleId/contributions')
+  @ApiOperation({
+    summary:
+      'Submit contribution payment for a cycle due row (legacy compatibility route)',
+  })
+  @ApiBody({ type: SubmitContributionDto })
+  @ApiOkResponse({ type: ContributionResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Active membership required for the cycle group',
+  })
+  @ApiBadRequestResponse({
+    description: 'Cycle closed or invalid proof key scope',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
+  submitContributionLegacy(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
+    @Body() dto: SubmitContributionDto,
+  ): Promise<ContributionResponseDto> {
+    return this.contributionsService.submitContribution(
+      currentUser,
+      cycleId,
+      dto,
+    );
+  }
+
+  @Post('contributions/:id/verify')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Verify a paid contribution' })
+  @ApiBody({ type: ConfirmContributionDto, required: false })
+  @ApiOkResponse({ type: ContributionResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Only PAID_SUBMITTED contributions can be verified',
+  })
+  @ApiNotFoundResponse({ description: 'Contribution not found' })
+  verifyContribution(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) contributionId: string,
+    @Body() dto: ConfirmContributionDto,
+  ): Promise<ContributionResponseDto> {
+    return this.contributionsService.verifyContribution(
+      currentUser,
+      contributionId,
+      dto.note,
+    );
+  }
+
   @Patch('contributions/:id/confirm')
   @UseGuards(GroupAdminGuard)
-  @ApiOperation({ summary: 'Confirm a submitted contribution' })
+  @ApiOperation({
+    summary: 'Confirm a submitted contribution (legacy compatibility route)',
+  })
   @ApiBody({ type: ConfirmContributionDto })
   @ApiOkResponse({ type: ContributionResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
@@ -82,10 +132,10 @@ export class ContributionsController {
     @Param('id', new ParseUUIDPipe()) contributionId: string,
     @Body() dto: ConfirmContributionDto,
   ): Promise<ContributionResponseDto> {
-    return this.contributionsService.confirmContribution(
+    return this.contributionsService.verifyContribution(
       currentUser,
       contributionId,
-      dto,
+      dto.note,
     );
   }
 

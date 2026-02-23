@@ -28,7 +28,7 @@ class ContributionsRepository {
     String contributionId, {
     String? note,
   }) async {
-    final payload = await _api.confirmContribution(contributionId, note: note);
+    final payload = await _api.verifyContribution(contributionId, note: note);
     return ContributionModel.fromJson(payload);
   }
 

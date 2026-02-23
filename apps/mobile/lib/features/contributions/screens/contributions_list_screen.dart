@@ -120,7 +120,9 @@ class _ContributionsListScreenState
           final canSubmit =
               currentUser != null &&
               (myContribution == null ||
-                  myContribution.status != ContributionStatusModel.confirmed) &&
+                  (myContribution.status != ContributionStatusModel.verified &&
+                      myContribution.status !=
+                          ContributionStatusModel.confirmed)) &&
               cycle?.status == CycleStatusModel.open;
 
           return RefreshIndicator(
@@ -147,8 +149,8 @@ class _ContributionsListScreenState
                     },
                     icon: Icons.upload_file,
                     label: myContribution == null
-                        ? 'Submit proof'
-                        : 'Update proof',
+                        ? 'Pay now'
+                        : 'Update payment',
                   ),
                 if (canSubmit) const SizedBox(height: AppSpacing.md),
                 if (filteredItems.isEmpty)
@@ -320,6 +322,8 @@ class _ContributionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statusLabel = switch (contribution.status) {
       ContributionStatusModel.pending => 'PENDING',
+      ContributionStatusModel.paidSubmitted => 'PAID_SUBMITTED',
+      ContributionStatusModel.verified => 'VERIFIED',
       ContributionStatusModel.submitted => 'SUBMITTED',
       ContributionStatusModel.confirmed => 'CONFIRMED',
       ContributionStatusModel.rejected => 'REJECTED',
@@ -377,10 +381,14 @@ class _ContributionCard extends ConsumerWidget {
                 ),
               if (hasProof &&
                   isAdmin &&
-                  contribution.status == ContributionStatusModel.submitted)
+                  (contribution.status ==
+                          ContributionStatusModel.paidSubmitted ||
+                      contribution.status == ContributionStatusModel.submitted))
                 const SizedBox(width: AppSpacing.sm),
               if (isAdmin &&
-                  contribution.status == ContributionStatusModel.submitted)
+                  (contribution.status ==
+                          ContributionStatusModel.paidSubmitted ||
+                      contribution.status == ContributionStatusModel.submitted))
                 KitTertiaryButton(
                   onPressed: isActionLoading
                       ? null
@@ -412,7 +420,7 @@ Future<void> _showAdminActionsSheet(
     title: 'Admin actions',
     actions: [
       KitActionSheetItem(
-        label: 'Confirm contribution',
+        label: 'Verify contribution',
         icon: Icons.check_circle_outline,
         onPressed: () async {
           final success = await ref
@@ -422,7 +430,7 @@ Future<void> _showAdminActionsSheet(
             return;
           }
           if (success) {
-            KitToast.success(context, 'Contribution confirmed');
+            KitToast.success(context, 'Contribution verified');
           }
         },
       ),
@@ -458,9 +466,11 @@ bool _matchesFilter(
     _ContributionFilter.all => true,
     _ContributionFilter.pending => status == ContributionStatusModel.pending,
     _ContributionFilter.submitted =>
-      status == ContributionStatusModel.submitted,
+      status == ContributionStatusModel.paidSubmitted ||
+          status == ContributionStatusModel.submitted,
     _ContributionFilter.confirmed =>
-      status == ContributionStatusModel.confirmed,
+      status == ContributionStatusModel.verified ||
+          status == ContributionStatusModel.confirmed,
     _ContributionFilter.rejected => status == ContributionStatusModel.rejected,
   };
 }

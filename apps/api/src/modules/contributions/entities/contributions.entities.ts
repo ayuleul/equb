@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ContributionStatus } from '@prisma/client';
+import { ContributionStatus, GroupPaymentMethod } from '@prisma/client';
 
 export class ContributionUserResponseDto {
   @ApiProperty()
@@ -30,6 +30,9 @@ export class ContributionResponseDto {
 
   @ApiProperty({ enum: ContributionStatus })
   status!: ContributionStatus;
+
+  @ApiPropertyOptional({ enum: GroupPaymentMethod, nullable: true })
+  paymentMethod!: GroupPaymentMethod | null;
 
   @ApiPropertyOptional({ nullable: true })
   proofFileKey!: string | null;
@@ -74,6 +77,12 @@ export class ContributionListSummaryDto {
 
   @ApiProperty()
   rejected!: number;
+
+  @ApiProperty()
+  paidSubmitted!: number;
+
+  @ApiProperty()
+  verified!: number;
 }
 
 export class ContributionListResponseDto {

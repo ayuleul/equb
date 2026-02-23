@@ -136,7 +136,9 @@ export class GroupsController {
   @ApiOperation({ summary: 'Get group ruleset' })
   @ApiOkResponse({ type: GroupRulesResponseDto })
   @ApiForbiddenResponse({ description: 'Joined group membership required' })
-  @ApiNotFoundResponse({ description: 'Group not found or rules not configured' })
+  @ApiNotFoundResponse({
+    description: 'Group not found or rules not configured',
+  })
   getGroupRules(
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupRulesResponseDto> {
@@ -299,10 +301,35 @@ export class GroupsController {
     return this.groupsService.updatePayoutOrder(currentUser, groupId, payload);
   }
 
+  @Post(':id/cycles/start')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Cycles')
+  @ApiOperation({
+    summary:
+      'Start a new cycle and create contribution due rows for eligible members',
+  })
+  @ApiOkResponse({ type: GroupCycleResponseDto })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Cycle start prerequisites are not satisfied',
+  })
+  @ApiConflictResponse({
+    description: 'Open cycle already exists or ruleset is missing',
+  })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  startCycle(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<GroupCycleResponseDto> {
+    return this.groupsService.startCycle(currentUser, groupId);
+  }
+
   @Post(':id/cycles/generate')
   @UseGuards(GroupAdminGuard)
   @ApiTags('Cycles')
-  @ApiOperation({ summary: 'Generate next cycle (sequential only)' })
+  @ApiOperation({
+    summary: 'Generate next cycle (legacy route; uses cycle start flow)',
+  })
   @ApiBody({ type: GenerateCyclesDto, required: false })
   @ApiOkResponse({ type: GroupCycleResponseDto })
   @ApiForbiddenResponse({ description: 'Joined admin membership required' })
@@ -318,7 +345,8 @@ export class GroupsController {
     @Param('id', new ParseUUIDPipe()) groupId: string,
     @Body() dto: GenerateCyclesDto,
   ): Promise<GroupCycleResponseDto> {
-    return this.groupsService.generateCycles(currentUser, groupId, dto);
+    void dto;
+    return this.groupsService.startCycle(currentUser, groupId);
   }
 
   @Post(':id/rounds/start')
@@ -391,7 +419,7 @@ export class GroupsController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupCycleResponseDto> {
-    return this.groupsService.drawNextCycle(currentUser, groupId);
+    return this.groupsService.startCycle(currentUser, groupId);
   }
 
   @Get(':id/cycles/current')

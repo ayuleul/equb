@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import {
   ContributionStatus,
+  CycleState,
+  CycleStatus,
+  GroupPaymentMethod,
+  LedgerEntryType,
   MemberRole,
   NotificationType,
   Prisma,
@@ -16,7 +20,6 @@ import { isParticipatingMemberStatus } from '../../common/membership/member-stat
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
-import { ConfirmContributionDto } from './dto/confirm-contribution.dto';
 import { RejectContributionDto } from './dto/reject-contribution.dto';
 import { SubmitContributionDto } from './dto/submit-contribution.dto';
 import {
@@ -36,6 +39,19 @@ type ContributionWithUser = Prisma.ContributionGetPayload<{
     };
   };
 }>;
+
+type OptionalContributionReceiptDelegate = {
+  upsert(args: Prisma.ContributionReceiptUpsertArgs): Promise<unknown>;
+};
+
+type OptionalLedgerEntryDelegate = {
+  create(args: Prisma.LedgerEntryCreateArgs): Promise<unknown>;
+};
+
+type TxCompatibility = Prisma.TransactionClient & {
+  contributionReceipt?: OptionalContributionReceiptDelegate;
+  ledgerEntry?: OptionalLedgerEntryDelegate;
+};
 
 @Injectable()
 export class ContributionsService {
@@ -57,6 +73,11 @@ export class ContributionsService {
           select: {
             id: true,
             contributionAmount: true,
+            rules: {
+              select: {
+                paymentMethods: true,
+              },
+            },
           },
         },
       },
@@ -66,9 +87,23 @@ export class ContributionsService {
       throw new NotFoundException('Cycle not found');
     }
 
-    if (cycle.status !== 'OPEN') {
+    if (
+      cycle.status !== CycleStatus.OPEN ||
+      cycle.state === CycleState.CLOSED
+    ) {
       throw new BadRequestException(
         'Contributions can only be submitted for open cycles',
+      );
+    }
+
+    const method = dto.method ?? GroupPaymentMethod.CASH_ACK;
+
+    if (
+      cycle.group.rules &&
+      !cycle.group.rules.paymentMethods.includes(method)
+    ) {
+      throw new BadRequestException(
+        `Payment method ${method} is not allowed by group rules`,
       );
     }
 
@@ -90,26 +125,31 @@ export class ContributionsService {
       );
     }
 
+    const receiptFileKey =
+      (dto.receiptFileKey ?? dto.proofFileKey)?.trim() || undefined;
     if (
-      dto.proofFileKey &&
+      receiptFileKey &&
       !isContributionProofKeyScopedTo(
-        dto.proofFileKey,
+        receiptFileKey,
         cycle.groupId,
         cycle.id,
         currentUser.id,
       )
     ) {
       throw new BadRequestException(
-        'proofFileKey does not match allowed scope',
+        'receiptFileKey does not match allowed scope',
       );
     }
 
-    const amount = dto.amount ?? cycle.group.contributionAmount;
+    const normalizedReference =
+      (dto.reference ?? dto.paymentRef)?.trim() || undefined;
+    const normalizedNote = dto.note?.trim() || undefined;
     const submittedAt = new Date();
 
     const contribution = await this.prisma.$transaction(
       async (tx): Promise<ContributionWithUser> => {
-        const existing = await tx.contribution.findUnique({
+        const txCompat = tx as TxCompatibility;
+        let existing = await tx.contribution.findUnique({
           where: {
             cycleId_userId: {
               cycleId,
@@ -118,70 +158,106 @@ export class ContributionsService {
           },
         });
 
-        let upserted: ContributionWithUser;
-
         if (!existing) {
-          upserted = await tx.contribution.create({
+          existing = await tx.contribution.create({
             data: {
               groupId: cycle.groupId,
               cycleId,
               userId: currentUser.id,
-              amount,
-              status: ContributionStatus.SUBMITTED,
-              proofFileKey: dto.proofFileKey ?? null,
-              paymentRef: dto.paymentRef ?? null,
-              note: dto.note ?? null,
-              submittedAt,
-            },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  phone: true,
-                },
-              },
-            },
-          });
-        } else {
-          if (existing.status === ContributionStatus.CONFIRMED) {
-            throw new BadRequestException(
-              'Confirmed contribution cannot be modified',
-            );
-          }
-
-          upserted = await tx.contribution.update({
-            where: {
-              id: existing.id,
-            },
-            data: {
-              amount,
-              status: ContributionStatus.SUBMITTED,
-              proofFileKey: dto.proofFileKey ?? null,
-              paymentRef: dto.paymentRef ?? null,
-              note: dto.note ?? null,
-              submittedAt,
-              confirmedAt: null,
-              confirmedByUserId: null,
-              rejectedAt: null,
-              rejectedByUserId: null,
-              rejectReason: null,
-            },
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  phone: true,
-                },
-              },
+              amount: dto.amount ?? cycle.group.contributionAmount,
+              status: ContributionStatus.PENDING,
             },
           });
         }
 
+        if (
+          existing.status === ContributionStatus.VERIFIED ||
+          existing.status === ContributionStatus.CONFIRMED
+        ) {
+          throw new BadRequestException(
+            'Verified contribution cannot be modified',
+          );
+        }
+
+        const amount =
+          dto.amount ?? existing.amount ?? cycle.group.contributionAmount;
+
+        const updated = await tx.contribution.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            amount,
+            status: ContributionStatus.PAID_SUBMITTED,
+            paymentMethod: method,
+            proofFileKey: receiptFileKey ?? null,
+            paymentRef: normalizedReference ?? null,
+            note: normalizedNote ?? null,
+            submittedAt,
+            confirmedAt: null,
+            confirmedByUserId: null,
+            rejectedAt: null,
+            rejectedByUserId: null,
+            rejectReason: null,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        await txCompat.contributionReceipt?.upsert({
+          where: {
+            contributionId: updated.id,
+          },
+          create: {
+            groupId: updated.groupId,
+            cycleId: updated.cycleId,
+            contributionId: updated.id,
+            userId: updated.userId,
+            method,
+            reference: normalizedReference ?? null,
+            receiptFileKey: receiptFileKey ?? null,
+            note: normalizedNote ?? null,
+          },
+          update: {
+            method,
+            reference: normalizedReference ?? null,
+            receiptFileKey: receiptFileKey ?? null,
+            note: normalizedNote ?? null,
+          },
+        });
+
+        await txCompat.ledgerEntry?.create({
+          data: {
+            groupId: updated.groupId,
+            cycleId: updated.cycleId,
+            contributionId: updated.id,
+            userId: updated.userId,
+            type: LedgerEntryType.MEMBER_PAYMENT,
+            amount: updated.amount,
+            method,
+            reference: normalizedReference ?? null,
+            receiptFileKey: receiptFileKey ?? null,
+            note: normalizedNote ?? null,
+          },
+        });
+
+        await tx.equbCycle.update({
+          where: { id: updated.cycleId },
+          data: {
+            state: CycleState.COLLECTING,
+          },
+        });
+
         await this.syncCycleContributionCounts(tx, cycleId);
 
-        return upserted;
+        return updated;
       },
     );
 
@@ -191,7 +267,8 @@ export class ContributionsService {
       {
         contributionId: contribution.id,
         cycleId,
-        amount,
+        amount: contribution.amount,
+        method,
       },
       cycle.groupId,
     );
@@ -201,7 +278,7 @@ export class ContributionsService {
       {
         type: NotificationType.CONTRIBUTION_SUBMITTED,
         title: 'Contribution submitted',
-        body: `${currentUser.phone} submitted a contribution.`,
+        body: `${currentUser.phone} submitted a contribution payment.`,
         data: {
           contributionId: contribution.id,
           cycleId,
@@ -216,13 +293,14 @@ export class ContributionsService {
     return this.toContributionResponse(contribution, true);
   }
 
-  async confirmContribution(
+  async verifyContribution(
     currentUser: AuthenticatedUser,
     contributionId: string,
-    dto: ConfirmContributionDto,
+    note?: string,
   ): Promise<ContributionResponseDto> {
     const contribution = await this.prisma.$transaction(
       async (tx): Promise<ContributionWithUser> => {
+        const txCompat = tx as TxCompatibility;
         const existing = await tx.contribution.findUnique({
           where: {
             id: contributionId,
@@ -242,17 +320,22 @@ export class ContributionsService {
           throw new NotFoundException('Contribution not found');
         }
 
-        if (existing.status !== ContributionStatus.SUBMITTED) {
+        if (
+          existing.status !== ContributionStatus.PAID_SUBMITTED &&
+          existing.status !== ContributionStatus.SUBMITTED
+        ) {
           throw new BadRequestException(
-            'Only submitted contributions can be confirmed',
+            'Only paid-submitted contributions can be verified',
           );
         }
+
+        const normalizedNote = note?.trim();
 
         const updated = await tx.contribution.update({
           where: { id: contributionId },
           data: {
-            status: ContributionStatus.CONFIRMED,
-            note: dto.note ?? existing.note,
+            status: ContributionStatus.VERIFIED,
+            note: normalizedNote ?? existing.note,
             confirmedAt: new Date(),
             confirmedByUserId: currentUser.id,
             rejectedAt: null,
@@ -270,7 +353,43 @@ export class ContributionsService {
           },
         });
 
-        await this.syncCycleContributionCounts(tx, existing.cycleId);
+        await txCompat.ledgerEntry?.create({
+          data: {
+            groupId: updated.groupId,
+            cycleId: updated.cycleId,
+            contributionId: updated.id,
+            userId: updated.userId,
+            type: LedgerEntryType.CONTRIBUTION_VERIFIED,
+            amount: updated.amount,
+            method: updated.paymentMethod,
+            reference: updated.paymentRef,
+            receiptFileKey: updated.proofFileKey,
+            note: normalizedNote ?? null,
+            confirmedAt: new Date(),
+            confirmedByUserId: currentUser.id,
+          },
+        });
+
+        const pendingOrRejectedCount = await tx.contribution.count({
+          where: {
+            cycleId: updated.cycleId,
+            status: {
+              in: [ContributionStatus.PENDING, ContributionStatus.REJECTED],
+            },
+          },
+        });
+
+        await tx.equbCycle.update({
+          where: { id: updated.cycleId },
+          data: {
+            state:
+              pendingOrRejectedCount === 0
+                ? CycleState.READY_FOR_PAYOUT
+                : CycleState.COLLECTING,
+          },
+        });
+
+        await this.syncCycleContributionCounts(tx, updated.cycleId);
 
         return updated;
       },
@@ -287,8 +406,8 @@ export class ContributionsService {
 
     await this.notificationsService.notifyUser(contribution.user.id, {
       type: NotificationType.CONTRIBUTION_CONFIRMED,
-      title: 'Contribution confirmed',
-      body: 'Your contribution has been confirmed.',
+      title: 'Contribution verified',
+      body: 'Your contribution has been verified.',
       groupId: contribution.groupId,
       data: {
         contributionId: contribution.id,
@@ -326,9 +445,12 @@ export class ContributionsService {
           throw new NotFoundException('Contribution not found');
         }
 
-        if (existing.status !== ContributionStatus.SUBMITTED) {
+        if (
+          existing.status !== ContributionStatus.PAID_SUBMITTED &&
+          existing.status !== ContributionStatus.SUBMITTED
+        ) {
           throw new BadRequestException(
-            'Only submitted contributions can be rejected',
+            'Only paid-submitted contributions can be rejected',
           );
         }
 
@@ -350,6 +472,13 @@ export class ContributionsService {
                 phone: true,
               },
             },
+          },
+        });
+
+        await tx.equbCycle.update({
+          where: { id: updated.cycleId },
+          data: {
+            state: CycleState.COLLECTING,
           },
         });
 
@@ -449,17 +578,27 @@ export class ContributionsService {
       submitted: 0,
       confirmed: 0,
       rejected: 0,
+      paidSubmitted: 0,
+      verified: 0,
     };
 
     for (const contribution of contributions) {
       if (contribution.status === ContributionStatus.PENDING) {
         summary.pending += 1;
       }
-      if (contribution.status === ContributionStatus.SUBMITTED) {
+      if (
+        contribution.status === ContributionStatus.PAID_SUBMITTED ||
+        contribution.status === ContributionStatus.SUBMITTED
+      ) {
         summary.submitted += 1;
+        summary.paidSubmitted += 1;
       }
-      if (contribution.status === ContributionStatus.CONFIRMED) {
+      if (
+        contribution.status === ContributionStatus.VERIFIED ||
+        contribution.status === ContributionStatus.CONFIRMED
+      ) {
         summary.confirmed += 1;
+        summary.verified += 1;
       }
       if (contribution.status === ContributionStatus.REJECTED) {
         summary.rejected += 1;
@@ -482,13 +621,20 @@ export class ContributionsService {
       tx.contribution.count({
         where: {
           cycleId,
-          status: ContributionStatus.SUBMITTED,
+          status: {
+            in: [
+              ContributionStatus.PAID_SUBMITTED,
+              ContributionStatus.SUBMITTED,
+            ],
+          },
         },
       }),
       tx.contribution.count({
         where: {
           cycleId,
-          status: ContributionStatus.CONFIRMED,
+          status: {
+            in: [ContributionStatus.VERIFIED, ContributionStatus.CONFIRMED],
+          },
         },
       }),
     ]);
@@ -513,6 +659,7 @@ export class ContributionsService {
       userId: contribution.userId,
       amount: contribution.amount,
       status: contribution.status,
+      paymentMethod: contribution.paymentMethod,
       proofFileKey: contribution.proofFileKey,
       paymentRef: contribution.paymentRef,
       note: contribution.note,

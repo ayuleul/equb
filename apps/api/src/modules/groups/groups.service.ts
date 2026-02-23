@@ -10,7 +10,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   AuctionStatus,
+  ContributionStatus,
   CycleStatus,
+  CycleState,
   GroupFrequency,
   GroupPaymentMethod,
   GroupRuleFineType,
@@ -203,7 +205,7 @@ export class GroupsService {
       this.toGroupSummaryResponse(
         membership.group,
         membership.group.rules,
-        membership.group.members.map((member) => member.status),
+        (membership.group.members ?? []).map((member) => member.status),
       ),
     );
   }
@@ -251,7 +253,7 @@ export class GroupsService {
       group,
       membership,
       group.rules,
-      group.members.map((member) => member.status),
+      (group.members ?? []).map((member) => member.status),
     );
   }
 
@@ -724,7 +726,9 @@ export class GroupsService {
       normalizedStatus !== MemberStatus.JOINED &&
       normalizedStatus !== MemberStatus.INVITED
     ) {
-      throw new BadRequestException('Only joined or invited members can be verified');
+      throw new BadRequestException(
+        'Only joined or invited members can be verified',
+      );
     }
 
     const verifiedAt = new Date();
@@ -1439,7 +1443,123 @@ export class GroupsService {
     currentUser: AuthenticatedUser,
     groupId: string,
   ): Promise<GroupCycleResponseDto> {
-    return this.generateCycles(currentUser, groupId, {});
+    return this.startCycle(currentUser, groupId);
+  }
+
+  async startCycle(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+  ): Promise<GroupCycleResponseDto> {
+    const group = await this.prisma.equbGroup.findUnique({
+      where: { id: groupId },
+      select: {
+        id: true,
+        status: true,
+        contributionAmount: true,
+        rules: {
+          select: {
+            contributionAmount: true,
+            requiresMemberVerification: true,
+          },
+        },
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (group.status !== GroupStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Cycles can only be started for active groups',
+      );
+    }
+
+    if (!group.rules) {
+      throw new ConflictException({
+        message: GROUP_RULESET_REQUIRED_MESSAGE,
+        reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
+      });
+    }
+
+    const eligibleStatuses = group.rules.requiresMemberVerification
+      ? VERIFIED_MEMBER_STATUSES
+      : PARTICIPATING_MEMBER_STATUSES;
+
+    const eligibleMembers = await this.prisma.equbMember.findMany({
+      where: {
+        groupId,
+        status: {
+          in: eligibleStatuses,
+        },
+      },
+      select: {
+        userId: true,
+      },
+      distinct: ['userId'],
+    });
+
+    if (eligibleMembers.length < 2) {
+      throw new BadRequestException(
+        group.rules.requiresMemberVerification
+          ? 'At least 2 verified members are required to start a cycle'
+          : 'At least 2 joined members are required to start a cycle',
+      );
+    }
+
+    const activeRound = await this.prisma.equbRound.findFirst({
+      where: {
+        groupId,
+        closedAt: null,
+        payoutMode: PayoutMode.RANDOM_DRAW,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!activeRound) {
+      await this.startRound(currentUser, groupId);
+    }
+
+    const createdCycle = await this.generateCycles(currentUser, groupId, {});
+
+    const dueRowsCreated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.contribution.createMany({
+        data: eligibleMembers.map((member) => ({
+          groupId,
+          cycleId: createdCycle.id,
+          userId: member.userId,
+          amount: group.rules?.contributionAmount ?? group.contributionAmount,
+          status: ContributionStatus.PENDING,
+        })),
+        skipDuplicates: true,
+      });
+
+      await tx.equbCycle.update({
+        where: { id: createdCycle.id },
+        data: {
+          dueAt: createdCycle.dueDate,
+          state: CycleState.DUE,
+        },
+      });
+
+      return result.count;
+    });
+
+    await this.auditService.log(
+      'CYCLE_STARTED',
+      currentUser.id,
+      {
+        cycleId: createdCycle.id,
+        dueAt: createdCycle.dueDate,
+        dueRowsCreated,
+        eligibleMemberCount: eligibleMembers.length,
+      },
+      groupId,
+    );
+
+    return this.getCycleById(groupId, createdCycle.id);
   }
 
   async generateCycles(
@@ -1596,6 +1716,8 @@ export class GroupsService {
           roundId: activeRound.id,
           cycleNo: nextCycleNo,
           dueDate,
+          dueAt: dueDate,
+          state: CycleState.DUE,
           scheduledPayoutUserId: scheduledEntry.userId,
           finalPayoutUserId: scheduledEntry.userId,
           auctionStatus: AuctionStatus.NONE,
@@ -2177,6 +2299,8 @@ export class GroupsService {
     roundId: string;
     cycleNo: number;
     dueDate: Date;
+    dueAt: Date;
+    state: CycleState;
     scheduledPayoutUserId: string;
     finalPayoutUserId: string;
     auctionStatus: AuctionStatus;
@@ -2207,6 +2331,8 @@ export class GroupsService {
       roundId: cycle.roundId,
       cycleNo: cycle.cycleNo,
       dueDate: cycle.dueDate,
+      dueAt: cycle.dueAt,
+      state: cycle.state,
       scheduledPayoutUserId: cycle.scheduledPayoutUserId,
       finalPayoutUserId: cycle.finalPayoutUserId,
       payoutUserId: cycle.finalPayoutUserId,

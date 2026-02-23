@@ -39,9 +39,7 @@ class DioCyclesApi implements CyclesApi {
 
   @override
   Future<Map<String, dynamic>> generateCycles(String groupId) async {
-    final response = await _apiClient.postMap(
-      '/groups/$groupId/rounds/current/draw-next',
-    );
+    final response = await _apiClient.postMap('/groups/$groupId/cycles/start');
     return _toMap(response);
   }
 

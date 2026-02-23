@@ -24,7 +24,6 @@ import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
 import '../../cycles/generate_cycle_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
-import '../../rounds/start_round_controller.dart';
 import '../../rounds/widgets/lottery_reveal_animation.dart';
 import '../group_detail_controller.dart';
 import '../widgets/group_more_actions_button.dart';
@@ -39,15 +38,6 @@ class GroupDetailScreen extends ConsumerWidget {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final group = groupAsync.valueOrNull;
     final isAdmin = group?.membership?.role == MemberRoleModel.admin;
-    ref.listen(startRoundControllerProvider(groupId), (previous, next) {
-      final previousError = previous?.errorMessage;
-      final nextError = next.errorMessage;
-      if (nextError != null &&
-          nextError.isNotEmpty &&
-          previousError != nextError) {
-        AppSnackbars.error(context, nextError);
-      }
-    });
 
     return KitScaffold(
       appBar: KitAppBar(
@@ -190,26 +180,7 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
       generateCycleControllerProvider(widget.group.id).notifier,
     );
 
-    CycleModel? created = await drawController.generateNextCycle();
-
-    if (created == null) {
-      final drawError =
-          ref
-              .read(generateCycleControllerProvider(widget.group.id))
-              .errorMessage ??
-          '';
-      final normalized = drawError.toLowerCase();
-
-      if (normalized.contains('active round is required')) {
-        final startedRound = await ref
-            .read(startRoundControllerProvider(widget.group.id).notifier)
-            .startRound();
-
-        if (startedRound) {
-          created = await drawController.generateNextCycle();
-        }
-      }
-    }
+    final created = await drawController.generateNextCycle();
 
     final elapsed = DateTime.now().difference(startedAt);
     const minimumAnimation = Duration(milliseconds: 1200);
@@ -228,7 +199,7 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
           ref
               .read(generateCycleControllerProvider(widget.group.id))
               .errorMessage ??
-          'Could not draw a winner right now.';
+          'Could not start a cycle right now.';
       AppSnackbars.error(context, errorMessage);
       return;
     }
@@ -815,7 +786,8 @@ _PrimaryAction _resolvePrimaryAction({
       onPressed: () => context.push(submitRoute),
     );
   }
-  if (myStatus == ContributionStatusModel.submitted ||
+  if (myStatus == ContributionStatusModel.paidSubmitted ||
+      myStatus == ContributionStatusModel.submitted ||
       myStatus == ContributionStatusModel.pending) {
     return const _PrimaryAction(
       label: 'Waiting confirmation',
@@ -823,9 +795,17 @@ _PrimaryAction _resolvePrimaryAction({
       onPressed: null,
     );
   }
+  if (myStatus == ContributionStatusModel.verified ||
+      myStatus == ContributionStatusModel.confirmed) {
+    return _PrimaryAction(
+      label: 'View contributions',
+      icon: Icons.receipt_long_outlined,
+      onPressed: () => context.push(cycleDetailRoute),
+    );
+  }
   if (myStatus == null || myStatus == ContributionStatusModel.unknown) {
     return _PrimaryAction(
-      label: 'Submit contribution',
+      label: 'Pay now',
       icon: Icons.upload_file_outlined,
       onPressed: () => context.push(submitRoute),
     );

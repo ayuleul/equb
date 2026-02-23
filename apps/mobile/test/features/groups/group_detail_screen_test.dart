@@ -349,6 +349,14 @@ class _FakeContributionsApi implements ContributionsApi {
   }
 
   @override
+  Future<Map<String, dynamic>> verifyContribution(
+    String contributionId, {
+    String? note,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Map<String, dynamic>> listCycleContributions(
     String groupId,
     String cycleId,

@@ -82,7 +82,12 @@ export class ReminderProcessor implements OnModuleInit, OnModuleDestroy {
         contributions: {
           where: {
             status: {
-              in: [ContributionStatus.SUBMITTED, ContributionStatus.CONFIRMED],
+              in: [
+                ContributionStatus.PAID_SUBMITTED,
+                ContributionStatus.SUBMITTED,
+                ContributionStatus.VERIFIED,
+                ContributionStatus.CONFIRMED,
+              ],
             },
           },
           select: {

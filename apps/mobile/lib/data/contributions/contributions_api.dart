@@ -17,6 +17,10 @@ abstract class ContributionsApi {
     String contributionId, {
     String? note,
   });
+  Future<Map<String, dynamic>> verifyContribution(
+    String contributionId, {
+    String? note,
+  });
 
   Future<Map<String, dynamic>> rejectContribution(
     String contributionId,
@@ -43,7 +47,7 @@ class DioContributionsApi implements ContributionsApi {
     SubmitContributionRequest request,
   ) {
     return _apiClient.postMap(
-      '/cycles/$cycleId/contributions',
+      '/cycles/$cycleId/contributions/submit',
       data: request.toJson(),
     );
   }
@@ -55,6 +59,19 @@ class DioContributionsApi implements ContributionsApi {
   }) {
     return _apiClient.patchMap(
       '/contributions/$contributionId/confirm',
+      data: note == null || note.trim().isEmpty
+          ? <String, dynamic>{}
+          : <String, dynamic>{'note': note.trim()},
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyContribution(
+    String contributionId, {
+    String? note,
+  }) {
+    return _apiClient.postMap(
+      '/contributions/$contributionId/verify',
       data: note == null || note.trim().isEmpty
           ? <String, dynamic>{}
           : <String, dynamic>{'note': note.trim()},

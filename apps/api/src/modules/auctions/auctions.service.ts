@@ -4,12 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  AuctionStatus,
-  CycleStatus,
-  MemberRole,
-  Prisma,
-} from '@prisma/client';
+import { AuctionStatus, CycleStatus, MemberRole, Prisma } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
 import { isParticipatingMemberStatus } from '../../common/membership/member-status.util';

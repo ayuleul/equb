@@ -7,7 +7,7 @@ export class UpdateMemberStatusDto {
   @ApiProperty({
     enum: [MemberStatus.SUSPENDED, MemberStatus.LEFT, MemberStatus.REMOVED],
   })
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.toUpperCase() : value,
   )
   @IsEnum(MemberStatus)

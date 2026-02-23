@@ -11,6 +11,20 @@ enum CycleStatusModel {
   unknown,
 }
 
+enum CycleStateModel {
+  @JsonValue('DUE')
+  due,
+  @JsonValue('COLLECTING')
+  collecting,
+  @JsonValue('READY_FOR_PAYOUT')
+  readyForPayout,
+  @JsonValue('DISBURSED')
+  disbursed,
+  @JsonValue('CLOSED')
+  closed,
+  unknown,
+}
+
 enum AuctionStatusModel {
   @JsonValue('NONE')
   none,
@@ -41,6 +55,8 @@ sealed class CycleModel with _$CycleModel {
     String? roundId,
     @JsonKey(fromJson: _toInt) required int cycleNo,
     required DateTime dueDate,
+    DateTime? dueAt,
+    @JsonKey(unknownEnumValue: CycleStateModel.unknown) CycleStateModel? state,
     String? scheduledPayoutUserId,
     String? finalPayoutUserId,
     required String payoutUserId,

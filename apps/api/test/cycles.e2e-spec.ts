@@ -779,9 +779,15 @@ describe('Cycles (e2e)', () => {
         ({
           data,
         }: {
-          data: { groupId: string; frequency: GroupRuleFrequency; customIntervalDays: number | null };
+          data: {
+            groupId: string;
+            frequency: GroupRuleFrequency;
+            customIntervalDays: number | null;
+          };
         }) => {
-          const existing = groupRules.find((item) => item.groupId === data.groupId);
+          const existing = groupRules.find(
+            (item) => item.groupId === data.groupId,
+          );
           if (existing) {
             return existing;
           }
@@ -796,7 +802,9 @@ describe('Cycles (e2e)', () => {
         },
       ),
       findUnique: jest.fn(({ where }: { where: { groupId: string } }) => {
-        return groupRules.find((item) => item.groupId === where.groupId) ?? null;
+        return (
+          groupRules.find((item) => item.groupId === where.groupId) ?? null
+        );
       }),
       upsert: jest.fn(
         ({
@@ -804,9 +812,14 @@ describe('Cycles (e2e)', () => {
           create,
         }: {
           where: { groupId: string };
-          create: { frequency: GroupRuleFrequency; customIntervalDays: number | null };
+          create: {
+            frequency: GroupRuleFrequency;
+            customIntervalDays: number | null;
+          };
         }) => {
-          const existing = groupRules.find((item) => item.groupId === where.groupId);
+          const existing = groupRules.find(
+            (item) => item.groupId === where.groupId,
+          );
           if (existing) {
             return existing;
           }

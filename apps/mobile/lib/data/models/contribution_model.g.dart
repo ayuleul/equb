@@ -34,6 +34,11 @@ _ContributionModel _$ContributionModelFromJson(Map<String, dynamic> json) =>
         json['status'],
         unknownValue: ContributionStatusModel.unknown,
       ),
+      paymentMethod: $enumDecodeNullable(
+        _$GroupPaymentMethodModelEnumMap,
+        json['paymentMethod'],
+        unknownValue: GroupPaymentMethodModel.unknown,
+      ),
       proofFileKey: json['proofFileKey'] as String?,
       paymentRef: json['paymentRef'] as String?,
       note: json['note'] as String?,
@@ -63,6 +68,7 @@ Map<String, dynamic> _$ContributionModelToJson(_ContributionModel instance) =>
       'userId': instance.userId,
       'amount': instance.amount,
       'status': _$ContributionStatusModelEnumMap[instance.status]!,
+      'paymentMethod': _$GroupPaymentMethodModelEnumMap[instance.paymentMethod],
       'proofFileKey': instance.proofFileKey,
       'paymentRef': instance.paymentRef,
       'note': instance.note,
@@ -76,10 +82,19 @@ Map<String, dynamic> _$ContributionModelToJson(_ContributionModel instance) =>
 
 const _$ContributionStatusModelEnumMap = {
   ContributionStatusModel.pending: 'PENDING',
+  ContributionStatusModel.paidSubmitted: 'PAID_SUBMITTED',
+  ContributionStatusModel.verified: 'VERIFIED',
   ContributionStatusModel.submitted: 'SUBMITTED',
   ContributionStatusModel.confirmed: 'CONFIRMED',
   ContributionStatusModel.rejected: 'REJECTED',
   ContributionStatusModel.unknown: 'unknown',
+};
+
+const _$GroupPaymentMethodModelEnumMap = {
+  GroupPaymentMethodModel.bank: 'BANK',
+  GroupPaymentMethodModel.telebirr: 'TELEBIRR',
+  GroupPaymentMethodModel.cashAck: 'CASH_ACK',
+  GroupPaymentMethodModel.unknown: 'unknown',
 };
 
 _ContributionSummaryModel _$ContributionSummaryModelFromJson(
@@ -90,6 +105,10 @@ _ContributionSummaryModel _$ContributionSummaryModelFromJson(
   submitted: json['submitted'] == null ? 0 : _toInt(json['submitted']),
   confirmed: json['confirmed'] == null ? 0 : _toInt(json['confirmed']),
   rejected: json['rejected'] == null ? 0 : _toInt(json['rejected']),
+  paidSubmitted: json['paidSubmitted'] == null
+      ? 0
+      : _toInt(json['paidSubmitted']),
+  verified: json['verified'] == null ? 0 : _toInt(json['verified']),
 );
 
 Map<String, dynamic> _$ContributionSummaryModelToJson(
@@ -100,6 +119,8 @@ Map<String, dynamic> _$ContributionSummaryModelToJson(
   'submitted': instance.submitted,
   'confirmed': instance.confirmed,
   'rejected': instance.rejected,
+  'paidSubmitted': instance.paidSubmitted,
+  'verified': instance.verified,
 };
 
 _ContributionListModel _$ContributionListModelFromJson(

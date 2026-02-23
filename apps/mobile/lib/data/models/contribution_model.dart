@@ -1,11 +1,17 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'group_rules_model.dart';
+
 part 'contribution_model.freezed.dart';
 part 'contribution_model.g.dart';
 
 enum ContributionStatusModel {
   @JsonValue('PENDING')
   pending,
+  @JsonValue('PAID_SUBMITTED')
+  paidSubmitted,
+  @JsonValue('VERIFIED')
+  verified,
   @JsonValue('SUBMITTED')
   submitted,
   @JsonValue('CONFIRMED')
@@ -39,6 +45,8 @@ sealed class ContributionModel with _$ContributionModel {
     @JsonKey(fromJson: _toInt) required int amount,
     @JsonKey(unknownEnumValue: ContributionStatusModel.unknown)
     required ContributionStatusModel status,
+    @JsonKey(unknownEnumValue: GroupPaymentMethodModel.unknown)
+    GroupPaymentMethodModel? paymentMethod,
     String? proofFileKey,
     String? paymentRef,
     String? note,
@@ -76,6 +84,8 @@ sealed class ContributionSummaryModel with _$ContributionSummaryModel {
     @JsonKey(fromJson: _toInt) @Default(0) int submitted,
     @JsonKey(fromJson: _toInt) @Default(0) int confirmed,
     @JsonKey(fromJson: _toInt) @Default(0) int rejected,
+    @JsonKey(fromJson: _toInt) @Default(0) int paidSubmitted,
+    @JsonKey(fromJson: _toInt) @Default(0) int verified,
   }) = _ContributionSummaryModel;
 
   factory ContributionSummaryModel.fromJson(Map<String, dynamic> json) =>

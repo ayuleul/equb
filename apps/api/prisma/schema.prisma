@@ -62,6 +62,14 @@ enum CycleStatus {
   CLOSED
 }
 
+enum CycleState {
+  DUE
+  COLLECTING
+  READY_FOR_PAYOUT
+  DISBURSED
+  CLOSED
+}
+
 enum PayoutMode {
   RANDOM_DRAW
 }
@@ -74,6 +82,8 @@ enum AuctionStatus {
 
 enum ContributionStatus {
   PENDING
+  PAID_SUBMITTED
+  VERIFIED
   SUBMITTED
   CONFIRMED
   REJECTED
@@ -82,6 +92,12 @@ enum ContributionStatus {
 enum PayoutStatus {
   PENDING
   CONFIRMED
+}
+
+enum LedgerEntryType {
+  MEMBER_PAYMENT
+  CONTRIBUTION_VERIFIED
+  PAYOUT_DISBURSED
 }
 
 enum Platform {
@@ -132,6 +148,9 @@ model User {
   contributions  Contribution[] @relation("ContributionUser")
   confirmedContributions Contribution[] @relation("ContributionConfirmedBy")
   rejectedContributions Contribution[] @relation("ContributionRejectedBy")
+  contributionReceipts ContributionReceipt[]
+  ledgerEntries  LedgerEntry[]
+  confirmedLedgerEntries LedgerEntry[] @relation("LedgerEntryConfirmedBy")
   payoutRecipients Payout[] @relation("PayoutRecipient")
   createdPayouts Payout[] @relation("PayoutCreatedBy")
   confirmedPayouts Payout[] @relation("PayoutConfirmedBy")
@@ -181,6 +200,8 @@ model EqubGroup {
   auditLogs          AuditLog[]
   cycles             EqubCycle[]
   contributions      Contribution[]
+  contributionReceipts ContributionReceipt[]
+  ledgerEntries      LedgerEntry[]
   payouts            Payout[]
   rounds             EqubRound[]
   notifications      Notification[]
@@ -284,6 +305,8 @@ model EqubCycle {
   roundId         String
   cycleNo         Int
   dueDate         DateTime    @db.Date
+  dueAt           DateTime    @db.Date
+  state           CycleState  @default(DUE)
   scheduledPayoutUserId String
   finalPayoutUserId String
   auctionStatus AuctionStatus @default(NONE)
@@ -304,6 +327,8 @@ model EqubCycle {
   closedByUser    User?       @relation("CycleClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
   createdByUser   User        @relation("CycleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   contributions   Contribution[]
+  contributionReceipts ContributionReceipt[]
+  ledgerEntries   LedgerEntry[]
   payout          Payout?
   auction         CycleAuction?
   bids            CycleBid[]
@@ -348,6 +373,7 @@ model Contribution {
   userId            String
   amount            Int
   status            ContributionStatus @default(PENDING)
+  paymentMethod     GroupPaymentMethod?
   proofFileKey      String?
   paymentRef        String?
   note              String?
@@ -363,9 +389,31 @@ model Contribution {
   user              User               @relation("ContributionUser", fields: [userId], references: [id], onDelete: Cascade)
   confirmedByUser   User?              @relation("ContributionConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
   rejectedByUser    User?              @relation("ContributionRejectedBy", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
+  receipt           ContributionReceipt?
+  ledgerEntries     LedgerEntry[]
 
   @@unique([cycleId, userId])
   @@index([groupId, cycleId])
+}
+
+model ContributionReceipt {
+  id             String            @id @default(uuid())
+  groupId        String
+  cycleId        String
+  contributionId String            @unique
+  userId         String
+  method         GroupPaymentMethod
+  reference      String?
+  receiptFileKey String?
+  note           String?
+  createdAt      DateTime          @default(now())
+  contribution   Contribution      @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+  group          EqubGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  cycle          EqubCycle         @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, cycleId])
+  @@index([userId, createdAt])
 }
 
 model Payout {
@@ -388,8 +436,38 @@ model Payout {
   toUser            User        @relation("PayoutRecipient", fields: [toUserId], references: [id], onDelete: Restrict)
   createdByUser     User        @relation("PayoutCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   confirmedByUser   User?       @relation("PayoutConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  ledgerEntries     LedgerEntry[]
 
   @@index([groupId, cycleId])
+}
+
+model LedgerEntry {
+  id                String            @id @default(uuid())
+  groupId           String
+  cycleId           String?
+  contributionId    String?
+  payoutId          String?
+  userId            String
+  type              LedgerEntryType
+  amount            Int
+  method            GroupPaymentMethod?
+  reference         String?
+  receiptFileKey    String?
+  note              String?
+  createdAt         DateTime          @default(now())
+  confirmedAt       DateTime?
+  confirmedByUserId String?
+  group             EqubGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  cycle             EqubCycle?        @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  contribution      Contribution?     @relation(fields: [contributionId], references: [id], onDelete: SetNull)
+  payout            Payout?           @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  confirmedByUser   User?             @relation("LedgerEntryConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, cycleId, createdAt])
+  @@index([contributionId])
+  @@index([payoutId])
+  @@index([userId, createdAt])
 }
 
 model AuditLog {

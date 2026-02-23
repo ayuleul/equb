@@ -1,6 +1,7 @@
 import {
   AuctionStatus,
   CycleStatus,
+  CycleState,
   GroupFrequency,
   GroupPaymentMethod,
   GroupRuleFineType,
@@ -281,6 +282,12 @@ export class GroupCycleResponseDto {
 
   @ApiProperty()
   dueDate!: Date;
+
+  @ApiProperty()
+  dueAt!: Date;
+
+  @ApiProperty({ enum: CycleState })
+  state!: CycleState;
 
   @ApiProperty()
   scheduledPayoutUserId!: string;

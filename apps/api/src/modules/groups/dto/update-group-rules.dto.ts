@@ -12,7 +12,6 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
-  IsOptional,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -23,7 +22,10 @@ export class UpdateGroupRulesDto {
   @Min(1)
   contributionAmount!: number;
 
-  @ApiProperty({ enum: GroupRuleFrequency, example: GroupRuleFrequency.MONTHLY })
+  @ApiProperty({
+    enum: GroupRuleFrequency,
+    example: GroupRuleFrequency.MONTHLY,
+  })
   @IsEnum(GroupRuleFrequency)
   frequency!: GroupRuleFrequency;
 
@@ -32,8 +34,9 @@ export class UpdateGroupRulesDto {
     nullable: true,
     description: 'Required when frequency is CUSTOM_INTERVAL',
   })
-  @ValidateIf((dto: UpdateGroupRulesDto) =>
-    dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL,
+  @ValidateIf(
+    (dto: UpdateGroupRulesDto) =>
+      dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL,
   )
   @IsInt()
   @Min(1)
@@ -50,7 +53,8 @@ export class UpdateGroupRulesDto {
 
   @ApiProperty({ example: 0 })
   @ValidateIf(
-    (dto: UpdateGroupRulesDto) => dto.fineType === GroupRuleFineType.FIXED_AMOUNT,
+    (dto: UpdateGroupRulesDto) =>
+      dto.fineType === GroupRuleFineType.FIXED_AMOUNT,
   )
   @IsInt()
   @Min(1)
