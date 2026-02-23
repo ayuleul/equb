@@ -71,6 +71,8 @@
 - Membership verification metadata is tracked with:
   - `verifiedAt`
   - `verifiedByUserId`
+- Optional guarantor linkage for late alerts is tracked on membership via:
+  - `guarantorUserId` (nullable)
 - Invite codes are uppercase URL-safe strings (8 chars) and must be unique.
 - Rejoin policy:
   - `INVITED` -> can activate membership by joining with invite
@@ -90,6 +92,10 @@
 - Cycle lifecycle state machine is locked to:
   - `DUE -> COLLECTING -> READY_FOR_PAYOUT -> DISBURSED -> CLOSED`
 - Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.
+- Collection readiness rule is locked:
+  - `strictCollection = true`: cycle may move to `READY_FOR_PAYOUT` only when all due contribution rows are `VERIFIED|CONFIRMED`
+  - `strictCollection = false`: payout readiness may proceed when at least one contribution is verified (admin can proceed after evaluation).
+- Collection evaluation endpoint is locked to `POST /cycles/:cycleId/evaluate` (admin), and is the manual trigger for late/fine processing in MVP.
 - Due-date progression rules:
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
@@ -112,12 +118,19 @@
 - Upload signing must defensively re-presign via `S3RequestPresigner` when checksum query params are detected, to guarantee MinIO-compatible `PUT` URLs.
 - Contribution state transitions:
   - submit/resubmit payment: `PENDING|REJECTED|PAID_SUBMITTED|SUBMITTED -> PAID_SUBMITTED`
-  - verify: `PAID_SUBMITTED|SUBMITTED -> VERIFIED`
-  - reject: `PAID_SUBMITTED|SUBMITTED -> REJECTED`
+  - verify: `PAID_SUBMITTED|SUBMITTED|LATE -> VERIFIED`
+  - reject: `PAID_SUBMITTED|SUBMITTED|LATE -> REJECTED`
+  - late marking: when `dueAt + graceDays` has passed and status is not `VERIFIED|CONFIRMED`, `status -> LATE`
   - legacy confirm endpoint is compatibility-only and maps to verification behavior.
 - Verified/confirmed contributions are immutable (no resubmit/update).
 - Each payment submission must create/update a `ContributionReceipt` record and append a `LedgerEntry` of type `MEMBER_PAYMENT`.
 - Each admin verification must append a `LedgerEntry` of type `CONTRIBUTION_VERIFIED` with confirmer metadata.
+- Late fine rule is locked: when ruleset fine policy is `FIXED_AMOUNT` and contribution becomes `LATE`, create one `LedgerEntry` of type `LATE_FINE` per contribution (idempotent).
+- Dispute flow is locked:
+  - create: `POST /contributions/:id/disputes`
+  - mediate: `POST /disputes/:id/mediate`
+  - resolve: `POST /disputes/:id/resolve`
+  - states: `OPEN -> MEDIATING -> RESOLVED`
 - Privacy rule: contribution list responses expose member phone numbers only to ACTIVE admins; non-admin members receive `phone = null`.
 
 ## Payout rules
@@ -138,6 +151,10 @@
   - `CONTRIBUTION_SUBMITTED`
   - `CONTRIBUTION_CONFIRMED`
   - `CONTRIBUTION_REJECTED`
+  - `CONTRIBUTION_LATE`
+  - `DISPUTE_OPENED`
+  - `DISPUTE_MEDIATING`
+  - `DISPUTE_RESOLVED`
   - `PAYOUT_CONFIRMED`
   - `DUE_REMINDER`
   - `LOTTERY_WINNER`
@@ -146,6 +163,9 @@
   - `MEMBER_JOINED` -> notify active group admins
   - `CONTRIBUTION_SUBMITTED` -> notify active group admins
   - `CONTRIBUTION_CONFIRMED` / `CONTRIBUTION_REJECTED` -> notify contributor
+  - `CONTRIBUTION_LATE` -> notify late member and configured guarantor
+  - `DISPUTE_OPENED` -> notify active admins and involved contributor
+  - `DISPUTE_MEDIATING` / `DISPUTE_RESOLVED` -> notify involved dispute parties
   - `PAYOUT_CONFIRMED` -> notify active group members
   - `DUE_REMINDER` -> notify active members missing `PAID_SUBMITTED|SUBMITTED|VERIFIED|CONFIRMED` contribution
   - `LOTTERY_WINNER` -> notify drawn cycle winner

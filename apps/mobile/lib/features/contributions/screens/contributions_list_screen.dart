@@ -17,7 +17,7 @@ import '../../groups/group_detail_controller.dart';
 import '../admin_contribution_actions_controller.dart';
 import '../cycle_contributions_provider.dart';
 
-enum _ContributionFilter { all, pending, submitted, confirmed, rejected }
+enum _ContributionFilter { all, pending, late, submitted, confirmed, rejected }
 
 class ContributionsListScreen extends ConsumerStatefulWidget {
   const ContributionsListScreen({
@@ -131,12 +131,48 @@ class _ContributionsListScreenState
               children: [
                 _CycleHeaderCard(cycleAsync: cycleAsync),
                 const SizedBox(height: AppSpacing.md),
+                if (isAdmin)
+                  KitSecondaryButton(
+                    onPressed: adminState.isEvaluating
+                        ? null
+                        : () async {
+                            final evaluation = await ref
+                                .read(
+                                  adminContributionActionsControllerProvider(
+                                    args,
+                                  ).notifier,
+                                )
+                                .evaluateCycleCollection();
+                            if (!context.mounted || evaluation == null) {
+                              return;
+                            }
+                            KitToast.success(
+                              context,
+                              'Overdue ${evaluation.overdueCount}, newly late ${evaluation.lateMarkedCount}',
+                            );
+                          },
+                    icon: Icons.rule_outlined,
+                    label: adminState.isEvaluating
+                        ? 'Evaluating...'
+                        : 'Run overdue check',
+                  ),
+                if (isAdmin) const SizedBox(height: AppSpacing.md),
                 _SummarySegmentedHeader(
                   summary: contributionList.summary,
                   selected: _filter,
                   onSelected: (value) => setState(() => _filter = value),
                 ),
                 const SizedBox(height: AppSpacing.md),
+                if (isAdmin && contributionList.summary.late > 0) ...[
+                  KitBanner(
+                    title: 'Overdue ${contributionList.summary.late}',
+                    message:
+                        'Late contributions were detected after grace period. Open the Late filter for details.',
+                    tone: KitBadgeTone.warning,
+                    icon: Icons.warning_amber_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 if (canSubmit)
                   KitPrimaryButton(
                     onPressed: () {
@@ -218,6 +254,11 @@ class _SummarySegmentedHeader extends StatelessWidget {
                   label: 'Pending (${summary.pending})',
                   selected: selected == _ContributionFilter.pending,
                   onTap: () => onSelected(_ContributionFilter.pending),
+                ),
+                _FilterChip(
+                  label: 'Late (${summary.late})',
+                  selected: selected == _ContributionFilter.late,
+                  onTap: () => onSelected(_ContributionFilter.late),
                 ),
                 _FilterChip(
                   label: 'Submitted (${summary.submitted})',
@@ -322,6 +363,7 @@ class _ContributionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statusLabel = switch (contribution.status) {
       ContributionStatusModel.pending => 'PENDING',
+      ContributionStatusModel.late => 'LATE',
       ContributionStatusModel.paidSubmitted => 'PAID_SUBMITTED',
       ContributionStatusModel.verified => 'VERIFIED',
       ContributionStatusModel.submitted => 'SUBMITTED',
@@ -370,7 +412,9 @@ class _ContributionCard extends ConsumerWidget {
               contribution.rejectReason!.trim().isNotEmpty)
             Text('Reason: ${contribution.rejectReason}'),
           const SizedBox(height: AppSpacing.sm),
-          Row(
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               if (hasProof)
                 KitSecondaryButton(
@@ -379,12 +423,6 @@ class _ContributionCard extends ConsumerWidget {
                   label: 'View proof',
                   expand: false,
                 ),
-              if (hasProof &&
-                  isAdmin &&
-                  (contribution.status ==
-                          ContributionStatusModel.paidSubmitted ||
-                      contribution.status == ContributionStatusModel.submitted))
-                const SizedBox(width: AppSpacing.sm),
               if (isAdmin &&
                   (contribution.status ==
                           ContributionStatusModel.paidSubmitted ||
@@ -401,6 +439,17 @@ class _ContributionCard extends ConsumerWidget {
                   icon: Icons.more_horiz,
                   label: 'Admin actions',
                 ),
+              KitTertiaryButton(
+                onPressed: () => context.push(
+                  AppRoutePaths.groupCycleContributionDisputes(
+                    args.groupId,
+                    args.cycleId,
+                    contribution.id,
+                  ),
+                ),
+                icon: Icons.report_gmailerrorred_outlined,
+                label: 'Report mismatch',
+              ),
             ],
           ),
         ],
@@ -465,6 +514,7 @@ bool _matchesFilter(
   return switch (filter) {
     _ContributionFilter.all => true,
     _ContributionFilter.pending => status == ContributionStatusModel.pending,
+    _ContributionFilter.late => status == ContributionStatusModel.late,
     _ContributionFilter.submitted =>
       status == ContributionStatusModel.paidSubmitted ||
           status == ContributionStatusModel.submitted,

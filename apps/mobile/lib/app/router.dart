@@ -21,6 +21,7 @@ import '../features/cycles/screens/cycle_detail_screen.dart';
 import '../features/cycles/screens/cycles_overview_screen.dart';
 import '../features/cycles/screens/generate_cycle_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
+import '../features/contributions/screens/contribution_disputes_screen.dart';
 import '../features/contributions/screens/submit_contribution_screen.dart';
 import '../features/payouts/screens/payout_screen.dart';
 import '../features/profile/screens/complete_profile_screen.dart';
@@ -58,6 +59,11 @@ class AppRoutePaths {
       '/groups/$groupId/cycles/$cycleId/contributions';
   static String groupCycleContributionsSubmit(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId/contributions/submit';
+  static String groupCycleContributionDisputes(
+    String groupId,
+    String cycleId,
+    String contributionId,
+  ) => '/groups/$groupId/cycles/$cycleId/contributions/$contributionId/disputes';
   static String groupCyclePayout(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId/payout';
 }
@@ -219,6 +225,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                                     return SubmitContributionScreen(
                                       groupId: groupId,
                                       cycleId: cycleId,
+                                    );
+                                  },
+                                ),
+                                GoRoute(
+                                  path: ':contributionId/disputes',
+                                  builder: (context, state) {
+                                    final groupId =
+                                        state.pathParameters['id'] ?? '';
+                                    final cycleId =
+                                        state.pathParameters['cycleId'] ?? '';
+                                    final contributionId =
+                                        state.pathParameters['contributionId'] ??
+                                        '';
+                                    return ContributionDisputesScreen(
+                                      groupId: groupId,
+                                      cycleId: cycleId,
+                                      contributionId: contributionId,
                                     );
                                   },
                                 ),

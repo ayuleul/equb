@@ -31,6 +31,14 @@ RoundStatusPresentation mapRoundStatus({
     );
   }
 
+  if (cycle.state == CycleStateModel.readyForPayout ||
+      cycle.state == CycleStateModel.disbursed) {
+    return const RoundStatusPresentation(
+      label: 'Ready to payout',
+      stage: RoundStage.payout,
+    );
+  }
+
   final total = contributionSummary?.total ?? 0;
   final paidCount =
       (contributionSummary?.submitted ?? 0) +

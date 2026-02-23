@@ -8,7 +8,10 @@ import 'package:mobile/data/contributions/contributions_repository.dart';
 import 'package:mobile/data/files/files_api.dart';
 import 'package:mobile/data/files/files_repository.dart';
 import 'package:mobile/data/models/contribution_model.dart';
+import 'package:mobile/data/models/create_contribution_dispute_request.dart';
+import 'package:mobile/data/models/mediate_dispute_request.dart';
 import 'package:mobile/data/models/group_rules_model.dart';
+import 'package:mobile/data/models/resolve_dispute_request.dart';
 import 'package:mobile/data/models/signed_upload_request.dart';
 import 'package:mobile/data/models/signed_upload_response.dart';
 import 'package:mobile/data/models/submit_contribution_request.dart';
@@ -111,6 +114,42 @@ class _FakeContributionsApi implements ContributionsApi {
     String contributionId, {
     String? note,
   }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> evaluateCycleCollection(String cycleId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> createContributionDispute(
+    String contributionId,
+    CreateContributionDisputeRequest request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listContributionDisputes(
+    String contributionId,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> mediateDispute(
+    String disputeId,
+    MediateDisputeRequest request,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> resolveDispute(
+    String disputeId,
+    ResolveDisputeRequest request,
+  ) {
     throw UnimplementedError();
   }
 

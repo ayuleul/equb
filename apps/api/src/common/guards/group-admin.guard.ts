@@ -108,6 +108,19 @@ export class GroupAdminGuard implements CanActivate {
       return payout.groupId;
     }
 
+    if (request.path.includes('/disputes/')) {
+      const dispute = await this.prisma.contributionDispute.findUnique({
+        where: { id: idParam },
+        select: { groupId: true },
+      });
+
+      if (!dispute) {
+        throw new ForbiddenException('Dispute not found');
+      }
+
+      return dispute.groupId;
+    }
+
     return idParam;
   }
 }

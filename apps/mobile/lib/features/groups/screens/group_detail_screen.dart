@@ -10,6 +10,7 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/group_rules_model.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
@@ -26,6 +27,7 @@ import '../../cycles/generate_cycle_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
 import '../../rounds/widgets/lottery_reveal_animation.dart';
 import '../group_detail_controller.dart';
+import '../group_rules_provider.dart';
 import '../widgets/group_more_actions_button.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -320,9 +322,21 @@ class _CurrentTurnLoaded extends ConsumerWidget {
     final contributionsAsync = ref.watch(
       cycleContributionsProvider((groupId: group.id, cycleId: cycle.id)),
     );
+    final rules = ref.watch(groupRulesProvider(group.id)).valueOrNull;
     final payoutAsync = ref.watch(cyclePayoutProvider(cycle.id));
     final summary = contributionsAsync.valueOrNull?.summary;
     final payout = payoutAsync.valueOrNull;
+    final currentUserId = currentUser?.id;
+    ContributionModel? myContribution;
+    if (currentUserId != null) {
+      final items = contributionsAsync.valueOrNull?.items ?? const [];
+      for (final item in items) {
+        if (item.userId == currentUserId) {
+          myContribution = item;
+          break;
+        }
+      }
+    }
     final status = mapRoundStatus(
       cycle: cycle,
       contributionSummary: summary,
@@ -333,7 +347,7 @@ class _CurrentTurnLoaded extends ConsumerWidget {
       groupId: group.id,
       cycle: cycle,
       isAdmin: isAdmin,
-      currentUserId: currentUser?.id,
+      currentUserId: currentUserId,
       payout: payout,
       contributions: contributionsAsync.valueOrNull,
     );
@@ -368,6 +382,19 @@ class _CurrentTurnLoaded extends ConsumerWidget {
           'Due ${formatDate(cycle.dueDate)}',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
+        if (myContribution?.status == ContributionStatusModel.late) ...[
+          const SizedBox(height: AppSpacing.sm),
+          KitBanner(
+            title: 'Your contribution is late',
+            message: _lateMessage(
+              contribution: myContribution,
+              rules: rules,
+              currency: group.currency,
+            ),
+            tone: KitBadgeTone.warning,
+            icon: Icons.warning_amber_rounded,
+          ),
+        ],
         const SizedBox(height: AppSpacing.sm),
         LotteryRevealAnimation(
           play: highlightWinner,
@@ -453,6 +480,8 @@ class _ContributionsSummaryCard extends ConsumerWidget {
             data: (list) {
               final paid = list.summary.submitted + list.summary.confirmed;
               final total = list.summary.total;
+              final group = ref.watch(groupDetailProvider(groupId)).valueOrNull;
+              final isAdmin = group?.membership?.role == MemberRoleModel.admin;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,6 +502,16 @@ class _ContributionsSummaryCard extends ConsumerWidget {
                     '${list.summary.confirmed} confirmed, ${list.summary.rejected} rejected',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  if (isAdmin && list.summary.late > 0) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Overdue ${list.summary.late}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.md),
                   KitSecondaryButton(
                     label: 'View contributions',
@@ -489,6 +528,27 @@ class _ContributionsSummaryCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _lateMessage({
+  required ContributionModel? contribution,
+  required GroupRulesModel? rules,
+  required String currency,
+}) {
+  if (contribution?.lateMarkedAt == null) {
+    return 'Your payment has passed due + grace period.';
+  }
+
+  if (rules == null) {
+    return 'Your payment is late. Please submit and ask admin verification.';
+  }
+
+  if (rules.fineType == GroupRuleFineTypeModel.fixedAmount &&
+      rules.fineAmount > 0) {
+    return 'Late since ${formatDate(contribution!.lateMarkedAt!)}. Fine: $currency ${rules.fineAmount}.';
+  }
+
+  return 'Late since ${formatDate(contribution!.lateMarkedAt!)}. No fixed fine configured.';
 }
 
 class _RoundTimelineCard extends ConsumerWidget {
@@ -783,6 +843,13 @@ _PrimaryAction _resolvePrimaryAction({
     return _PrimaryAction(
       label: 'Fix & resubmit',
       icon: Icons.refresh_rounded,
+      onPressed: () => context.push(submitRoute),
+    );
+  }
+  if (myStatus == ContributionStatusModel.late) {
+    return _PrimaryAction(
+      label: 'Pay now',
+      icon: Icons.warning_amber_rounded,
       onPressed: () => context.push(submitRoute),
     );
   }

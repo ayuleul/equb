@@ -12,9 +12,12 @@ import 'package:mobile/data/groups/groups_repository.dart';
 import 'package:mobile/data/models/confirm_payout_request.dart';
 import 'package:mobile/data/models/create_group_request.dart';
 import 'package:mobile/data/models/create_payout_request.dart';
+import 'package:mobile/data/models/create_contribution_dispute_request.dart';
 import 'package:mobile/data/models/group_rules_model.dart';
 import 'package:mobile/data/models/join_group_request.dart';
+import 'package:mobile/data/models/mediate_dispute_request.dart';
 import 'package:mobile/data/models/reject_contribution_request.dart';
+import 'package:mobile/data/models/resolve_dispute_request.dart';
 import 'package:mobile/data/models/submit_contribution_request.dart';
 import 'package:mobile/data/models/update_group_rules_request.dart';
 import 'package:mobile/data/models/user_model.dart';
@@ -353,6 +356,42 @@ class _FakeContributionsApi implements ContributionsApi {
     String contributionId, {
     String? note,
   }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> evaluateCycleCollection(String cycleId) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> createContributionDispute(
+    String contributionId,
+    CreateContributionDisputeRequest request,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listContributionDisputes(
+    String contributionId,
+  ) async {
+    return <Map<String, dynamic>>[];
+  }
+
+  @override
+  Future<Map<String, dynamic>> mediateDispute(
+    String disputeId,
+    MediateDisputeRequest request,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> resolveDispute(
+    String disputeId,
+    ResolveDisputeRequest request,
+  ) async {
     throw UnimplementedError();
   }
 

@@ -52,6 +52,9 @@ _ContributionModel _$ContributionModelFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['rejectedAt'] as String),
       rejectReason: json['rejectReason'] as String?,
+      lateMarkedAt: json['lateMarkedAt'] == null
+          ? null
+          : DateTime.parse(json['lateMarkedAt'] as String),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -76,12 +79,14 @@ Map<String, dynamic> _$ContributionModelToJson(_ContributionModel instance) =>
       'confirmedAt': instance.confirmedAt?.toIso8601String(),
       'rejectedAt': instance.rejectedAt?.toIso8601String(),
       'rejectReason': instance.rejectReason,
+      'lateMarkedAt': instance.lateMarkedAt?.toIso8601String(),
       'createdAt': instance.createdAt?.toIso8601String(),
       'user': instance.user,
     };
 
 const _$ContributionStatusModelEnumMap = {
   ContributionStatusModel.pending: 'PENDING',
+  ContributionStatusModel.late: 'LATE',
   ContributionStatusModel.paidSubmitted: 'PAID_SUBMITTED',
   ContributionStatusModel.verified: 'VERIFIED',
   ContributionStatusModel.submitted: 'SUBMITTED',
@@ -109,6 +114,7 @@ _ContributionSummaryModel _$ContributionSummaryModelFromJson(
       ? 0
       : _toInt(json['paidSubmitted']),
   verified: json['verified'] == null ? 0 : _toInt(json['verified']),
+  late: json['late'] == null ? 0 : _toInt(json['late']),
 );
 
 Map<String, dynamic> _$ContributionSummaryModelToJson(
@@ -121,6 +127,7 @@ Map<String, dynamic> _$ContributionSummaryModelToJson(
   'rejected': instance.rejected,
   'paidSubmitted': instance.paidSubmitted,
   'verified': instance.verified,
+  'late': instance.late,
 };
 
 _ContributionListModel _$ContributionListModelFromJson(

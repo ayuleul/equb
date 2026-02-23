@@ -26,11 +26,16 @@ import { GroupMemberGuard } from '../../common/guards/group-member.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { ConfirmContributionDto } from './dto/confirm-contribution.dto';
+import { CreateContributionDisputeDto } from './dto/create-contribution-dispute.dto';
+import { MediateDisputeDto } from './dto/mediate-dispute.dto';
 import { RejectContributionDto } from './dto/reject-contribution.dto';
+import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 import { SubmitContributionDto } from './dto/submit-contribution.dto';
 import {
+  ContributionDisputeResponseDto,
   ContributionListResponseDto,
   ContributionResponseDto,
+  CycleEvaluationResponseDto,
 } from './entities/contributions.entities';
 import { ContributionsService } from './contributions.service';
 
@@ -90,6 +95,25 @@ export class ContributionsController {
       currentUser,
       cycleId,
       dto,
+    );
+  }
+
+  @Post('cycles/:cycleId/evaluate')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Cycles')
+  @ApiOperation({
+    summary: 'Evaluate cycle collection status, late contributions, and fines',
+  })
+  @ApiOkResponse({ type: CycleEvaluationResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
+  evaluateCycleCollection(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
+  ): Promise<CycleEvaluationResponseDto> {
+    return this.contributionsService.evaluateCycleCollection(
+      currentUser,
+      cycleId,
     );
   }
 
@@ -157,6 +181,88 @@ export class ContributionsController {
     return this.contributionsService.rejectContribution(
       currentUser,
       contributionId,
+      dto,
+    );
+  }
+
+  @Post('contributions/:id/disputes')
+  @UseGuards(GroupMemberGuard)
+  @ApiOperation({ summary: 'Open a contribution dispute ticket' })
+  @ApiBody({ type: CreateContributionDisputeDto })
+  @ApiOkResponse({ type: ContributionDisputeResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiBadRequestResponse({
+    description: 'Dispute cannot be opened for this contribution',
+  })
+  @ApiNotFoundResponse({ description: 'Contribution not found' })
+  createContributionDispute(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) contributionId: string,
+    @Body() dto: CreateContributionDisputeDto,
+  ): Promise<ContributionDisputeResponseDto> {
+    return this.contributionsService.createContributionDispute(
+      currentUser,
+      contributionId,
+      dto,
+    );
+  }
+
+  @Get('contributions/:id/disputes')
+  @UseGuards(GroupMemberGuard)
+  @ApiOperation({ summary: 'List disputes for a contribution' })
+  @ApiOkResponse({ type: ContributionDisputeResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiNotFoundResponse({ description: 'Contribution not found' })
+  listContributionDisputes(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) contributionId: string,
+  ): Promise<ContributionDisputeResponseDto[]> {
+    return this.contributionsService.listContributionDisputes(
+      currentUser,
+      contributionId,
+    );
+  }
+
+  @Post('disputes/:id/mediate')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Move dispute ticket to mediating state' })
+  @ApiBody({ type: MediateDisputeDto })
+  @ApiOkResponse({ type: ContributionDisputeResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Only open disputes can transition to mediating',
+  })
+  @ApiNotFoundResponse({ description: 'Dispute not found' })
+  mediateDispute(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) disputeId: string,
+    @Body() dto: MediateDisputeDto,
+  ): Promise<ContributionDisputeResponseDto> {
+    return this.contributionsService.mediateDispute(
+      currentUser,
+      disputeId,
+      dto,
+    );
+  }
+
+  @Post('disputes/:id/resolve')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Resolve dispute ticket' })
+  @ApiBody({ type: ResolveDisputeDto })
+  @ApiOkResponse({ type: ContributionDisputeResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Only open or mediating disputes can be resolved',
+  })
+  @ApiNotFoundResponse({ description: 'Dispute not found' })
+  resolveDispute(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) disputeId: string,
+    @Body() dto: ResolveDisputeDto,
+  ): Promise<ContributionDisputeResponseDto> {
+    return this.contributionsService.resolveDispute(
+      currentUser,
+      disputeId,
       dto,
     );
   }

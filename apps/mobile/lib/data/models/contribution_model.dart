@@ -8,6 +8,8 @@ part 'contribution_model.g.dart';
 enum ContributionStatusModel {
   @JsonValue('PENDING')
   pending,
+  @JsonValue('LATE')
+  late,
   @JsonValue('PAID_SUBMITTED')
   paidSubmitted,
   @JsonValue('VERIFIED')
@@ -54,6 +56,7 @@ sealed class ContributionModel with _$ContributionModel {
     DateTime? confirmedAt,
     DateTime? rejectedAt,
     String? rejectReason,
+    DateTime? lateMarkedAt,
     DateTime? createdAt,
     required ContributionUserModel user,
   }) = _ContributionModel;
@@ -86,6 +89,7 @@ sealed class ContributionSummaryModel with _$ContributionSummaryModel {
     @JsonKey(fromJson: _toInt) @Default(0) int rejected,
     @JsonKey(fromJson: _toInt) @Default(0) int paidSubmitted,
     @JsonKey(fromJson: _toInt) @Default(0) int verified,
+    @JsonKey(fromJson: _toInt) @Default(0) int late,
   }) = _ContributionSummaryModel;
 
   factory ContributionSummaryModel.fromJson(Map<String, dynamic> json) =>

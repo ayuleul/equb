@@ -112,6 +112,23 @@ String _mapApiError(ApiError error) {
     return 'Only submitted contributions can be rejected.';
   }
 
+  if (normalized.contains('only paid-submitted contributions can be verified')) {
+    return 'Only submitted payments can be verified.';
+  }
+
+  if (normalized.contains('only paid-submitted contributions can be rejected')) {
+    return 'Only submitted payments can be rejected.';
+  }
+
+  if (normalized.contains('contribution marked late') ||
+      normalized.contains('your contribution is late')) {
+    return 'This contribution is marked late. Submit payment and request verification.';
+  }
+
+  if (normalized.contains('an open dispute already exists')) {
+    return 'There is already an active dispute for this contribution.';
+  }
+
   if (normalized.contains('strict payout check failed')) {
     return 'Cannot confirm payout yet. Some contributions are still unconfirmed. Review contributions first.';
   }

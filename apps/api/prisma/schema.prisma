@@ -82,6 +82,7 @@ enum AuctionStatus {
 
 enum ContributionStatus {
   PENDING
+  LATE
   PAID_SUBMITTED
   VERIFIED
   SUBMITTED
@@ -98,6 +99,13 @@ enum LedgerEntryType {
   MEMBER_PAYMENT
   CONTRIBUTION_VERIFIED
   PAYOUT_DISBURSED
+  LATE_FINE
+}
+
+enum DisputeStatus {
+  OPEN
+  MEDIATING
+  RESOLVED
 }
 
 enum Platform {
@@ -111,6 +119,10 @@ enum NotificationType {
   CONTRIBUTION_SUBMITTED
   CONTRIBUTION_CONFIRMED
   CONTRIBUTION_REJECTED
+  CONTRIBUTION_LATE
+  DISPUTE_OPENED
+  DISPUTE_MEDIATING
+  DISPUTE_RESOLVED
   PAYOUT_CONFIRMED
   DUE_REMINDER
   LOTTERY_WINNER
@@ -135,6 +147,7 @@ model User {
   createdGroups  EqubGroup[]    @relation("GroupCreator")
   memberships    EqubMember[]
   verifiedMembers EqubMember[] @relation("MemberVerifiedBy")
+  guaranteedMemberships EqubMember[] @relation("MemberGuarantor")
   createdInvites InviteCode[]   @relation("InviteCreator")
   scheduledPayoutCycles EqubCycle[] @relation("CycleScheduledPayoutUser")
   finalPayoutCycles EqubCycle[] @relation("CycleFinalPayoutUser")
@@ -148,6 +161,9 @@ model User {
   contributions  Contribution[] @relation("ContributionUser")
   confirmedContributions Contribution[] @relation("ContributionConfirmedBy")
   rejectedContributions Contribution[] @relation("ContributionRejectedBy")
+  reportedContributionDisputes ContributionDispute[] @relation("DisputeReporter")
+  mediatedContributionDisputes ContributionDispute[] @relation("DisputeMediator")
+  resolvedContributionDisputes ContributionDispute[] @relation("DisputeResolver")
   contributionReceipts ContributionReceipt[]
   ledgerEntries  LedgerEntry[]
   confirmedLedgerEntries LedgerEntry[] @relation("LedgerEntryConfirmedBy")
@@ -203,6 +219,7 @@ model EqubGroup {
   contributionReceipts ContributionReceipt[]
   ledgerEntries      LedgerEntry[]
   payouts            Payout[]
+  contributionDisputes ContributionDispute[]
   rounds             EqubRound[]
   notifications      Notification[]
   rules              GroupRules?
@@ -237,14 +254,17 @@ model EqubMember {
   joinedAt       DateTime?
   verifiedAt     DateTime?
   verifiedByUserId String?
+  guarantorUserId String?
   createdAt      DateTime     @default(now())
   group          EqubGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   verifiedByUser User?        @relation("MemberVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  guarantorUser  User?        @relation("MemberGuarantor", fields: [guarantorUserId], references: [id], onDelete: SetNull)
 
   @@unique([groupId, userId])
   @@index([userId])
   @@index([verifiedByUserId])
+  @@index([guarantorUserId])
   @@index([groupId, status, role])
 }
 
@@ -328,6 +348,7 @@ model EqubCycle {
   createdByUser   User        @relation("CycleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   contributions   Contribution[]
   contributionReceipts ContributionReceipt[]
+  contributionDisputes ContributionDispute[]
   ledgerEntries   LedgerEntry[]
   payout          Payout?
   auction         CycleAuction?
@@ -383,6 +404,7 @@ model Contribution {
   rejectedByUserId  String?
   rejectedAt        DateTime?
   rejectReason      String?
+  lateMarkedAt      DateTime?
   createdAt         DateTime           @default(now())
   group             EqubGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
   cycle             EqubCycle          @relation(fields: [cycleId], references: [id], onDelete: Cascade)
@@ -390,10 +412,43 @@ model Contribution {
   confirmedByUser   User?              @relation("ContributionConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
   rejectedByUser    User?              @relation("ContributionRejectedBy", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
   receipt           ContributionReceipt?
+  disputes          ContributionDispute[]
   ledgerEntries     LedgerEntry[]
 
   @@unique([cycleId, userId])
   @@index([groupId, cycleId])
+}
+
+model ContributionDispute {
+  id                String        @id @default(uuid())
+  groupId           String
+  cycleId           String
+  contributionId    String
+  reportedByUserId  String
+  status            DisputeStatus @default(OPEN)
+  reason            String
+  note              String?
+  mediationNote     String?
+  mediatedAt        DateTime?
+  mediatedByUserId  String?
+  resolutionOutcome String?
+  resolutionNote    String?
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  group             EqubGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  cycle             EqubCycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  contribution      Contribution  @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+  reportedByUser    User          @relation("DisputeReporter", fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  mediatedByUser    User?         @relation("DisputeMediator", fields: [mediatedByUserId], references: [id], onDelete: SetNull)
+  resolvedByUser    User?         @relation("DisputeResolver", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, cycleId, status])
+  @@index([contributionId, createdAt])
+  @@index([reportedByUserId, status])
+  @@index([mediatedByUserId])
+  @@index([resolvedByUserId])
 }
 
 model ContributionReceipt {

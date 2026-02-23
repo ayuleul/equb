@@ -64,6 +64,11 @@ export class PayoutsService {
           group: {
             select: {
               contributionAmount: true,
+              rules: {
+                select: {
+                  strictCollection: true,
+                },
+              },
             },
           },
         },
@@ -83,44 +88,54 @@ export class PayoutsService {
         cycle.state !== CycleState.READY_FOR_PAYOUT &&
         cycle.state !== CycleState.DISBURSED
       ) {
-        const unresolvedWhere: Prisma.ContributionWhereInput = {
-          cycleId: cycle.id,
-          status: {
-            in: [
-              ContributionStatus.PENDING,
-              ContributionStatus.REJECTED,
-              ContributionStatus.PAID_SUBMITTED,
-              ContributionStatus.SUBMITTED,
-            ],
-          },
-        };
+        const strictCollection = cycle.group.rules?.strictCollection ?? false;
 
-        const contributionDelegate = tx.contribution as {
-          count?: (args: Prisma.ContributionCountArgs) => Promise<number>;
-          findMany: (
-            args: Prisma.ContributionFindManyArgs,
-          ) => Promise<Array<{ id: string }>>;
-        };
-
-        const unresolvedCount =
-          contributionDelegate.count != null
-            ? await contributionDelegate.count({ where: unresolvedWhere })
-            : (
-                await contributionDelegate.findMany({
-                  where: unresolvedWhere,
-                  select: { id: true },
-                })
-              ).length;
-
-        if (unresolvedCount === 0) {
+        if (!strictCollection) {
           await tx.equbCycle.update({
             where: { id: cycle.id },
             data: { state: CycleState.READY_FOR_PAYOUT },
           });
         } else {
-          throw new BadRequestException(
-            'Cycle must be READY_FOR_PAYOUT before creating payout',
-          );
+          const unresolvedWhere: Prisma.ContributionWhereInput = {
+            cycleId: cycle.id,
+            status: {
+              in: [
+                ContributionStatus.PENDING,
+                ContributionStatus.REJECTED,
+                ContributionStatus.LATE,
+                ContributionStatus.PAID_SUBMITTED,
+                ContributionStatus.SUBMITTED,
+              ],
+            },
+          };
+
+          const contributionDelegate = tx.contribution as {
+            count?: (args: Prisma.ContributionCountArgs) => Promise<number>;
+            findMany: (
+              args: Prisma.ContributionFindManyArgs,
+            ) => Promise<Array<{ id: string }>>;
+          };
+
+          const unresolvedCount =
+            contributionDelegate.count != null
+              ? await contributionDelegate.count({ where: unresolvedWhere })
+              : (
+                  await contributionDelegate.findMany({
+                    where: unresolvedWhere,
+                    select: { id: true },
+                  })
+                ).length;
+
+          if (unresolvedCount === 0) {
+            await tx.equbCycle.update({
+              where: { id: cycle.id },
+              data: { state: CycleState.READY_FOR_PAYOUT },
+            });
+          } else {
+            throw new BadRequestException(
+              'Cycle must be READY_FOR_PAYOUT before creating payout',
+            );
+          }
         }
       }
 

@@ -54,9 +54,35 @@ export class GroupMemberGuard implements CanActivate {
   private async resolveGroupId(
     request: RequestWithUserAndParams,
   ): Promise<string> {
-    const groupIdFromRoute = request.params?.id;
-    if (groupIdFromRoute) {
-      return groupIdFromRoute;
+    const idParam = request.params?.id;
+    if (idParam) {
+      if (request.path.includes('/contributions/')) {
+        const contribution = await this.prisma.contribution.findUnique({
+          where: { id: idParam },
+          select: { groupId: true },
+        });
+
+        if (!contribution) {
+          throw new ForbiddenException('Contribution not found');
+        }
+
+        return contribution.groupId;
+      }
+
+      if (request.path.includes('/disputes/')) {
+        const dispute = await this.prisma.contributionDispute.findUnique({
+          where: { id: idParam },
+          select: { groupId: true },
+        });
+
+        if (!dispute) {
+          throw new ForbiddenException('Dispute not found');
+        }
+
+        return dispute.groupId;
+      }
+
+      return idParam;
     }
 
     const cycleId = request.params?.cycleId;

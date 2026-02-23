@@ -103,6 +103,7 @@
 - No batch cycle generation in UI; cycle start is always a single "Start cycle" action (`POST /groups/:id/cycles/start`).
 - After cycle mutations (`setPayoutOrder`, `generateCycles`/start-cycle), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
 - Group detail current-turn summary must show due-date context and keep member payment entry as a primary `Pay now` CTA.
+- Group detail contribution summary for admins must surface overdue/late counts and link to the contributions list for triage.
 - Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); it must not mutate the scheduled recipient or round order.
 - Scheduled recipient (and admins) can open/close cycle auction; non-admin, non-scheduled members can only submit bids while auction is open.
 - Bid visibility in UI is locked to backend scope: admins/scheduled recipient see all bids, other members see only their own bid entries.
@@ -118,6 +119,12 @@
 - The `Content-Type` used for signed upload request must exactly match the `Content-Type` sent in signed PUT upload.
 - Contribution payment submit payload is locked to include payment rail (`BANK` | `TELEBIRR` | `CASH_ACK`) plus receipt upload key (`receiptFileKey`) and optional reference.
 - Contribution state transitions are backend-authoritative: submit/resubmit payment to `PAID_SUBMITTED`, admin verify to `VERIFIED`, admin reject to `REJECTED`; legacy `SUBMITTED`/`CONFIRMED` remain compatibility states.
+- Late handling is backend-authoritative: `LATE` contributions must be shown with warning emphasis and member-facing copy should mention grace/fine implications.
+- Admin contributions screen must expose a manual cycle evaluation action (`POST /cycles/:cycleId/evaluate`) and refresh cycle/contribution providers after evaluation.
+- Dispute workflow UI is required from contribution context:
+  - open via `Report mismatch`
+  - show dispute statuses (`OPEN`, `MEDIATING`, `RESOLVED`) and resolution outcome/note
+  - admins can mediate/resolve from dispute status screen.
 - Resubmission UX should only be offered when contribution is not `VERIFIED|CONFIRMED`, and primarily after `REJECTED` as permitted by backend rules.
 
 ## Payout rules
