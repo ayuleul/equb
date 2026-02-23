@@ -9,10 +9,10 @@ part 'create_group_request.g.dart';
 sealed class CreateGroupRequest with _$CreateGroupRequest {
   const factory CreateGroupRequest({
     required String name,
-    required int contributionAmount,
+    int? contributionAmount,
     @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)
-    required GroupFrequencyModel frequency,
-    @JsonKey(toJson: _dateToIsoString) required DateTime startDate,
+    GroupFrequencyModel? frequency,
+    @JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate,
     @Default('ETB') String currency,
   }) = _CreateGroupRequest;
 
@@ -20,4 +20,6 @@ sealed class CreateGroupRequest with _$CreateGroupRequest {
       _$CreateGroupRequestFromJson(json);
 }
 
-String _dateToIsoString(DateTime value) => value.toUtc().toIso8601String();
+String? _nullableDateToIsoString(DateTime? value) {
+  return value?.toUtc().toIso8601String();
+}

@@ -28,4 +28,16 @@ describe('DateService', () => {
 
     expect(nextDueDate.toISOString()).toBe('2026-02-28T00:00:00.000Z');
   });
+
+  it('advances custom interval due dates by exact day count', () => {
+    const dueDate = new Date('2026-03-01T00:00:00.000Z');
+
+    const nextDueDate = service.advanceDueDateByDays(
+      dueDate,
+      10,
+      'Africa/Addis_Ababa',
+    );
+
+    expect(nextDueDate.toISOString()).toBe('2026-03-11T00:00:00.000Z');
+  });
 });

@@ -86,17 +86,39 @@ class _CyclesOverviewBody extends ConsumerWidget {
       onRefresh: onRefresh,
       child: ListView(
         children: [
+          if (isAdmin && !group.canStartCycle) ...[
+            KitBanner(
+              title: 'Rules setup required',
+              message: 'Save group rules before drawing the first winner.',
+              tone: KitBadgeTone.warning,
+              icon: Icons.rule_folder_outlined,
+              ctaLabel: 'Open setup',
+              onCtaPressed: () =>
+                  context.push(AppRoutePaths.groupSetup(group.id)),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           _CurrentCycleCard(
             groupId: group.id,
             currentCycleAsync: currentCycleAsync,
           ),
           const SizedBox(height: AppSpacing.md),
-          if (isAdmin && currentCycleAsync.valueOrNull == null)
+          if (isAdmin &&
+              currentCycleAsync.valueOrNull == null &&
+              group.canStartCycle)
             KitPrimaryButton(
               onPressed: () =>
                   context.push(AppRoutePaths.groupCyclesGenerate(group.id)),
               icon: Icons.add_circle_outline,
               label: LotteryCopy.drawWinnerButton,
+            ),
+          if (isAdmin &&
+              currentCycleAsync.valueOrNull == null &&
+              !group.canStartCycle)
+            KitPrimaryButton(
+              onPressed: () => context.push(AppRoutePaths.groupSetup(group.id)),
+              icon: Icons.rule_folder_outlined,
+              label: 'Complete setup to draw',
             ),
           if (isAdmin && currentCycleAsync.valueOrNull != null)
             Padding(
@@ -125,7 +147,10 @@ class _CyclesOverviewBody extends ConsumerWidget {
             ),
             data: (cycles) {
               if (cycles.isEmpty) {
-                return _EmptyCyclesView(isAdmin: isAdmin);
+                return _EmptyCyclesView(
+                  isAdmin: isAdmin,
+                  canStartCycle: group.canStartCycle,
+                );
               }
 
               return Column(
@@ -206,9 +231,10 @@ class _CurrentCycleCard extends StatelessWidget {
 }
 
 class _EmptyCyclesView extends StatelessWidget {
-  const _EmptyCyclesView({required this.isAdmin});
+  const _EmptyCyclesView({required this.isAdmin, required this.canStartCycle});
 
   final bool isAdmin;
+  final bool canStartCycle;
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +242,9 @@ class _EmptyCyclesView extends StatelessWidget {
       icon: Icons.timelapse_outlined,
       title: 'No cycles generated',
       message: isAdmin
-          ? 'Draw the first winner to start the round.'
+          ? canStartCycle
+                ? 'Draw the first winner to start the round.'
+                : 'Complete setup before starting the round.'
           : 'Ask a group admin to draw the first winner.',
     );
   }

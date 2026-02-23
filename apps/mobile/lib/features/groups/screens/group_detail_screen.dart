@@ -111,6 +111,19 @@ class _GroupRoundHub extends ConsumerWidget {
       },
       child: ListView(
         children: [
+          if (isAdmin && !group.rulesetConfigured) ...[
+            KitBanner(
+              title: 'Complete group setup',
+              message:
+                  'Rules must be saved before you can invite members or draw the first cycle.',
+              tone: KitBadgeTone.warning,
+              icon: Icons.rule_folder_outlined,
+              ctaLabel: 'Open setup',
+              onCtaPressed: () =>
+                  context.push(AppRoutePaths.groupSetup(group.id)),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           _CurrentTurnCard(
             group: group,
             currentCycleAsync: currentCycleAsync,
@@ -129,7 +142,7 @@ class _GroupRoundHub extends ConsumerWidget {
           if (isAdmin) ...[
             const SizedBox(height: AppSpacing.md),
             _AdminActionsCard(
-              groupId: group.id,
+              group: group,
               currentCycleAsync: currentCycleAsync,
             ),
           ],
@@ -160,6 +173,13 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
 
   Future<void> _drawWinner() async {
     if (_isDrawing) {
+      return;
+    }
+    if (!widget.group.canStartCycle) {
+      AppSnackbars.error(
+        context,
+        'Save group rules first before drawing the first winner.',
+      );
       return;
     }
 
@@ -276,13 +296,23 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
                   )
                 else
                   KitPrimaryButton(
-                    label: widget.isAdmin
+                    label: !widget.isAdmin
+                        ? 'Waiting for admin draw'
+                        : widget.group.canStartCycle
                         ? LotteryCopy.drawWinnerButton
-                        : 'Waiting for admin draw',
-                    icon: widget.isAdmin
+                        : 'Complete setup to draw',
+                    icon: !widget.isAdmin
+                        ? Icons.hourglass_top
+                        : widget.group.canStartCycle
                         ? Icons.casino_outlined
-                        : Icons.hourglass_top,
-                    onPressed: widget.isAdmin ? _drawWinner : null,
+                        : Icons.rule_folder_outlined,
+                    onPressed: !widget.isAdmin
+                        ? null
+                        : widget.group.canStartCycle
+                        ? _drawWinner
+                        : () => context.push(
+                            AppRoutePaths.groupSetup(widget.group.id),
+                          ),
                   ),
               ],
             );
@@ -568,11 +598,11 @@ class _RoundTimelineCard extends ConsumerWidget {
 
 class _AdminActionsCard extends ConsumerWidget {
   const _AdminActionsCard({
-    required this.groupId,
+    required this.group,
     required this.currentCycleAsync,
   });
 
-  final String groupId;
+  final GroupModel group;
   final AsyncValue<CycleModel?> currentCycleAsync;
 
   @override
@@ -603,9 +633,11 @@ class _AdminActionsCard extends ConsumerWidget {
             icon: Icons.admin_panel_settings_outlined,
             onPressed: () => _showAdminActions(
               context: context,
-              groupId: groupId,
+              groupId: group.id,
               cycle: cycle,
               payout: payout,
+              canInviteMembers: group.canInviteMembers,
+              canStartCycle: group.canStartCycle,
             ),
           ),
         ],
@@ -811,14 +843,23 @@ Future<void> _showAdminActions({
   required String groupId,
   required CycleModel? cycle,
   required PayoutModel? payout,
+  required bool canInviteMembers,
+  required bool canStartCycle,
 }) {
   final actions = <KitActionSheetItem>[
-    KitActionSheetItem(
-      label: 'Invite members',
-      icon: Icons.person_add_alt_1_rounded,
-      onPressed: () => context.push(AppRoutePaths.groupInvite(groupId)),
-    ),
-    if (cycle == null)
+    if (!canInviteMembers || !canStartCycle)
+      KitActionSheetItem(
+        label: 'Complete rules setup',
+        icon: Icons.rule_folder_outlined,
+        onPressed: () => context.push(AppRoutePaths.groupSetup(groupId)),
+      ),
+    if (canInviteMembers)
+      KitActionSheetItem(
+        label: 'Invite members',
+        icon: Icons.person_add_alt_1_rounded,
+        onPressed: () => context.push(AppRoutePaths.groupInvite(groupId)),
+      ),
+    if (cycle == null && canStartCycle)
       KitActionSheetItem(
         label: LotteryCopy.drawWinnerButton,
         icon: Icons.casino_outlined,

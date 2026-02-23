@@ -12,6 +12,30 @@ enum GroupFrequency {
   MONTHLY
 }
 
+enum GroupRuleFrequency {
+  WEEKLY
+  MONTHLY
+  CUSTOM_INTERVAL
+}
+
+enum GroupRuleFineType {
+  NONE
+  FIXED_AMOUNT
+}
+
+enum GroupRulePayoutMode {
+  LOTTERY
+  AUCTION
+  ROTATION
+  DECISION
+}
+
+enum GroupPaymentMethod {
+  BANK
+  TELEBIRR
+  CASH_ACK
+}
+
 enum GroupStatus {
   ACTIVE
   ARCHIVED
@@ -155,8 +179,26 @@ model EqubGroup {
   payouts            Payout[]
   rounds             EqubRound[]
   notifications      Notification[]
+  rules              GroupRules?
 
   @@index([createdByUserId])
+}
+
+model GroupRules {
+  groupId                     String                 @id
+  contributionAmount          Int
+  frequency                   GroupRuleFrequency
+  customIntervalDays          Int?
+  graceDays                   Int                    @default(0)
+  fineType                    GroupRuleFineType      @default(NONE)
+  fineAmount                  Int                    @default(0)
+  payoutMode                  GroupRulePayoutMode
+  paymentMethods              GroupPaymentMethod[]
+  requiresMemberVerification  Boolean                @default(false)
+  strictCollection            Boolean                @default(false)
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
+  group                       EqubGroup              @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model EqubMember {

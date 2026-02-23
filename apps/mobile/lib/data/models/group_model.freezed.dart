@@ -275,7 +275,7 @@ as MemberStatusModel,
 /// @nodoc
 mixin _$GroupModel {
 
- String get id; String get name; String get currency;@JsonKey(fromJson: _toInt) int get contributionAmount;@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel get frequency; DateTime get startDate;@JsonKey(unknownEnumValue: GroupStatusModel.unknown) GroupStatusModel get status; String? get createdByUserId; DateTime? get createdAt; bool? get strictPayout; String? get timezone; GroupMembershipModel? get membership;
+ String get id; String get name; String get currency;@JsonKey(fromJson: _toInt) int get contributionAmount;@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel get frequency; DateTime get startDate;@JsonKey(unknownEnumValue: GroupStatusModel.unknown) GroupStatusModel get status; String? get createdByUserId; DateTime? get createdAt; bool? get strictPayout; String? get timezone; GroupMembershipModel? get membership; bool get rulesetConfigured; bool get canInviteMembers; bool get canStartCycle;
 /// Create a copy of GroupModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -288,16 +288,16 @@ $GroupModelCopyWith<GroupModel> get copyWith => _$GroupModelCopyWithImpl<GroupMo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.strictPayout, strictPayout) || other.strictPayout == strictPayout)&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.membership, membership) || other.membership == membership));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.strictPayout, strictPayout) || other.strictPayout == strictPayout)&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.membership, membership) || other.membership == membership)&&(identical(other.rulesetConfigured, rulesetConfigured) || other.rulesetConfigured == rulesetConfigured)&&(identical(other.canInviteMembers, canInviteMembers) || other.canInviteMembers == canInviteMembers)&&(identical(other.canStartCycle, canStartCycle) || other.canStartCycle == canStartCycle));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,currency,contributionAmount,frequency,startDate,status,createdByUserId,createdAt,strictPayout,timezone,membership);
+int get hashCode => Object.hash(runtimeType,id,name,currency,contributionAmount,frequency,startDate,status,createdByUserId,createdAt,strictPayout,timezone,membership,rulesetConfigured,canInviteMembers,canStartCycle);
 
 @override
 String toString() {
-  return 'GroupModel(id: $id, name: $name, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, strictPayout: $strictPayout, timezone: $timezone, membership: $membership)';
+  return 'GroupModel(id: $id, name: $name, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, strictPayout: $strictPayout, timezone: $timezone, membership: $membership, rulesetConfigured: $rulesetConfigured, canInviteMembers: $canInviteMembers, canStartCycle: $canStartCycle)';
 }
 
 
@@ -308,7 +308,7 @@ abstract mixin class $GroupModelCopyWith<$Res>  {
   factory $GroupModelCopyWith(GroupModel value, $Res Function(GroupModel) _then) = _$GroupModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel frequency, DateTime startDate,@JsonKey(unknownEnumValue: GroupStatusModel.unknown) GroupStatusModel status, String? createdByUserId, DateTime? createdAt, bool? strictPayout, String? timezone, GroupMembershipModel? membership
+ String id, String name, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel frequency, DateTime startDate,@JsonKey(unknownEnumValue: GroupStatusModel.unknown) GroupStatusModel status, String? createdByUserId, DateTime? createdAt, bool? strictPayout, String? timezone, GroupMembershipModel? membership, bool rulesetConfigured, bool canInviteMembers, bool canStartCycle
 });
 
 
@@ -325,7 +325,7 @@ class _$GroupModelCopyWithImpl<$Res>
 
 /// Create a copy of GroupModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? startDate = null,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? strictPayout = freezed,Object? timezone = freezed,Object? membership = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? startDate = null,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? strictPayout = freezed,Object? timezone = freezed,Object? membership = freezed,Object? rulesetConfigured = null,Object? canInviteMembers = null,Object? canStartCycle = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -339,7 +339,10 @@ as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // igno
 as DateTime?,strictPayout: freezed == strictPayout ? _self.strictPayout : strictPayout // ignore: cast_nullable_to_non_nullable
 as bool?,timezone: freezed == timezone ? _self.timezone : timezone // ignore: cast_nullable_to_non_nullable
 as String?,membership: freezed == membership ? _self.membership : membership // ignore: cast_nullable_to_non_nullable
-as GroupMembershipModel?,
+as GroupMembershipModel?,rulesetConfigured: null == rulesetConfigured ? _self.rulesetConfigured : rulesetConfigured // ignore: cast_nullable_to_non_nullable
+as bool,canInviteMembers: null == canInviteMembers ? _self.canInviteMembers : canInviteMembers // ignore: cast_nullable_to_non_nullable
+as bool,canStartCycle: null == canStartCycle ? _self.canStartCycle : canStartCycle // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of GroupModel
@@ -433,10 +436,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency,  DateTime startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown)  GroupStatusModel status,  String? createdByUserId,  DateTime? createdAt,  bool? strictPayout,  String? timezone,  GroupMembershipModel? membership)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency,  DateTime startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown)  GroupStatusModel status,  String? createdByUserId,  DateTime? createdAt,  bool? strictPayout,  String? timezone,  GroupMembershipModel? membership,  bool rulesetConfigured,  bool canInviteMembers,  bool canStartCycle)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GroupModel() when $default != null:
-return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_that.frequency,_that.startDate,_that.status,_that.createdByUserId,_that.createdAt,_that.strictPayout,_that.timezone,_that.membership);case _:
+return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_that.frequency,_that.startDate,_that.status,_that.createdByUserId,_that.createdAt,_that.strictPayout,_that.timezone,_that.membership,_that.rulesetConfigured,_that.canInviteMembers,_that.canStartCycle);case _:
   return orElse();
 
 }
@@ -454,10 +457,10 @@ return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency,  DateTime startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown)  GroupStatusModel status,  String? createdByUserId,  DateTime? createdAt,  bool? strictPayout,  String? timezone,  GroupMembershipModel? membership)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency,  DateTime startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown)  GroupStatusModel status,  String? createdByUserId,  DateTime? createdAt,  bool? strictPayout,  String? timezone,  GroupMembershipModel? membership,  bool rulesetConfigured,  bool canInviteMembers,  bool canStartCycle)  $default,) {final _that = this;
 switch (_that) {
 case _GroupModel():
-return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_that.frequency,_that.startDate,_that.status,_that.createdByUserId,_that.createdAt,_that.strictPayout,_that.timezone,_that.membership);}
+return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_that.frequency,_that.startDate,_that.status,_that.createdByUserId,_that.createdAt,_that.strictPayout,_that.timezone,_that.membership,_that.rulesetConfigured,_that.canInviteMembers,_that.canStartCycle);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -471,10 +474,10 @@ return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency,  DateTime startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown)  GroupStatusModel status,  String? createdByUserId,  DateTime? createdAt,  bool? strictPayout,  String? timezone,  GroupMembershipModel? membership)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency,  DateTime startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown)  GroupStatusModel status,  String? createdByUserId,  DateTime? createdAt,  bool? strictPayout,  String? timezone,  GroupMembershipModel? membership,  bool rulesetConfigured,  bool canInviteMembers,  bool canStartCycle)?  $default,) {final _that = this;
 switch (_that) {
 case _GroupModel() when $default != null:
-return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_that.frequency,_that.startDate,_that.status,_that.createdByUserId,_that.createdAt,_that.strictPayout,_that.timezone,_that.membership);case _:
+return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_that.frequency,_that.startDate,_that.status,_that.createdByUserId,_that.createdAt,_that.strictPayout,_that.timezone,_that.membership,_that.rulesetConfigured,_that.canInviteMembers,_that.canStartCycle);case _:
   return null;
 
 }
@@ -486,7 +489,7 @@ return $default(_that.id,_that.name,_that.currency,_that.contributionAmount,_tha
 @JsonSerializable()
 
 class _GroupModel implements GroupModel {
-  const _GroupModel({required this.id, required this.name, required this.currency, @JsonKey(fromJson: _toInt) required this.contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) required this.frequency, required this.startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown) required this.status, this.createdByUserId, this.createdAt, this.strictPayout, this.timezone, this.membership});
+  const _GroupModel({required this.id, required this.name, required this.currency, @JsonKey(fromJson: _toInt) required this.contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) required this.frequency, required this.startDate, @JsonKey(unknownEnumValue: GroupStatusModel.unknown) required this.status, this.createdByUserId, this.createdAt, this.strictPayout, this.timezone, this.membership, this.rulesetConfigured = false, this.canInviteMembers = false, this.canStartCycle = false});
   factory _GroupModel.fromJson(Map<String, dynamic> json) => _$GroupModelFromJson(json);
 
 @override final  String id;
@@ -501,6 +504,9 @@ class _GroupModel implements GroupModel {
 @override final  bool? strictPayout;
 @override final  String? timezone;
 @override final  GroupMembershipModel? membership;
+@override@JsonKey() final  bool rulesetConfigured;
+@override@JsonKey() final  bool canInviteMembers;
+@override@JsonKey() final  bool canStartCycle;
 
 /// Create a copy of GroupModel
 /// with the given fields replaced by the non-null parameter values.
@@ -515,16 +521,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.strictPayout, strictPayout) || other.strictPayout == strictPayout)&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.membership, membership) || other.membership == membership));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdByUserId, createdByUserId) || other.createdByUserId == createdByUserId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.strictPayout, strictPayout) || other.strictPayout == strictPayout)&&(identical(other.timezone, timezone) || other.timezone == timezone)&&(identical(other.membership, membership) || other.membership == membership)&&(identical(other.rulesetConfigured, rulesetConfigured) || other.rulesetConfigured == rulesetConfigured)&&(identical(other.canInviteMembers, canInviteMembers) || other.canInviteMembers == canInviteMembers)&&(identical(other.canStartCycle, canStartCycle) || other.canStartCycle == canStartCycle));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,currency,contributionAmount,frequency,startDate,status,createdByUserId,createdAt,strictPayout,timezone,membership);
+int get hashCode => Object.hash(runtimeType,id,name,currency,contributionAmount,frequency,startDate,status,createdByUserId,createdAt,strictPayout,timezone,membership,rulesetConfigured,canInviteMembers,canStartCycle);
 
 @override
 String toString() {
-  return 'GroupModel(id: $id, name: $name, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, strictPayout: $strictPayout, timezone: $timezone, membership: $membership)';
+  return 'GroupModel(id: $id, name: $name, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, status: $status, createdByUserId: $createdByUserId, createdAt: $createdAt, strictPayout: $strictPayout, timezone: $timezone, membership: $membership, rulesetConfigured: $rulesetConfigured, canInviteMembers: $canInviteMembers, canStartCycle: $canStartCycle)';
 }
 
 
@@ -535,7 +541,7 @@ abstract mixin class _$GroupModelCopyWith<$Res> implements $GroupModelCopyWith<$
   factory _$GroupModelCopyWith(_GroupModel value, $Res Function(_GroupModel) _then) = __$GroupModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel frequency, DateTime startDate,@JsonKey(unknownEnumValue: GroupStatusModel.unknown) GroupStatusModel status, String? createdByUserId, DateTime? createdAt, bool? strictPayout, String? timezone, GroupMembershipModel? membership
+ String id, String name, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel frequency, DateTime startDate,@JsonKey(unknownEnumValue: GroupStatusModel.unknown) GroupStatusModel status, String? createdByUserId, DateTime? createdAt, bool? strictPayout, String? timezone, GroupMembershipModel? membership, bool rulesetConfigured, bool canInviteMembers, bool canStartCycle
 });
 
 
@@ -552,7 +558,7 @@ class __$GroupModelCopyWithImpl<$Res>
 
 /// Create a copy of GroupModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? startDate = null,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? strictPayout = freezed,Object? timezone = freezed,Object? membership = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? startDate = null,Object? status = null,Object? createdByUserId = freezed,Object? createdAt = freezed,Object? strictPayout = freezed,Object? timezone = freezed,Object? membership = freezed,Object? rulesetConfigured = null,Object? canInviteMembers = null,Object? canStartCycle = null,}) {
   return _then(_GroupModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -566,7 +572,10 @@ as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // igno
 as DateTime?,strictPayout: freezed == strictPayout ? _self.strictPayout : strictPayout // ignore: cast_nullable_to_non_nullable
 as bool?,timezone: freezed == timezone ? _self.timezone : timezone // ignore: cast_nullable_to_non_nullable
 as String?,membership: freezed == membership ? _self.membership : membership // ignore: cast_nullable_to_non_nullable
-as GroupMembershipModel?,
+as GroupMembershipModel?,rulesetConfigured: null == rulesetConfigured ? _self.rulesetConfigured : rulesetConfigured // ignore: cast_nullable_to_non_nullable
+as bool,canInviteMembers: null == canInviteMembers ? _self.canInviteMembers : canInviteMembers // ignore: cast_nullable_to_non_nullable
+as bool,canStartCycle: null == canStartCycle ? _self.canStartCycle : canStartCycle // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

@@ -11,6 +11,11 @@ import { ConfigService } from '@nestjs/config';
 import {
   AuctionStatus,
   CycleStatus,
+  GroupFrequency,
+  GroupPaymentMethod,
+  GroupRuleFineType,
+  GroupRuleFrequency,
+  GroupRulePayoutMode,
   GroupStatus,
   MemberRole,
   MemberStatus,
@@ -39,6 +44,7 @@ import { CreateInviteDto } from './dto/create-invite.dto';
 import { GenerateCyclesDto } from './dto/generate-cycles.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
 import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
+import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
@@ -47,6 +53,7 @@ import {
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
+  GroupRulesResponseDto,
   RoundSeedRevealResponseDto,
   RoundStartResponseDto,
   GroupSummaryResponseDto,
@@ -55,6 +62,8 @@ import {
 import {
   GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
   GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+  GROUP_RULESET_REQUIRED_MESSAGE,
+  GROUP_RULESET_REQUIRED_REASON_CODE,
 } from './groups.constants';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -74,7 +83,21 @@ export class GroupsService {
     currentUser: AuthenticatedUser,
     dto: CreateGroupDto,
   ): Promise<GroupDetailResponseDto> {
-    const startDate = new Date(dto.startDate);
+    const legacyFieldCount =
+      (dto.contributionAmount != null ? 1 : 0) +
+      (dto.frequency != null ? 1 : 0) +
+      (dto.startDate != null ? 1 : 0);
+    if (legacyFieldCount > 0 && legacyFieldCount < 3) {
+      throw new BadRequestException(
+        'contributionAmount, frequency, and startDate must be provided together',
+      );
+    }
+    const hasLegacyRulesPayload = legacyFieldCount === 3;
+
+    const startDate =
+      dto.startDate != null
+        ? new Date(dto.startDate)
+        : this.dateService.normalizeGroupDate(new Date(), 'Africa/Addis_Ababa');
     const currency = (dto.currency ?? 'ETB').toUpperCase();
 
     const group = await this.prisma.$transaction(async (tx) => {
@@ -82,12 +105,33 @@ export class GroupsService {
         data: {
           name: dto.name.trim(),
           currency,
-          contributionAmount: dto.contributionAmount,
-          frequency: dto.frequency,
+          contributionAmount: dto.contributionAmount ?? 0,
+          frequency: dto.frequency ?? GroupFrequency.MONTHLY,
           startDate,
           createdByUserId: currentUser.id,
         },
       });
+
+      if (hasLegacyRulesPayload) {
+        await tx.groupRules.create({
+          data: {
+            groupId: createdGroup.id,
+            contributionAmount: dto.contributionAmount!,
+            frequency:
+              dto.frequency === GroupFrequency.WEEKLY
+                ? GroupRuleFrequency.WEEKLY
+                : GroupRuleFrequency.MONTHLY,
+            customIntervalDays: null,
+            graceDays: 0,
+            fineType: GroupRuleFineType.NONE,
+            fineAmount: 0,
+            payoutMode: GroupRulePayoutMode.LOTTERY,
+            paymentMethods: [GroupPaymentMethod.CASH_ACK],
+            requiresMemberVerification: false,
+            strictCollection: false,
+          },
+        });
+      }
 
       await tx.equbMember.create({
         data: {
@@ -111,23 +155,7 @@ export class GroupsService {
       group.id,
     );
 
-    return {
-      id: group.id,
-      name: group.name,
-      currency: group.currency,
-      contributionAmount: group.contributionAmount,
-      frequency: group.frequency,
-      startDate: group.startDate,
-      status: group.status,
-      createdByUserId: group.createdByUserId,
-      createdAt: group.createdAt,
-      strictPayout: group.strictPayout,
-      timezone: group.timezone,
-      membership: {
-        role: MemberRole.ADMIN,
-        status: MemberStatus.ACTIVE,
-      },
-    };
+    return this.getGroupDetails(currentUser, group.id);
   }
 
   async listGroups(
@@ -139,22 +167,24 @@ export class GroupsService {
         status: MemberStatus.ACTIVE,
       },
       include: {
-        group: true,
+        group: {
+          include: {
+            rules: {
+              select: {
+                groupId: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    return memberships.map((membership) => ({
-      id: membership.group.id,
-      name: membership.group.name,
-      currency: membership.group.currency,
-      contributionAmount: membership.group.contributionAmount,
-      frequency: membership.group.frequency,
-      startDate: membership.group.startDate,
-      status: membership.group.status,
-    }));
+    return memberships.map((membership) =>
+      this.toGroupSummaryResponse(membership.group, membership.group.rules != null),
+    );
   }
 
   async getGroupDetails(
@@ -164,6 +194,13 @@ export class GroupsService {
     const [group, membership] = await Promise.all([
       this.prisma.equbGroup.findUnique({
         where: { id: groupId },
+        include: {
+          rules: {
+            select: {
+              groupId: true,
+            },
+          },
+        },
       }),
       this.prisma.equbMember.findUnique({
         where: {
@@ -183,23 +220,132 @@ export class GroupsService {
       throw new NotFoundException('Membership not found');
     }
 
-    return {
-      id: group.id,
-      name: group.name,
-      currency: group.currency,
-      contributionAmount: group.contributionAmount,
-      frequency: group.frequency,
-      startDate: group.startDate,
-      status: group.status,
-      createdByUserId: group.createdByUserId,
-      createdAt: group.createdAt,
-      strictPayout: group.strictPayout,
-      timezone: group.timezone,
-      membership: {
-        role: membership.role,
-        status: membership.status,
+    return this.toGroupDetailResponse(group, membership, group.rules != null);
+  }
+
+  async getGroupRules(groupId: string): Promise<GroupRulesResponseDto> {
+    const [group, rules] = await Promise.all([
+      this.prisma.equbGroup.findUnique({
+        where: { id: groupId },
+        select: { id: true },
+      }),
+      this.prisma.groupRules.findUnique({
+        where: { groupId },
+      }),
+    ]);
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (!rules) {
+      throw new NotFoundException('Group rules are not configured');
+    }
+
+    return this.toGroupRulesResponse(rules);
+  }
+
+  async updateGroupRules(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    dto: UpdateGroupRulesDto,
+  ): Promise<GroupRulesResponseDto> {
+    const fineAmount =
+      dto.fineType === GroupRuleFineType.NONE ? 0 : dto.fineAmount;
+
+    if (
+      dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL &&
+      dto.customIntervalDays == null
+    ) {
+      throw new BadRequestException(
+        'customIntervalDays is required for CUSTOM_INTERVAL frequency',
+      );
+    }
+
+    const rules = await this.prisma.$transaction(async (tx) => {
+      const group = await tx.equbGroup.findUnique({
+        where: { id: groupId },
+        select: {
+          id: true,
+          frequency: true,
+        },
+      });
+
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      const updatedRules = await tx.groupRules.upsert({
+        where: { groupId },
+        create: {
+          groupId,
+          contributionAmount: dto.contributionAmount,
+          frequency: dto.frequency,
+          customIntervalDays:
+            dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL
+              ? dto.customIntervalDays!
+              : null,
+          graceDays: dto.graceDays,
+          fineType: dto.fineType,
+          fineAmount,
+          payoutMode: dto.payoutMode,
+          paymentMethods: dto.paymentMethods,
+          requiresMemberVerification: dto.requiresMemberVerification,
+          strictCollection: dto.strictCollection,
+        },
+        update: {
+          contributionAmount: dto.contributionAmount,
+          frequency: dto.frequency,
+          customIntervalDays:
+            dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL
+              ? dto.customIntervalDays!
+              : null,
+          graceDays: dto.graceDays,
+          fineType: dto.fineType,
+          fineAmount,
+          payoutMode: dto.payoutMode,
+          paymentMethods: dto.paymentMethods,
+          requiresMemberVerification: dto.requiresMemberVerification,
+          strictCollection: dto.strictCollection,
+        },
+      });
+
+      await tx.equbGroup.update({
+        where: { id: groupId },
+        data: {
+          contributionAmount: dto.contributionAmount,
+          strictPayout: dto.strictCollection,
+          frequency:
+            dto.frequency === GroupRuleFrequency.WEEKLY
+              ? GroupFrequency.WEEKLY
+              : dto.frequency === GroupRuleFrequency.MONTHLY
+                ? GroupFrequency.MONTHLY
+                : group.frequency,
+        },
+      });
+
+      return updatedRules;
+    });
+
+    await this.auditService.log(
+      'GROUP_RULES_UPDATED',
+      currentUser.id,
+      {
+        contributionAmount: rules.contributionAmount,
+        frequency: rules.frequency,
+        customIntervalDays: rules.customIntervalDays,
+        graceDays: rules.graceDays,
+        fineType: rules.fineType,
+        fineAmount: rules.fineAmount,
+        payoutMode: rules.payoutMode,
+        paymentMethods: rules.paymentMethods,
+        requiresMemberVerification: rules.requiresMemberVerification,
+        strictCollection: rules.strictCollection,
       },
-    };
+      groupId,
+    );
+
+    return this.toGroupRulesResponse(rules);
   }
 
   async createInvite(
@@ -209,7 +355,15 @@ export class GroupsService {
   ): Promise<InviteCodeResponseDto> {
     const group = await this.prisma.equbGroup.findUnique({
       where: { id: groupId },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        rules: {
+          select: {
+            groupId: true,
+          },
+        },
+      },
     });
 
     if (!group) {
@@ -220,6 +374,13 @@ export class GroupsService {
       throw new BadRequestException(
         'Invite codes can only be created for active groups',
       );
+    }
+
+    if (!group.rules) {
+      throw new ConflictException({
+        message: GROUP_RULESET_REQUIRED_MESSAGE,
+        reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
+      });
     }
 
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
@@ -297,6 +458,11 @@ export class GroupsService {
             select: {
               id: true,
               status: true,
+              rules: {
+                select: {
+                  groupId: true,
+                },
+              },
             },
           },
         },
@@ -327,6 +493,13 @@ export class GroupsService {
 
       if (invite.group.status !== GroupStatus.ACTIVE) {
         throw new BadRequestException('Cannot join an archived group');
+      }
+
+      if (!invite.group.rules) {
+        throw new ConflictException({
+          message: GROUP_RULESET_REQUIRED_MESSAGE,
+          reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
+        });
       }
 
       await this.assertGroupMembershipOpen(invite.groupId, tx);
@@ -682,6 +855,8 @@ export class GroupsService {
     groupId: string,
     payload: PayoutOrderItemDto[],
   ): Promise<GroupMemberResponseDto[]> {
+    await this.assertRulesetConfigured(groupId);
+
     if (payload.length === 0) {
       throw new BadRequestException('Payout order payload cannot be empty');
     }
@@ -809,7 +984,15 @@ export class GroupsService {
     const round = await this.prisma.$transaction(async (tx) => {
       const group = await tx.equbGroup.findUnique({
         where: { id: groupId },
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          status: true,
+          rules: {
+            select: {
+              groupId: true,
+            },
+          },
+        },
       });
 
       if (!group) {
@@ -820,6 +1003,13 @@ export class GroupsService {
         throw new BadRequestException(
           'Rounds can only be started for active groups',
         );
+      }
+
+      if (!group.rules) {
+        throw new ConflictException({
+          message: GROUP_RULESET_REQUIRED_MESSAGE,
+          reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
+        });
       }
 
       const existingOpenCycle = await tx.equbCycle.findFirst({
@@ -1167,6 +1357,12 @@ export class GroupsService {
           startDate: true,
           timezone: true,
           status: true,
+          rules: {
+            select: {
+              frequency: true,
+              customIntervalDays: true,
+            },
+          },
         },
       });
 
@@ -1178,6 +1374,13 @@ export class GroupsService {
         throw new BadRequestException(
           'Cycles can only be generated for active groups',
         );
+      }
+
+      if (!group.rules) {
+        throw new ConflictException({
+          message: GROUP_RULESET_REQUIRED_MESSAGE,
+          reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
+        });
       }
 
       const existingOpenCycle = await tx.equbCycle.findFirst({
@@ -1258,11 +1461,17 @@ export class GroupsService {
       });
 
       const dueDate = latestCycle
-        ? this.dateService.advanceDueDate(
-            latestCycle.dueDate,
-            group.frequency,
-            group.timezone,
-          )
+        ? group.rules.frequency === GroupRuleFrequency.CUSTOM_INTERVAL
+          ? this.dateService.advanceDueDateByDays(
+              latestCycle.dueDate,
+              group.rules.customIntervalDays!,
+              group.timezone,
+            )
+          : this.dateService.advanceDueDate(
+              latestCycle.dueDate,
+              group.frequency,
+              group.timezone,
+            )
         : this.dateService.normalizeGroupDate(group.startDate, group.timezone);
 
       const scheduledEntry = activeRound.schedules.find(
@@ -1557,6 +1766,111 @@ export class GroupsService {
     return cycles.map((cycle) => this.toCycleResponse(cycle));
   }
 
+  private toGroupSummaryResponse(
+    group: {
+      id: string;
+      name: string;
+      currency: string;
+      contributionAmount: number;
+      frequency: GroupFrequency;
+      startDate: Date;
+      status: GroupStatus;
+    },
+    rulesetConfigured: boolean,
+  ): GroupSummaryResponseDto {
+    const flags = this.toRulesGateFlags(rulesetConfigured);
+
+    return {
+      id: group.id,
+      name: group.name,
+      currency: group.currency,
+      contributionAmount: group.contributionAmount,
+      frequency: group.frequency,
+      startDate: group.startDate,
+      status: group.status,
+      ...flags,
+    };
+  }
+
+  private toGroupDetailResponse(
+    group: {
+      id: string;
+      name: string;
+      currency: string;
+      contributionAmount: number;
+      frequency: GroupFrequency;
+      startDate: Date;
+      status: GroupStatus;
+      createdByUserId: string;
+      createdAt: Date;
+      strictPayout: boolean;
+      timezone: string;
+    },
+    membership: {
+      role: MemberRole;
+      status: MemberStatus;
+    },
+    rulesetConfigured: boolean,
+  ): GroupDetailResponseDto {
+    const summary = this.toGroupSummaryResponse(group, rulesetConfigured);
+
+    return {
+      ...summary,
+      createdByUserId: group.createdByUserId,
+      createdAt: group.createdAt,
+      strictPayout: group.strictPayout,
+      timezone: group.timezone,
+      membership: {
+        role: membership.role,
+        status: membership.status,
+      },
+    };
+  }
+
+  private toGroupRulesResponse(rules: {
+    groupId: string;
+    contributionAmount: number;
+    frequency: GroupRuleFrequency;
+    customIntervalDays: number | null;
+    graceDays: number;
+    fineType: GroupRuleFineType;
+    fineAmount: number;
+    payoutMode: GroupRulePayoutMode;
+    paymentMethods: GroupPaymentMethod[];
+    requiresMemberVerification: boolean;
+    strictCollection: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }): GroupRulesResponseDto {
+    return {
+      groupId: rules.groupId,
+      contributionAmount: rules.contributionAmount,
+      frequency: rules.frequency,
+      customIntervalDays: rules.customIntervalDays,
+      graceDays: rules.graceDays,
+      fineType: rules.fineType,
+      fineAmount: rules.fineAmount,
+      payoutMode: rules.payoutMode,
+      paymentMethods: rules.paymentMethods,
+      requiresMemberVerification: rules.requiresMemberVerification,
+      strictCollection: rules.strictCollection,
+      createdAt: rules.createdAt,
+      updatedAt: rules.updatedAt,
+    };
+  }
+
+  private toRulesGateFlags(rulesetConfigured: boolean): {
+    rulesetConfigured: boolean;
+    canInviteMembers: boolean;
+    canStartCycle: boolean;
+  } {
+    return {
+      rulesetConfigured,
+      canInviteMembers: rulesetConfigured,
+      canStartCycle: rulesetConfigured,
+    };
+  }
+
   private async countActiveAdmins(groupId: string): Promise<number> {
     return this.prisma.equbMember.count({
       where: {
@@ -1592,6 +1906,29 @@ export class GroupsService {
       reasonCode: GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
       roundId: activeRound.id,
       roundStatus: 'ACTIVE',
+    });
+  }
+
+  private async assertRulesetConfigured(
+    groupId: string,
+    prismaClient:
+      | Pick<Prisma.TransactionClient, 'groupRules'>
+      | Pick<PrismaService, 'groupRules'> = this.prisma,
+  ): Promise<void> {
+    const rules = await prismaClient.groupRules.findUnique({
+      where: { groupId },
+      select: {
+        groupId: true,
+      },
+    });
+
+    if (rules) {
+      return;
+    }
+
+    throw new ConflictException({
+      message: GROUP_RULESET_REQUIRED_MESSAGE,
+      reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
     });
   }
 

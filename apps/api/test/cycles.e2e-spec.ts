@@ -4,6 +4,7 @@ import {
   AuctionStatus,
   CycleStatus,
   GroupFrequency,
+  GroupRuleFrequency,
   GroupStatus,
   MemberRole,
   MemberStatus,
@@ -101,6 +102,12 @@ type NotificationRecord = {
   readAt: Date | null;
 };
 
+type GroupRulesRecord = {
+  groupId: string;
+  frequency: GroupRuleFrequency;
+  customIntervalDays: number | null;
+};
+
 describe('Cycles (e2e)', () => {
   let groupsController: GroupsController;
 
@@ -123,6 +130,7 @@ describe('Cycles (e2e)', () => {
   const schedules: ScheduleRecord[] = [];
   const cycles: CycleRecord[] = [];
   const notifications: NotificationRecord[] = [];
+  const groupRules: GroupRulesRecord[] = [];
 
   const adminUser: AuthenticatedUser = {
     id: 'user_admin',
@@ -177,20 +185,35 @@ describe('Cycles (e2e)', () => {
       findUnique: jest.fn(
         ({
           where,
+          include,
           select,
         }: {
           where: { id: string };
+          include?: {
+            rules?: { select: { groupId: true } };
+          };
           select?: {
             id?: boolean;
             frequency?: boolean;
             startDate?: boolean;
             timezone?: boolean;
             status?: boolean;
+            rules?: { select: { frequency?: true; customIntervalDays?: true } };
           };
         }) => {
           const group = groups.find((item) => item.id === where.id) ?? null;
           if (!group) {
             return null;
+          }
+
+          const rules =
+            groupRules.find((item) => item.groupId === group.id) ?? null;
+
+          if (include?.rules) {
+            return {
+              ...group,
+              rules,
+            };
           }
 
           if (!select) {
@@ -203,6 +226,7 @@ describe('Cycles (e2e)', () => {
             ...(select.startDate ? { startDate: group.startDate } : {}),
             ...(select.timezone ? { timezone: group.timezone } : {}),
             ...(select.status ? { status: group.status } : {}),
+            ...(select.rules ? { rules } : {}),
           };
         },
       ),
@@ -268,7 +292,21 @@ describe('Cycles (e2e)', () => {
           return filtered;
         },
       ),
-      findUnique: jest.fn(() => null),
+      findUnique: jest.fn(
+        ({
+          where,
+        }: {
+          where: { groupId_userId: { groupId: string; userId: string } };
+        }) => {
+          return (
+            members.find(
+              (member) =>
+                member.groupId === where.groupId_userId.groupId &&
+                member.userId === where.groupId_userId.userId,
+            ) ?? null
+          );
+        },
+      ),
       update: jest.fn(),
       count: jest.fn(),
     },
@@ -736,6 +774,53 @@ describe('Cycles (e2e)', () => {
       findUnique: jest.fn(),
       updateMany: jest.fn(),
     },
+    groupRules: {
+      create: jest.fn(
+        ({
+          data,
+        }: {
+          data: { groupId: string; frequency: GroupRuleFrequency; customIntervalDays: number | null };
+        }) => {
+          const existing = groupRules.find((item) => item.groupId === data.groupId);
+          if (existing) {
+            return existing;
+          }
+
+          const record: GroupRulesRecord = {
+            groupId: data.groupId,
+            frequency: data.frequency,
+            customIntervalDays: data.customIntervalDays,
+          };
+          groupRules.push(record);
+          return record;
+        },
+      ),
+      findUnique: jest.fn(({ where }: { where: { groupId: string } }) => {
+        return groupRules.find((item) => item.groupId === where.groupId) ?? null;
+      }),
+      upsert: jest.fn(
+        ({
+          where,
+          create,
+        }: {
+          where: { groupId: string };
+          create: { frequency: GroupRuleFrequency; customIntervalDays: number | null };
+        }) => {
+          const existing = groupRules.find((item) => item.groupId === where.groupId);
+          if (existing) {
+            return existing;
+          }
+
+          const record: GroupRulesRecord = {
+            groupId: where.groupId,
+            frequency: create.frequency,
+            customIntervalDays: create.customIntervalDays,
+          };
+          groupRules.push(record);
+          return record;
+        },
+      ),
+    },
     auditLog: {
       create: jest.fn(() => ({ id: `audit_${Date.now()}` })),
     },
@@ -776,6 +861,7 @@ describe('Cycles (e2e)', () => {
     schedules.splice(0, schedules.length);
     cycles.splice(0, cycles.length);
     notifications.splice(0, notifications.length);
+    groupRules.splice(0, groupRules.length);
     jest.clearAllMocks();
   });
 

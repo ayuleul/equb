@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateGroupRequest {
 
- String get name; int get contributionAmount;@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel get frequency;@JsonKey(toJson: _dateToIsoString) DateTime get startDate; String get currency;
+ String get name; int? get contributionAmount;@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? get frequency;@JsonKey(toJson: _nullableDateToIsoString) DateTime? get startDate; String get currency;
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $CreateGroupRequestCopyWith<$Res>  {
   factory $CreateGroupRequestCopyWith(CreateGroupRequest value, $Res Function(CreateGroupRequest) _then) = _$CreateGroupRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, int contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel frequency,@JsonKey(toJson: _dateToIsoString) DateTime startDate, String currency
+ String name, int? contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? frequency,@JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate, String currency
 });
 
 
@@ -65,13 +65,13 @@ class _$CreateGroupRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? contributionAmount = null,Object? frequency = null,Object? startDate = null,Object? currency = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? contributionAmount = freezed,Object? frequency = freezed,Object? startDate = freezed,Object? currency = null,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,contributionAmount: null == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
-as int,frequency: null == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
-as GroupFrequencyModel,startDate: null == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
-as DateTime,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,contributionAmount: freezed == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
+as int?,frequency: freezed == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
+as GroupFrequencyModel?,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -154,7 +154,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency, @JsonKey(toJson: _dateToIsoString)  DateTime startDate,  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreateGroupRequest() when $default != null:
 return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency);case _:
@@ -175,7 +175,7 @@ return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startD
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency, @JsonKey(toJson: _dateToIsoString)  DateTime startDate,  String currency)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency)  $default,) {final _that = this;
 switch (_that) {
 case _CreateGroupRequest():
 return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency);}
@@ -192,7 +192,7 @@ return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startD
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  int contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel frequency, @JsonKey(toJson: _dateToIsoString)  DateTime startDate,  String currency)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency)?  $default,) {final _that = this;
 switch (_that) {
 case _CreateGroupRequest() when $default != null:
 return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency);case _:
@@ -207,13 +207,13 @@ return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startD
 @JsonSerializable()
 
 class _CreateGroupRequest implements CreateGroupRequest {
-  const _CreateGroupRequest({required this.name, required this.contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) required this.frequency, @JsonKey(toJson: _dateToIsoString) required this.startDate, this.currency = 'ETB'});
+  const _CreateGroupRequest({required this.name, this.contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) this.frequency, @JsonKey(toJson: _nullableDateToIsoString) this.startDate, this.currency = 'ETB'});
   factory _CreateGroupRequest.fromJson(Map<String, dynamic> json) => _$CreateGroupRequestFromJson(json);
 
 @override final  String name;
-@override final  int contributionAmount;
-@override@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) final  GroupFrequencyModel frequency;
-@override@JsonKey(toJson: _dateToIsoString) final  DateTime startDate;
+@override final  int? contributionAmount;
+@override@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) final  GroupFrequencyModel? frequency;
+@override@JsonKey(toJson: _nullableDateToIsoString) final  DateTime? startDate;
 @override@JsonKey() final  String currency;
 
 /// Create a copy of CreateGroupRequest
@@ -249,7 +249,7 @@ abstract mixin class _$CreateGroupRequestCopyWith<$Res> implements $CreateGroupR
   factory _$CreateGroupRequestCopyWith(_CreateGroupRequest value, $Res Function(_CreateGroupRequest) _then) = __$CreateGroupRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, int contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel frequency,@JsonKey(toJson: _dateToIsoString) DateTime startDate, String currency
+ String name, int? contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? frequency,@JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate, String currency
 });
 
 
@@ -266,13 +266,13 @@ class __$CreateGroupRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? contributionAmount = null,Object? frequency = null,Object? startDate = null,Object? currency = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? contributionAmount = freezed,Object? frequency = freezed,Object? startDate = freezed,Object? currency = null,}) {
   return _then(_CreateGroupRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,contributionAmount: null == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
-as int,frequency: null == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
-as GroupFrequencyModel,startDate: null == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
-as DateTime,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,contributionAmount: freezed == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
+as int?,frequency: freezed == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
+as GroupFrequencyModel?,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

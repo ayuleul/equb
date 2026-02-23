@@ -2,6 +2,10 @@ import {
   AuctionStatus,
   CycleStatus,
   GroupFrequency,
+  GroupPaymentMethod,
+  GroupRuleFineType,
+  GroupRuleFrequency,
+  GroupRulePayoutMode,
   GroupStatus,
   MemberRole,
   MemberStatus,
@@ -30,6 +34,15 @@ export class GroupSummaryResponseDto {
 
   @ApiProperty({ enum: GroupStatus })
   status!: GroupStatus;
+
+  @ApiProperty()
+  rulesetConfigured!: boolean;
+
+  @ApiProperty()
+  canInviteMembers!: boolean;
+
+  @ApiProperty()
+  canStartCycle!: boolean;
 }
 
 export class CurrentMembershipResponseDto {
@@ -55,6 +68,47 @@ export class GroupDetailResponseDto extends GroupSummaryResponseDto {
 
   @ApiProperty({ type: () => CurrentMembershipResponseDto })
   membership!: CurrentMembershipResponseDto;
+}
+
+export class GroupRulesResponseDto {
+  @ApiProperty()
+  groupId!: string;
+
+  @ApiProperty()
+  contributionAmount!: number;
+
+  @ApiProperty({ enum: GroupRuleFrequency })
+  frequency!: GroupRuleFrequency;
+
+  @ApiPropertyOptional({ nullable: true })
+  customIntervalDays!: number | null;
+
+  @ApiProperty()
+  graceDays!: number;
+
+  @ApiProperty({ enum: GroupRuleFineType })
+  fineType!: GroupRuleFineType;
+
+  @ApiProperty()
+  fineAmount!: number;
+
+  @ApiProperty({ enum: GroupRulePayoutMode })
+  payoutMode!: GroupRulePayoutMode;
+
+  @ApiProperty({ enum: GroupPaymentMethod, isArray: true })
+  paymentMethods!: GroupPaymentMethod[];
+
+  @ApiProperty()
+  requiresMemberVerification!: boolean;
+
+  @ApiProperty()
+  strictCollection!: boolean;
+
+  @ApiProperty()
+  createdAt!: Date;
+
+  @ApiProperty()
+  updatedAt!: Date;
 }
 
 export class InviteCodeResponseDto {

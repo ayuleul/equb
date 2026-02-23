@@ -4,6 +4,7 @@ import 'package:mobile/data/groups/groups_repository.dart';
 import 'package:mobile/data/models/create_group_request.dart';
 import 'package:mobile/data/models/group_model.dart';
 import 'package:mobile/data/models/join_group_request.dart';
+import 'package:mobile/data/models/update_group_rules_request.dart';
 
 void main() {
   group('GroupsRepository.listMyGroups', () {
@@ -61,12 +62,25 @@ class _FakeGroupsApi implements GroupsApi {
   }
 
   @override
+  Future<Map<String, dynamic>?> getGroupRules(String groupId) async {
+    return null;
+  }
+
+  @override
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request) {
     throw UnimplementedError();
   }
 
   @override
   Future<List<Map<String, dynamic>>> listMembers(String groupId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> upsertGroupRules(
+    String groupId,
+    UpdateGroupRulesRequest request,
+  ) {
     throw UnimplementedError();
   }
 

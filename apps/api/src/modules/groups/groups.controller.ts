@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -32,6 +33,7 @@ import { CreateInviteDto } from './dto/create-invite.dto';
 import { GenerateCyclesDto } from './dto/generate-cycles.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
 import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
+import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
@@ -40,6 +42,7 @@ import {
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
+  GroupRulesResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
   RoundSeedRevealResponseDto,
@@ -127,6 +130,36 @@ export class GroupsController {
     return this.groupsService.getGroupDetails(currentUser, groupId);
   }
 
+  @Get(':id/rules')
+  @UseGuards(GroupMemberGuard)
+  @ApiTags('Rules')
+  @ApiOperation({ summary: 'Get group ruleset' })
+  @ApiOkResponse({ type: GroupRulesResponseDto })
+  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiNotFoundResponse({ description: 'Group not found or rules not configured' })
+  getGroupRules(
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<GroupRulesResponseDto> {
+    return this.groupsService.getGroupRules(groupId);
+  }
+
+  @Put(':id/rules')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Rules')
+  @ApiOperation({ summary: 'Create or update group ruleset' })
+  @ApiBody({ type: UpdateGroupRulesDto })
+  @ApiOkResponse({ type: GroupRulesResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({ description: 'Invalid rules configuration' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  updateGroupRules(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Body() dto: UpdateGroupRulesDto,
+  ): Promise<GroupRulesResponseDto> {
+    return this.groupsService.updateGroupRules(currentUser, groupId, dto);
+  }
+
   @Post(':id/invite')
   @UseGuards(GroupAdminGuard)
   @ApiOperation({ summary: 'Create invite code for group' })
@@ -134,6 +167,9 @@ export class GroupsController {
   @ApiOkResponse({ type: InviteCodeResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
   @ApiBadRequestResponse({ description: 'Invalid invite constraints' })
+  @ApiConflictResponse({
+    description: 'Ruleset must be configured before creating invites',
+  })
   @ApiNotFoundResponse({ description: 'Group not found' })
   createInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -214,6 +250,9 @@ export class GroupsController {
   @ApiBadRequestResponse({
     description: 'Payout positions must be contiguous and unique',
   })
+  @ApiConflictResponse({
+    description: 'Ruleset must be configured before setting payout order',
+  })
   updatePayoutOrder(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -254,6 +293,9 @@ export class GroupsController {
   @ApiBadRequestResponse({
     description:
       'Group is inactive, round already active, or no active members',
+  })
+  @ApiConflictResponse({
+    description: 'Ruleset must be configured before starting rounds',
   })
   @ApiNotFoundResponse({ description: 'Group not found' })
   startRound(

@@ -63,6 +63,19 @@ class _GroupOverviewBody extends ConsumerWidget {
       },
       child: ListView(
         children: [
+          if (isAdmin && !group.rulesetConfigured) ...[
+            KitBanner(
+              title: 'Rules setup required',
+              message:
+                  'Save group rules before inviting members or drawing the first cycle.',
+              tone: KitBadgeTone.warning,
+              icon: Icons.rule_folder_outlined,
+              ctaLabel: 'Open setup',
+              onCtaPressed: () =>
+                  context.push(AppRoutePaths.groupSetup(group.id)),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           _GroupSummaryCard(
             group: group,
             membersCount: membersAsync.valueOrNull?.length,
@@ -81,6 +94,7 @@ class _GroupOverviewBody extends ConsumerWidget {
           _MembersCard(
             groupId: group.id,
             isAdmin: isAdmin,
+            canInviteMembers: group.canInviteMembers,
             membersAsync: membersAsync,
           ),
           if (isAdmin) ...[
@@ -88,6 +102,8 @@ class _GroupOverviewBody extends ConsumerWidget {
             _OverviewAdminActionsCard(
               groupId: group.id,
               hasOpenCycle: currentCycleAsync.valueOrNull != null,
+              canInviteMembers: group.canInviteMembers,
+              canStartCycle: group.canStartCycle,
             ),
           ],
         ],
@@ -377,11 +393,13 @@ class _MembersCard extends ConsumerWidget {
   const _MembersCard({
     required this.groupId,
     required this.isAdmin,
+    required this.canInviteMembers,
     required this.membersAsync,
   });
 
   final String groupId;
   final bool isAdmin;
+  final bool canInviteMembers;
   final AsyncValue<List<MemberModel>> membersAsync;
 
   @override
@@ -394,8 +412,18 @@ class _MembersCard extends ConsumerWidget {
           KitPrimaryButton(
             label: 'Invite members',
             icon: Icons.person_add_alt_1_rounded,
-            onPressed: () => context.push(AppRoutePaths.groupInvite(groupId)),
+            onPressed: canInviteMembers
+                ? () => context.push(AppRoutePaths.groupInvite(groupId))
+                : () => context.push(AppRoutePaths.groupSetup(groupId)),
           ),
+          if (!canInviteMembers)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                'Complete rules setup to enable invites.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           const SizedBox(height: AppSpacing.sm),
         ],
         membersAsync.when(
@@ -449,10 +477,14 @@ class _OverviewAdminActionsCard extends StatelessWidget {
   const _OverviewAdminActionsCard({
     required this.groupId,
     required this.hasOpenCycle,
+    required this.canInviteMembers,
+    required this.canStartCycle,
   });
 
   final String groupId;
   final bool hasOpenCycle;
+  final bool canInviteMembers;
+  final bool canStartCycle;
 
   @override
   Widget build(BuildContext context) {
@@ -467,16 +499,24 @@ class _OverviewAdminActionsCard extends StatelessWidget {
               KitSecondaryButton(
                 label: 'Invite members',
                 icon: Icons.person_add_alt_1_rounded,
-                onPressed: () =>
-                    context.push(AppRoutePaths.groupInvite(groupId)),
+                onPressed: canInviteMembers
+                    ? () => context.push(AppRoutePaths.groupInvite(groupId))
+                    : () => context.push(AppRoutePaths.groupSetup(groupId)),
               ),
               if (!hasOpenCycle) ...[
                 const SizedBox(height: AppSpacing.sm),
                 KitPrimaryButton(
-                  label: LotteryCopy.drawWinnerButton,
-                  icon: Icons.casino_outlined,
-                  onPressed: () =>
-                      context.push(AppRoutePaths.groupCyclesGenerate(groupId)),
+                  label: canStartCycle
+                      ? LotteryCopy.drawWinnerButton
+                      : 'Complete setup to draw',
+                  icon: canStartCycle
+                      ? Icons.casino_outlined
+                      : Icons.rule_folder_outlined,
+                  onPressed: canStartCycle
+                      ? () => context.push(
+                          AppRoutePaths.groupCyclesGenerate(groupId),
+                        )
+                      : () => context.push(AppRoutePaths.groupSetup(groupId)),
                 ),
               ],
             ],

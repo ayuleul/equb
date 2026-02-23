@@ -46,6 +46,17 @@ class GenerateCycleScreen extends ConsumerWidget {
             );
           }
 
+          if (!group.canStartCycle) {
+            return EmptyState(
+              icon: Icons.rule_folder_outlined,
+              title: 'Setup required',
+              message: 'Complete group rules before drawing the first winner.',
+              ctaLabel: 'Open setup',
+              onCtaPressed: () =>
+                  context.push(AppRoutePaths.groupSetup(groupId)),
+            );
+          }
+
           return _DrawWinnerBody(groupId: groupId);
         },
       ),

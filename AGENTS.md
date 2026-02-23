@@ -61,6 +61,9 @@
 - Migrations must be deterministic and checked in.
 
 ## Group membership rules
+- Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, payout-order updates, and round/cycle generation must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
+- Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).
+- `POST /groups` compatibility is temporarily preserved: if legacy create payload includes `contributionAmount + frequency + startDate`, backend auto-seeds `GroupRules`; otherwise group is created with rules unset.
 - Invite codes are uppercase URL-safe strings (8 chars) and must be unique.
 - Rejoin policy:
   - `INVITED` -> can activate membership by joining with invite
@@ -79,6 +82,7 @@
 - Due-date progression rules:
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
+  - `CUSTOM_INTERVAL` (ruleset frequency): add exactly `customIntervalDays` days (timezone-aware day boundaries)
 - Random-draw payout schedules are immutable per round after round start; cycle generation must consume schedule positions in order.
 - Cycle auction impacts only the current cycle’s `finalPayoutUserId`; the scheduled recipient remains unchanged for round order continuity.
 - Auction winner selection is deterministic: highest bid wins, and ties are resolved by earliest bid `createdAt`.

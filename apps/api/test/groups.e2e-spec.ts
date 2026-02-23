@@ -14,6 +14,8 @@ import { GroupsController } from '../src/modules/groups/groups.controller';
 import {
   GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
   GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+  GROUP_RULESET_REQUIRED_MESSAGE,
+  GROUP_RULESET_REQUIRED_REASON_CODE,
 } from '../src/modules/groups/groups.constants';
 
 type UserRecord = {
@@ -64,6 +66,10 @@ type RoundRecord = {
   closedAt: Date | null;
 };
 
+type GroupRulesRecord = {
+  groupId: string;
+};
+
 describe('Groups (e2e)', () => {
   let groupsController: GroupsController;
 
@@ -85,6 +91,7 @@ describe('Groups (e2e)', () => {
   const members: MemberRecord[] = [];
   const invites: InviteRecord[] = [];
   const rounds: RoundRecord[] = [];
+  const groupRules: GroupRulesRecord[] = [];
 
   const actorAdmin: AuthenticatedUser = {
     id: 'user_admin',
@@ -128,20 +135,33 @@ describe('Groups (e2e)', () => {
       findUnique: jest.fn(
         ({
           where,
+          include,
           select,
         }: {
           where: { id: string };
-          select?: { id?: boolean; status?: boolean };
+          include?: { rules?: { select: { groupId: true } } };
+          select?: { id?: boolean; status?: boolean; rules?: boolean };
         }) => {
           const group = groups.find((item) => item.id === where.id) ?? null;
           if (!group) {
             return null;
           }
 
+          const rules =
+            groupRules.find((item) => item.groupId === group.id) ?? null;
+
+          if (include?.rules) {
+            return {
+              ...group,
+              rules,
+            };
+          }
+
           if (select) {
             return {
               ...(select.id ? { id: group.id } : {}),
               ...(select.status ? { status: group.status } : {}),
+              ...(select.rules ? { rules } : {}),
             };
           }
 
@@ -205,7 +225,7 @@ describe('Groups (e2e)', () => {
         }: {
           where: { groupId?: string; userId?: string; status?: MemberStatus };
           include?: {
-            group?: boolean;
+            group?: boolean | { include: { rules: { select: { groupId: true } } } };
             user?: { select: { id: true; phone: true; fullName: true } };
           };
         }) => {
@@ -218,9 +238,17 @@ describe('Groups (e2e)', () => {
 
           return filtered.map((membership) => {
             if (include?.group) {
+              const group = groups.find((item) => item.id === membership.groupId);
               return {
                 ...membership,
-                group: groups.find((group) => group.id === membership.groupId),
+                group: group
+                  ? {
+                      ...group,
+                      rules:
+                        groupRules.find((item) => item.groupId === group.id) ??
+                        null,
+                    }
+                  : null,
               };
             }
 
@@ -400,6 +428,11 @@ describe('Groups (e2e)', () => {
               select: {
                 id: true;
                 status: true;
+                rules?: {
+                  select: {
+                    groupId: true;
+                  };
+                };
               };
             };
           };
@@ -414,7 +447,19 @@ describe('Groups (e2e)', () => {
             const group = groups.find((item) => item.id === invite.groupId);
             return {
               ...invite,
-              group: group ? { id: group.id, status: group.status } : null,
+              group: group
+                ? {
+                    id: group.id,
+                    status: group.status,
+                    ...(include.group.select.rules
+                      ? {
+                          rules:
+                            groupRules.find((item) => item.groupId === group.id) ??
+                            null,
+                        }
+                      : {}),
+                  }
+                : null,
             };
           }
 
@@ -487,6 +532,45 @@ describe('Groups (e2e)', () => {
         },
       ),
     },
+    groupRules: {
+      create: jest.fn(({ data }: { data: { groupId: string } }) => {
+        const existing = groupRules.find((item) => item.groupId === data.groupId);
+        if (existing) {
+          return existing;
+        }
+
+        const record: GroupRulesRecord = {
+          groupId: data.groupId,
+        };
+        groupRules.push(record);
+        return record;
+      }),
+      findUnique: jest.fn(({ where }: { where: { groupId: string } }) => {
+        return groupRules.find((item) => item.groupId === where.groupId) ?? null;
+      }),
+      upsert: jest.fn(
+        ({
+          where,
+        }: {
+          where: {
+            groupId: string;
+          };
+        }) => {
+          const existing = groupRules.find(
+            (item) => item.groupId === where.groupId,
+          );
+          if (existing) {
+            return existing;
+          }
+
+          const created: GroupRulesRecord = {
+            groupId: where.groupId,
+          };
+          groupRules.push(created);
+          return created;
+        },
+      ),
+    },
     auditLog: {
       create: jest.fn(() => ({ id: `audit_${Date.now()}` })),
     },
@@ -522,6 +606,7 @@ describe('Groups (e2e)', () => {
     members.splice(0, members.length);
     invites.splice(0, invites.length);
     rounds.splice(0, rounds.length);
+    groupRules.splice(0, groupRules.length);
     jest.clearAllMocks();
   });
 
@@ -580,6 +665,34 @@ describe('Groups (e2e)', () => {
 
     expect(creatorMembership?.role).toBe(MemberRole.ADMIN);
     expect(creatorMembership?.status).toBe(MemberStatus.ACTIVE);
+    expect(group.rulesetConfigured).toBe(true);
+    expect(group.canInviteMembers).toBe(true);
+    expect(group.canStartCycle).toBe(true);
+  });
+
+  it('blocks invite creation until ruleset is configured', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Rules Pending Group',
+      currency: 'ETB',
+    });
+
+    expect(group.rulesetConfigured).toBe(false);
+    expect(group.canInviteMembers).toBe(false);
+    expect(group.canStartCycle).toBe(false);
+
+    try {
+      await groupsController.createInvite(actorAdmin, group.id, {});
+      throw new Error('Expected ruleset-required conflict');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      if (error instanceof ConflictException) {
+        expect(error.getStatus()).toBe(409);
+        expect(error.getResponse()).toMatchObject({
+          message: GROUP_RULESET_REQUIRED_MESSAGE,
+          reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
+        });
+      }
+    }
   });
 
   it('create invite and join with code sets joining member ACTIVE', async () => {

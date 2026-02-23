@@ -12,9 +12,11 @@ import 'package:mobile/data/groups/groups_repository.dart';
 import 'package:mobile/data/models/confirm_payout_request.dart';
 import 'package:mobile/data/models/create_group_request.dart';
 import 'package:mobile/data/models/create_payout_request.dart';
+import 'package:mobile/data/models/group_rules_model.dart';
 import 'package:mobile/data/models/join_group_request.dart';
 import 'package:mobile/data/models/reject_contribution_request.dart';
 import 'package:mobile/data/models/submit_contribution_request.dart';
+import 'package:mobile/data/models/update_group_rules_request.dart';
 import 'package:mobile/data/models/user_model.dart';
 import 'package:mobile/data/payouts/payouts_api.dart';
 import 'package:mobile/data/payouts/payouts_repository.dart';
@@ -146,7 +148,29 @@ class _FakeGroupsApi implements GroupsApi {
       'frequency': 'MONTHLY',
       'startDate': DateTime(2026, 1, 1).toIso8601String(),
       'status': 'ACTIVE',
+      'rulesetConfigured': true,
+      'canInviteMembers': true,
+      'canStartCycle': true,
       'membership': {'role': 'ADMIN', 'status': 'ACTIVE'},
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getGroupRules(String groupId) async {
+    return {
+      'groupId': groupId,
+      'contributionAmount': 1000,
+      'frequency': 'MONTHLY',
+      'customIntervalDays': null,
+      'graceDays': 0,
+      'fineType': 'NONE',
+      'fineAmount': 0,
+      'payoutMode': 'LOTTERY',
+      'paymentMethods': ['CASH_ACK'],
+      'requiresMemberVerification': false,
+      'strictCollection': false,
+      'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+      'updatedAt': DateTime(2026, 1, 1).toIso8601String(),
     };
   }
 
@@ -191,6 +215,52 @@ class _FakeGroupsApi implements GroupsApi {
   @override
   Future<bool> hasActiveRound(String groupId) async {
     return true;
+  }
+
+  @override
+  Future<Map<String, dynamic>> upsertGroupRules(
+    String groupId,
+    UpdateGroupRulesRequest request,
+  ) async {
+    return {
+      'groupId': groupId,
+      'contributionAmount': request.contributionAmount,
+      'frequency': switch (request.frequency) {
+        GroupRuleFrequencyModel.weekly => 'WEEKLY',
+        GroupRuleFrequencyModel.monthly => 'MONTHLY',
+        GroupRuleFrequencyModel.customInterval => 'CUSTOM_INTERVAL',
+        GroupRuleFrequencyModel.unknown => 'MONTHLY',
+      },
+      'customIntervalDays': request.customIntervalDays,
+      'graceDays': request.graceDays,
+      'fineType': switch (request.fineType) {
+        GroupRuleFineTypeModel.none => 'NONE',
+        GroupRuleFineTypeModel.fixedAmount => 'FIXED_AMOUNT',
+        GroupRuleFineTypeModel.unknown => 'NONE',
+      },
+      'fineAmount': request.fineAmount,
+      'payoutMode': switch (request.payoutMode) {
+        GroupRulePayoutModeModel.lottery => 'LOTTERY',
+        GroupRulePayoutModeModel.auction => 'AUCTION',
+        GroupRulePayoutModeModel.rotation => 'ROTATION',
+        GroupRulePayoutModeModel.decision => 'DECISION',
+        GroupRulePayoutModeModel.unknown => 'LOTTERY',
+      },
+      'paymentMethods': request.paymentMethods
+          .map(
+            (method) => switch (method) {
+              GroupPaymentMethodModel.bank => 'BANK',
+              GroupPaymentMethodModel.telebirr => 'TELEBIRR',
+              GroupPaymentMethodModel.cashAck => 'CASH_ACK',
+              GroupPaymentMethodModel.unknown => 'CASH_ACK',
+            },
+          )
+          .toList(growable: false),
+      'requiresMemberVerification': request.requiresMemberVerification,
+      'strictCollection': request.strictCollection,
+      'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+      'updatedAt': DateTime(2026, 1, 1).toIso8601String(),
+    };
   }
 }
 

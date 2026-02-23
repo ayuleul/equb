@@ -69,6 +69,9 @@ _GroupModel _$GroupModelFromJson(Map<String, dynamic> json) => _GroupModel(
       : GroupMembershipModel.fromJson(
           json['membership'] as Map<String, dynamic>,
         ),
+  rulesetConfigured: json['rulesetConfigured'] as bool? ?? false,
+  canInviteMembers: json['canInviteMembers'] as bool? ?? false,
+  canStartCycle: json['canStartCycle'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$GroupModelToJson(_GroupModel instance) =>
@@ -85,6 +88,9 @@ Map<String, dynamic> _$GroupModelToJson(_GroupModel instance) =>
       'strictPayout': instance.strictPayout,
       'timezone': instance.timezone,
       'membership': instance.membership,
+      'rulesetConfigured': instance.rulesetConfigured,
+      'canInviteMembers': instance.canInviteMembers,
+      'canStartCycle': instance.canStartCycle,
     };
 
 const _$GroupFrequencyModelEnumMap = {

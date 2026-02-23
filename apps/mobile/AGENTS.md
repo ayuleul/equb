@@ -80,6 +80,8 @@
 
 ## Groups rules
 - Authenticated landing route is locked to `/home`.
+- Admin group creation must route directly into full-screen group setup (`/groups/:id/setup`) with Rules step before normal group actions continue.
+- Group actions that depend on rules (`Invite members`, `Draw winner` / cycle start) must stay disabled or redirect to setup until `rulesetConfigured` is true in group payloads.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
 - If a group has an active round, joining and invite acceptance are blocked; join surfaces must explain that joining is available after the round ends.

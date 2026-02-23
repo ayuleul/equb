@@ -39,6 +39,14 @@ export class DateService {
     return new Date(Date.UTC(nextYear, normalizedNextMonthIndex, targetDay));
   }
 
+  advanceDueDateByDays(date: Date, days: number, timezone: string): Date {
+    const resolvedTimezone = this.resolveTimezone(timezone);
+    const parts = this.extractDateParts(date, resolvedTimezone);
+    const baseUtcDate = Date.UTC(parts.year, parts.month - 1, parts.day);
+
+    return new Date(baseUtcDate + days * ONE_DAY_MS);
+  }
+
   isDueWithinNext24HoursOrToday(
     dueDate: Date,
     timezone: string,

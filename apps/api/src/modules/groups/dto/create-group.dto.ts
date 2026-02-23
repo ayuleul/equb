@@ -17,18 +17,31 @@ export class CreateGroupDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiProperty({ example: 500 })
+  @ApiPropertyOptional({
+    example: 500,
+    description: 'Legacy compatibility field; prefer PUT /groups/:id/rules',
+  })
+  @IsOptional()
   @IsInt()
   @Min(1)
-  contributionAmount!: number;
+  contributionAmount?: number;
 
-  @ApiProperty({ enum: GroupFrequency, example: GroupFrequency.MONTHLY })
+  @ApiPropertyOptional({
+    enum: GroupFrequency,
+    example: GroupFrequency.MONTHLY,
+    description: 'Legacy compatibility field; prefer PUT /groups/:id/rules',
+  })
+  @IsOptional()
   @IsEnum(GroupFrequency)
-  frequency!: GroupFrequency;
+  frequency?: GroupFrequency;
 
-  @ApiProperty({ example: '2026-03-01' })
+  @ApiPropertyOptional({
+    example: '2026-03-01',
+    description: 'Legacy compatibility field; defaults to current date',
+  })
+  @IsOptional()
   @IsDateString()
-  startDate!: string;
+  startDate?: string;
 
   @ApiPropertyOptional({ example: 'ETB' })
   @IsOptional()

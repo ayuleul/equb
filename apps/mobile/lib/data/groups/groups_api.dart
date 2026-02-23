@@ -2,11 +2,17 @@ import '../api/api_error.dart';
 import '../api/api_client.dart';
 import '../models/create_group_request.dart';
 import '../models/join_group_request.dart';
+import '../models/update_group_rules_request.dart';
 
 abstract class GroupsApi {
   Future<List<Map<String, dynamic>>> listGroups();
   Future<Map<String, dynamic>> createGroup(CreateGroupRequest request);
   Future<Map<String, dynamic>> getGroup(String groupId);
+  Future<Map<String, dynamic>?> getGroupRules(String groupId);
+  Future<Map<String, dynamic>> upsertGroupRules(
+    String groupId,
+    UpdateGroupRulesRequest request,
+  );
   Future<Map<String, dynamic>> createInvite(String groupId);
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request);
   Future<List<Map<String, dynamic>>> listMembers(String groupId);
@@ -32,6 +38,26 @@ class DioGroupsApi implements GroupsApi {
   @override
   Future<Map<String, dynamic>> getGroup(String groupId) {
     return _apiClient.getMap('/groups/$groupId');
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getGroupRules(String groupId) async {
+    try {
+      return _apiClient.getMap('/groups/$groupId/rules');
+    } on ApiError catch (error) {
+      if (error.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> upsertGroupRules(
+    String groupId,
+    UpdateGroupRulesRequest request,
+  ) {
+    return _apiClient.putMap('/groups/$groupId/rules', data: request.toJson());
   }
 
   @override

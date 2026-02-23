@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/bootstrap.dart';
+import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/group_model.dart';
 import '../../../shared/kit/kit.dart';
@@ -60,6 +62,16 @@ class GroupInviteScreen extends ConsumerWidget {
               icon: Icons.lock_outline,
               title: 'Admin only',
               message: 'Only admins can generate invite codes.',
+            );
+          }
+          if (!group.canInviteMembers) {
+            return EmptyState(
+              icon: Icons.rule_folder_outlined,
+              title: 'Setup required',
+              message: 'Complete group rules before generating invite codes.',
+              ctaLabel: 'Open setup',
+              onCtaPressed: () =>
+                  context.push(AppRoutePaths.groupSetup(groupId)),
             );
           }
           final activeRoundAsync = ref.watch(

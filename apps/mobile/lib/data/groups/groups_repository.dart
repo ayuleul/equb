@@ -1,9 +1,11 @@
 import '../api/api_error.dart';
 import '../models/create_group_request.dart';
 import '../models/group_model.dart';
+import '../models/group_rules_model.dart';
 import '../models/invite_model.dart';
 import '../models/join_group_request.dart';
 import '../models/member_model.dart';
+import '../models/update_group_rules_request.dart';
 import 'groups_api.dart';
 
 class GroupsRepository {
@@ -14,6 +16,8 @@ class GroupsRepository {
   final Map<String, GroupModel> _groupCache = <String, GroupModel>{};
   final Map<String, List<MemberModel>> _membersCache =
       <String, List<MemberModel>>{};
+  final Map<String, GroupRulesModel?> _rulesCache =
+      <String, GroupRulesModel?>{};
 
   Future<List<GroupModel>> listMyGroups() async {
     final payload = await _groupsApi.listGroups();
@@ -61,6 +65,36 @@ class GroupsRepository {
     return InviteModel.fromJson(payload);
   }
 
+  Future<GroupRulesModel?> getGroupRules(
+    String groupId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _rulesCache.containsKey(groupId)) {
+      return _rulesCache[groupId];
+    }
+
+    final payload = await _groupsApi.getGroupRules(groupId);
+    if (payload == null || payload.isEmpty) {
+      _rulesCache[groupId] = null;
+      return null;
+    }
+
+    final rules = GroupRulesModel.fromJson(payload);
+    _rulesCache[groupId] = rules;
+    return rules;
+  }
+
+  Future<GroupRulesModel> upsertGroupRules(
+    String groupId,
+    UpdateGroupRulesRequest request,
+  ) async {
+    final payload = await _groupsApi.upsertGroupRules(groupId, request);
+    final rules = GroupRulesModel.fromJson(payload);
+    _rulesCache[groupId] = rules;
+    invalidateGroup(groupId);
+    return rules;
+  }
+
   Future<String> joinByCode(String code) async {
     final payload = await _groupsApi.joinByCode(JoinGroupRequest(code: code));
 
@@ -103,6 +137,7 @@ class GroupsRepository {
 
   void invalidateGroup(String groupId) {
     _groupCache.remove(groupId);
+    _rulesCache.remove(groupId);
   }
 
   void invalidateMembers(String groupId) {

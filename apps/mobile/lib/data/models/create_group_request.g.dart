@@ -9,13 +9,15 @@ part of 'create_group_request.dart';
 _CreateGroupRequest _$CreateGroupRequestFromJson(Map<String, dynamic> json) =>
     _CreateGroupRequest(
       name: json['name'] as String,
-      contributionAmount: (json['contributionAmount'] as num).toInt(),
-      frequency: $enumDecode(
+      contributionAmount: (json['contributionAmount'] as num?)?.toInt(),
+      frequency: $enumDecodeNullable(
         _$GroupFrequencyModelEnumMap,
         json['frequency'],
         unknownValue: GroupFrequencyModel.unknown,
       ),
-      startDate: DateTime.parse(json['startDate'] as String),
+      startDate: json['startDate'] == null
+          ? null
+          : DateTime.parse(json['startDate'] as String),
       currency: json['currency'] as String? ?? 'ETB',
     );
 
@@ -23,8 +25,8 @@ Map<String, dynamic> _$CreateGroupRequestToJson(_CreateGroupRequest instance) =>
     <String, dynamic>{
       'name': instance.name,
       'contributionAmount': instance.contributionAmount,
-      'frequency': _$GroupFrequencyModelEnumMap[instance.frequency]!,
-      'startDate': _dateToIsoString(instance.startDate),
+      'frequency': _$GroupFrequencyModelEnumMap[instance.frequency],
+      'startDate': _nullableDateToIsoString(instance.startDate),
       'currency': instance.currency,
     };
 

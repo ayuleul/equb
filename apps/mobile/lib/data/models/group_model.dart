@@ -69,6 +69,9 @@ sealed class GroupModel with _$GroupModel {
     bool? strictPayout,
     String? timezone,
     GroupMembershipModel? membership,
+    @Default(false) bool rulesetConfigured,
+    @Default(false) bool canInviteMembers,
+    @Default(false) bool canStartCycle,
   }) = _GroupModel;
 
   factory GroupModel.fromJson(Map<String, dynamic> json) =>

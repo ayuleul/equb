@@ -5,6 +5,9 @@ import '../../data/api/api_error.dart';
 const groupLockedActiveRoundReasonCode = 'GROUP_LOCKED_ACTIVE_ROUND';
 const groupLockedActiveRoundFriendlyMessage =
     'A round is currently in progress. You can join after it ends.';
+const groupRulesetRequiredReasonCode = 'GROUP_RULESET_REQUIRED';
+const groupRulesetRequiredFriendlyMessage =
+    'Complete group rules setup before continuing.';
 
 String mapApiErrorToMessage(Object error) {
   if (error is ApiError) {
@@ -43,6 +46,10 @@ ApiError? _normalizeApiError(Object error) {
 String _mapApiError(ApiError error) {
   if (_isGroupLockedError(error)) {
     return groupLockedActiveRoundFriendlyMessage;
+  }
+
+  if (_isGroupRulesetRequiredError(error)) {
+    return groupRulesetRequiredFriendlyMessage;
   }
 
   final message = error.message.trim();
@@ -164,5 +171,17 @@ bool _isGroupLockedError(ApiError error) {
   final normalizedMessage = error.message.toLowerCase();
   return normalizedMessage.contains(
     'group is locked while a round is in progress',
+  );
+}
+
+bool _isGroupRulesetRequiredError(ApiError error) {
+  if (error.statusCode == 409 &&
+      error.reasonCode == groupRulesetRequiredReasonCode) {
+    return true;
+  }
+
+  final normalizedMessage = error.message.toLowerCase();
+  return normalizedMessage.contains(
+    'group rules must be configured before this action is allowed',
   );
 }

@@ -14,6 +14,7 @@ import '../features/groups/screens/create_group_screen.dart';
 import '../features/groups/screens/group_detail_screen.dart';
 import '../features/groups/screens/group_invite_screen.dart';
 import '../features/groups/screens/group_overview_screen.dart';
+import '../features/groups/screens/group_setup_screen.dart';
 import '../features/groups/screens/groups_list_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
 import '../features/cycles/screens/cycle_detail_screen.dart';
@@ -43,6 +44,7 @@ class AppRoutePaths {
   static const debugTheme = '/debug/theme';
 
   static String groupDetail(String groupId) => '/groups/$groupId';
+  static String groupSetup(String groupId) => '/groups/$groupId/setup';
   static String groupOverview(String groupId) => '/groups/$groupId/overview';
   static String groupInvite(String groupId) => '/groups/$groupId/invite';
   static String groupCycles(String groupId) => '/groups/$groupId/cycles';
@@ -140,6 +142,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     return GroupDetailScreen(groupId: groupId);
                   },
                   routes: [
+                    GoRoute(
+                      path: 'setup',
+                      builder: (context, state) {
+                        final groupId = state.pathParameters['id'] ?? '';
+                        return GroupSetupScreen(groupId: groupId);
+                      },
+                    ),
                     GoRoute(
                       path: 'overview',
                       builder: (context, state) {
