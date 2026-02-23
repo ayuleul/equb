@@ -7,13 +7,13 @@ import {
 } from '@nestjs/common';
 import {
   MemberRole,
-  MemberStatus,
   NotificationStatus,
   NotificationType,
   Prisma,
 } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { PARTICIPATING_MEMBER_STATUSES } from '../../common/membership/member-status.util';
 import { BullMqService } from '../../common/queues/bullmq.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
@@ -206,7 +206,9 @@ export class NotificationsService {
         (await this.prisma.equbMember?.findMany?.({
           where: {
             groupId,
-            status: MemberStatus.ACTIVE,
+            status: {
+              in: PARTICIPATING_MEMBER_STATUSES,
+            },
             role: MemberRole.ADMIN,
             ...(options?.excludeUserId
               ? {
@@ -247,7 +249,9 @@ export class NotificationsService {
         (await this.prisma.equbMember?.findMany?.({
           where: {
             groupId,
-            status: MemberStatus.ACTIVE,
+            status: {
+              in: PARTICIPATING_MEMBER_STATUSES,
+            },
             ...(options?.excludeUserId
               ? {
                   userId: {

@@ -7,12 +7,12 @@ import {
 import {
   ContributionStatus,
   MemberRole,
-  MemberStatus,
   NotificationType,
   Prisma,
 } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { isParticipatingMemberStatus } from '../../common/membership/member-status.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -84,9 +84,9 @@ export class ContributionsService {
       },
     });
 
-    if (!membership || membership.status !== MemberStatus.ACTIVE) {
+    if (!membership || !isParticipatingMemberStatus(membership.status)) {
       throw new ForbiddenException(
-        'Only active group members can submit contributions',
+        'Only joined group members can submit contributions',
       );
     }
 
@@ -417,9 +417,9 @@ export class ContributionsService {
 
     if (
       !requesterMembership ||
-      requesterMembership.status !== MemberStatus.ACTIVE
+      !isParticipatingMemberStatus(requesterMembership.status)
     ) {
-      throw new ForbiddenException('Active group membership is required');
+      throw new ForbiddenException('Joined group membership is required');
     }
 
     const isAdminViewer = requesterMembership.role === MemberRole.ADMIN;

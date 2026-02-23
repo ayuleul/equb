@@ -30,6 +30,13 @@ enum MemberRoleModel {
 enum MemberStatusModel {
   @JsonValue('INVITED')
   invited,
+  @JsonValue('JOINED')
+  joined,
+  @JsonValue('VERIFIED')
+  verified,
+  @JsonValue('SUSPENDED')
+  suspended,
+  // legacy values kept temporarily for compatibility
   @JsonValue('ACTIVE')
   active,
   @JsonValue('LEFT')

@@ -278,7 +278,7 @@ as String?,
 /// @nodoc
 mixin _$MemberModel {
 
-@JsonKey(readValue: _readUserId) String get userId; String? get groupId; MemberUserModel get user;@JsonKey(unknownEnumValue: MemberRoleModel.unknown) MemberRoleModel get role;@JsonKey(unknownEnumValue: MemberStatusModel.unknown) MemberStatusModel get status;@JsonKey(fromJson: _toNullableInt) int? get payoutPosition; DateTime? get joinedAt;
+@JsonKey(readValue: _readMemberId) String get id;@JsonKey(readValue: _readUserId) String get userId; String? get groupId; MemberUserModel get user;@JsonKey(unknownEnumValue: MemberRoleModel.unknown) MemberRoleModel get role;@JsonKey(unknownEnumValue: MemberStatusModel.unknown) MemberStatusModel get status;@JsonKey(fromJson: _toNullableInt) int? get payoutPosition; DateTime? get joinedAt; DateTime? get verifiedAt; String? get verifiedByUserId;
 /// Create a copy of MemberModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -291,16 +291,16 @@ $MemberModelCopyWith<MemberModel> get copyWith => _$MemberModelCopyWithImpl<Memb
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MemberModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.user, user) || other.user == user)&&(identical(other.role, role) || other.role == role)&&(identical(other.status, status) || other.status == status)&&(identical(other.payoutPosition, payoutPosition) || other.payoutPosition == payoutPosition)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MemberModel&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.user, user) || other.user == user)&&(identical(other.role, role) || other.role == role)&&(identical(other.status, status) || other.status == status)&&(identical(other.payoutPosition, payoutPosition) || other.payoutPosition == payoutPosition)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.verifiedAt, verifiedAt) || other.verifiedAt == verifiedAt)&&(identical(other.verifiedByUserId, verifiedByUserId) || other.verifiedByUserId == verifiedByUserId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,groupId,user,role,status,payoutPosition,joinedAt);
+int get hashCode => Object.hash(runtimeType,id,userId,groupId,user,role,status,payoutPosition,joinedAt,verifiedAt,verifiedByUserId);
 
 @override
 String toString() {
-  return 'MemberModel(userId: $userId, groupId: $groupId, user: $user, role: $role, status: $status, payoutPosition: $payoutPosition, joinedAt: $joinedAt)';
+  return 'MemberModel(id: $id, userId: $userId, groupId: $groupId, user: $user, role: $role, status: $status, payoutPosition: $payoutPosition, joinedAt: $joinedAt, verifiedAt: $verifiedAt, verifiedByUserId: $verifiedByUserId)';
 }
 
 
@@ -311,7 +311,7 @@ abstract mixin class $MemberModelCopyWith<$Res>  {
   factory $MemberModelCopyWith(MemberModel value, $Res Function(MemberModel) _then) = _$MemberModelCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(readValue: _readUserId) String userId, String? groupId, MemberUserModel user,@JsonKey(unknownEnumValue: MemberRoleModel.unknown) MemberRoleModel role,@JsonKey(unknownEnumValue: MemberStatusModel.unknown) MemberStatusModel status,@JsonKey(fromJson: _toNullableInt) int? payoutPosition, DateTime? joinedAt
+@JsonKey(readValue: _readMemberId) String id,@JsonKey(readValue: _readUserId) String userId, String? groupId, MemberUserModel user,@JsonKey(unknownEnumValue: MemberRoleModel.unknown) MemberRoleModel role,@JsonKey(unknownEnumValue: MemberStatusModel.unknown) MemberStatusModel status,@JsonKey(fromJson: _toNullableInt) int? payoutPosition, DateTime? joinedAt, DateTime? verifiedAt, String? verifiedByUserId
 });
 
 
@@ -328,16 +328,19 @@ class _$MemberModelCopyWithImpl<$Res>
 
 /// Create a copy of MemberModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? groupId = freezed,Object? user = null,Object? role = null,Object? status = null,Object? payoutPosition = freezed,Object? joinedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? userId = null,Object? groupId = freezed,Object? user = null,Object? role = null,Object? status = null,Object? payoutPosition = freezed,Object? joinedAt = freezed,Object? verifiedAt = freezed,Object? verifiedByUserId = freezed,}) {
   return _then(_self.copyWith(
-userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,groupId: freezed == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
 as String?,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as MemberUserModel,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as MemberRoleModel,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as MemberStatusModel,payoutPosition: freezed == payoutPosition ? _self.payoutPosition : payoutPosition // ignore: cast_nullable_to_non_nullable
 as int?,joinedAt: freezed == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,verifiedAt: freezed == verifiedAt ? _self.verifiedAt : verifiedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,verifiedByUserId: freezed == verifiedByUserId ? _self.verifiedByUserId : verifiedByUserId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of MemberModel
@@ -428,10 +431,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(readValue: _readUserId)  String userId,  String? groupId,  MemberUserModel user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown)  MemberRoleModel role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown)  MemberStatusModel status, @JsonKey(fromJson: _toNullableInt)  int? payoutPosition,  DateTime? joinedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(readValue: _readMemberId)  String id, @JsonKey(readValue: _readUserId)  String userId,  String? groupId,  MemberUserModel user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown)  MemberRoleModel role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown)  MemberStatusModel status, @JsonKey(fromJson: _toNullableInt)  int? payoutPosition,  DateTime? joinedAt,  DateTime? verifiedAt,  String? verifiedByUserId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MemberModel() when $default != null:
-return $default(_that.userId,_that.groupId,_that.user,_that.role,_that.status,_that.payoutPosition,_that.joinedAt);case _:
+return $default(_that.id,_that.userId,_that.groupId,_that.user,_that.role,_that.status,_that.payoutPosition,_that.joinedAt,_that.verifiedAt,_that.verifiedByUserId);case _:
   return orElse();
 
 }
@@ -449,10 +452,10 @@ return $default(_that.userId,_that.groupId,_that.user,_that.role,_that.status,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(readValue: _readUserId)  String userId,  String? groupId,  MemberUserModel user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown)  MemberRoleModel role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown)  MemberStatusModel status, @JsonKey(fromJson: _toNullableInt)  int? payoutPosition,  DateTime? joinedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(readValue: _readMemberId)  String id, @JsonKey(readValue: _readUserId)  String userId,  String? groupId,  MemberUserModel user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown)  MemberRoleModel role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown)  MemberStatusModel status, @JsonKey(fromJson: _toNullableInt)  int? payoutPosition,  DateTime? joinedAt,  DateTime? verifiedAt,  String? verifiedByUserId)  $default,) {final _that = this;
 switch (_that) {
 case _MemberModel():
-return $default(_that.userId,_that.groupId,_that.user,_that.role,_that.status,_that.payoutPosition,_that.joinedAt);}
+return $default(_that.id,_that.userId,_that.groupId,_that.user,_that.role,_that.status,_that.payoutPosition,_that.joinedAt,_that.verifiedAt,_that.verifiedByUserId);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -466,10 +469,10 @@ return $default(_that.userId,_that.groupId,_that.user,_that.role,_that.status,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(readValue: _readUserId)  String userId,  String? groupId,  MemberUserModel user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown)  MemberRoleModel role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown)  MemberStatusModel status, @JsonKey(fromJson: _toNullableInt)  int? payoutPosition,  DateTime? joinedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(readValue: _readMemberId)  String id, @JsonKey(readValue: _readUserId)  String userId,  String? groupId,  MemberUserModel user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown)  MemberRoleModel role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown)  MemberStatusModel status, @JsonKey(fromJson: _toNullableInt)  int? payoutPosition,  DateTime? joinedAt,  DateTime? verifiedAt,  String? verifiedByUserId)?  $default,) {final _that = this;
 switch (_that) {
 case _MemberModel() when $default != null:
-return $default(_that.userId,_that.groupId,_that.user,_that.role,_that.status,_that.payoutPosition,_that.joinedAt);case _:
+return $default(_that.id,_that.userId,_that.groupId,_that.user,_that.role,_that.status,_that.payoutPosition,_that.joinedAt,_that.verifiedAt,_that.verifiedByUserId);case _:
   return null;
 
 }
@@ -481,9 +484,10 @@ return $default(_that.userId,_that.groupId,_that.user,_that.role,_that.status,_t
 @JsonSerializable()
 
 class _MemberModel extends MemberModel {
-  const _MemberModel({@JsonKey(readValue: _readUserId) required this.userId, this.groupId, required this.user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown) required this.role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown) required this.status, @JsonKey(fromJson: _toNullableInt) this.payoutPosition, this.joinedAt}): super._();
+  const _MemberModel({@JsonKey(readValue: _readMemberId) required this.id, @JsonKey(readValue: _readUserId) required this.userId, this.groupId, required this.user, @JsonKey(unknownEnumValue: MemberRoleModel.unknown) required this.role, @JsonKey(unknownEnumValue: MemberStatusModel.unknown) required this.status, @JsonKey(fromJson: _toNullableInt) this.payoutPosition, this.joinedAt, this.verifiedAt, this.verifiedByUserId}): super._();
   factory _MemberModel.fromJson(Map<String, dynamic> json) => _$MemberModelFromJson(json);
 
+@override@JsonKey(readValue: _readMemberId) final  String id;
 @override@JsonKey(readValue: _readUserId) final  String userId;
 @override final  String? groupId;
 @override final  MemberUserModel user;
@@ -491,6 +495,8 @@ class _MemberModel extends MemberModel {
 @override@JsonKey(unknownEnumValue: MemberStatusModel.unknown) final  MemberStatusModel status;
 @override@JsonKey(fromJson: _toNullableInt) final  int? payoutPosition;
 @override final  DateTime? joinedAt;
+@override final  DateTime? verifiedAt;
+@override final  String? verifiedByUserId;
 
 /// Create a copy of MemberModel
 /// with the given fields replaced by the non-null parameter values.
@@ -505,16 +511,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MemberModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.user, user) || other.user == user)&&(identical(other.role, role) || other.role == role)&&(identical(other.status, status) || other.status == status)&&(identical(other.payoutPosition, payoutPosition) || other.payoutPosition == payoutPosition)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MemberModel&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.groupId, groupId) || other.groupId == groupId)&&(identical(other.user, user) || other.user == user)&&(identical(other.role, role) || other.role == role)&&(identical(other.status, status) || other.status == status)&&(identical(other.payoutPosition, payoutPosition) || other.payoutPosition == payoutPosition)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.verifiedAt, verifiedAt) || other.verifiedAt == verifiedAt)&&(identical(other.verifiedByUserId, verifiedByUserId) || other.verifiedByUserId == verifiedByUserId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,groupId,user,role,status,payoutPosition,joinedAt);
+int get hashCode => Object.hash(runtimeType,id,userId,groupId,user,role,status,payoutPosition,joinedAt,verifiedAt,verifiedByUserId);
 
 @override
 String toString() {
-  return 'MemberModel(userId: $userId, groupId: $groupId, user: $user, role: $role, status: $status, payoutPosition: $payoutPosition, joinedAt: $joinedAt)';
+  return 'MemberModel(id: $id, userId: $userId, groupId: $groupId, user: $user, role: $role, status: $status, payoutPosition: $payoutPosition, joinedAt: $joinedAt, verifiedAt: $verifiedAt, verifiedByUserId: $verifiedByUserId)';
 }
 
 
@@ -525,7 +531,7 @@ abstract mixin class _$MemberModelCopyWith<$Res> implements $MemberModelCopyWith
   factory _$MemberModelCopyWith(_MemberModel value, $Res Function(_MemberModel) _then) = __$MemberModelCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(readValue: _readUserId) String userId, String? groupId, MemberUserModel user,@JsonKey(unknownEnumValue: MemberRoleModel.unknown) MemberRoleModel role,@JsonKey(unknownEnumValue: MemberStatusModel.unknown) MemberStatusModel status,@JsonKey(fromJson: _toNullableInt) int? payoutPosition, DateTime? joinedAt
+@JsonKey(readValue: _readMemberId) String id,@JsonKey(readValue: _readUserId) String userId, String? groupId, MemberUserModel user,@JsonKey(unknownEnumValue: MemberRoleModel.unknown) MemberRoleModel role,@JsonKey(unknownEnumValue: MemberStatusModel.unknown) MemberStatusModel status,@JsonKey(fromJson: _toNullableInt) int? payoutPosition, DateTime? joinedAt, DateTime? verifiedAt, String? verifiedByUserId
 });
 
 
@@ -542,16 +548,19 @@ class __$MemberModelCopyWithImpl<$Res>
 
 /// Create a copy of MemberModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? groupId = freezed,Object? user = null,Object? role = null,Object? status = null,Object? payoutPosition = freezed,Object? joinedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? userId = null,Object? groupId = freezed,Object? user = null,Object? role = null,Object? status = null,Object? payoutPosition = freezed,Object? joinedAt = freezed,Object? verifiedAt = freezed,Object? verifiedByUserId = freezed,}) {
   return _then(_MemberModel(
-userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,groupId: freezed == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
 as String?,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as MemberUserModel,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as MemberRoleModel,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as MemberStatusModel,payoutPosition: freezed == payoutPosition ? _self.payoutPosition : payoutPosition // ignore: cast_nullable_to_non_nullable
 as int?,joinedAt: freezed == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,verifiedAt: freezed == verifiedAt ? _self.verifiedAt : verifiedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,verifiedByUserId: freezed == verifiedByUserId ? _self.verifiedByUserId : verifiedByUserId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

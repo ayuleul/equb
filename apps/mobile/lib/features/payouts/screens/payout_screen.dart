@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/member_status_utils.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../features/auth/auth_controller.dart';
 import '../../../shared/kit/kit.dart';
@@ -105,7 +106,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     } else if (currentUser != null && members != null) {
       for (final member in members) {
         if (member.userId == currentUser.id &&
-            member.status == MemberStatusModel.active &&
+            isParticipatingMemberStatus(member.status) &&
             member.role == MemberRoleModel.admin) {
           isAdmin = true;
           break;
@@ -115,7 +116,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
 
     final activeMembersCount =
         members
-            ?.where((member) => member.status == MemberStatusModel.active)
+            ?.where((member) => isParticipatingMemberStatus(member.status))
             .length ??
         0;
 

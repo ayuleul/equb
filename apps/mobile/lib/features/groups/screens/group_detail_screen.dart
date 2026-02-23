@@ -178,7 +178,7 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
     if (!widget.group.canStartCycle) {
       AppSnackbars.error(
         context,
-        'Save group rules first before drawing the first winner.',
+        'Complete setup and ensure at least 2 eligible members before drawing the first winner.',
       );
       return;
     }
@@ -849,7 +849,7 @@ Future<void> _showAdminActions({
   final actions = <KitActionSheetItem>[
     if (!canInviteMembers || !canStartCycle)
       KitActionSheetItem(
-        label: 'Complete rules setup',
+        label: 'Open setup checklist',
         icon: Icons.rule_folder_outlined,
         onPressed: () => context.push(AppRoutePaths.groupSetup(groupId)),
       ),

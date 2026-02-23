@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MemberRole, MemberStatus } from '@prisma/client';
+import { MemberRole } from '@prisma/client';
 import {
   GetObjectCommand,
   PutObjectCommand,
@@ -19,6 +19,7 @@ import {
 import { HttpRequest } from '@smithy/protocol-http';
 import { randomUUID } from 'crypto';
 
+import { isParticipatingMemberStatus } from '../../common/membership/member-status.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import {
@@ -73,8 +74,8 @@ export class FilesService {
       select: { status: true, role: true },
     });
 
-    if (!membership || membership.status !== MemberStatus.ACTIVE) {
-      throw new ForbiddenException('Active group membership is required');
+    if (!membership || !isParticipatingMemberStatus(membership.status)) {
+      throw new ForbiddenException('Joined group membership is required');
     }
 
     let keyPrefix = '';
@@ -145,8 +146,8 @@ export class FilesService {
       },
     });
 
-    if (!membership || membership.status !== MemberStatus.ACTIVE) {
-      throw new ForbiddenException('Active group membership is required');
+    if (!membership || !isParticipatingMemberStatus(membership.status)) {
+      throw new ForbiddenException('Joined group membership is required');
     }
 
     const command = new GetObjectCommand({

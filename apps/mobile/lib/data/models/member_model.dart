@@ -22,6 +22,7 @@ sealed class MemberModel with _$MemberModel {
   const MemberModel._();
 
   const factory MemberModel({
+    @JsonKey(readValue: _readMemberId) required String id,
     @JsonKey(readValue: _readUserId) required String userId,
     String? groupId,
     required MemberUserModel user,
@@ -31,6 +32,8 @@ sealed class MemberModel with _$MemberModel {
     required MemberStatusModel status,
     @JsonKey(fromJson: _toNullableInt) int? payoutPosition,
     DateTime? joinedAt,
+    DateTime? verifiedAt,
+    String? verifiedByUserId,
   }) = _MemberModel;
 
   factory MemberModel.fromJson(Map<String, dynamic> json) =>
@@ -52,6 +55,20 @@ sealed class MemberModel with _$MemberModel {
 }
 
 Object? _readUserId(Map<dynamic, dynamic> json, String key) {
+  final nested = json['user'];
+  if (nested is Map && nested['id'] is String) {
+    return nested['id'];
+  }
+
+  return json[key];
+}
+
+Object? _readMemberId(Map<dynamic, dynamic> json, String key) {
+  final id = json[key];
+  if (id is String && id.isNotEmpty) {
+    return id;
+  }
+
   final nested = json['user'];
   if (nested is Map && nested['id'] is String) {
     return nested['id'];

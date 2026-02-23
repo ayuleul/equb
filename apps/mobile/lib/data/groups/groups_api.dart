@@ -16,6 +16,7 @@ abstract class GroupsApi {
   Future<Map<String, dynamic>> createInvite(String groupId);
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request);
   Future<List<Map<String, dynamic>>> listMembers(String groupId);
+  Future<Map<String, dynamic>> verifyMember(String groupId, String memberId);
   Future<bool> hasActiveRound(String groupId);
 }
 
@@ -63,7 +64,7 @@ class DioGroupsApi implements GroupsApi {
   @override
   Future<Map<String, dynamic>> createInvite(String groupId) {
     return _apiClient.postMap(
-      '/groups/$groupId/invite',
+      '/groups/$groupId/invites',
       data: <String, dynamic>{},
     );
   }
@@ -77,6 +78,11 @@ class DioGroupsApi implements GroupsApi {
   Future<List<Map<String, dynamic>>> listMembers(String groupId) async {
     final payload = await _apiClient.getList('/groups/$groupId/members');
     return payload.map(_toMap).toList(growable: false);
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyMember(String groupId, String memberId) {
+    return _apiClient.postMap('/groups/$groupId/members/$memberId/verify');
   }
 
   @override

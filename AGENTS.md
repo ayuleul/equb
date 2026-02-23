@@ -64,11 +64,18 @@
 - Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, payout-order updates, and round/cycle generation must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
 - Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).
 - `POST /groups` compatibility is temporarily preserved: if legacy create payload includes `contributionAmount + frequency + startDate`, backend auto-seeds `GroupRules`; otherwise group is created with rules unset.
+- Membership lifecycle is verification-based:
+  - canonical statuses: `INVITED` -> `JOINED` -> `VERIFIED`
+  - suspension/removal state: `SUSPENDED`
+  - legacy statuses (`ACTIVE`, `LEFT`, `REMOVED`) are temporary compatibility aliases and should be normalized in API responses/checks.
+- Membership verification metadata is tracked with:
+  - `verifiedAt`
+  - `verifiedByUserId`
 - Invite codes are uppercase URL-safe strings (8 chars) and must be unique.
 - Rejoin policy:
   - `INVITED` -> can activate membership by joining with invite
-  - `LEFT` -> can rejoin with invite and become `ACTIVE`
-  - `REMOVED` -> cannot self-rejoin via invite code
+  - `LEFT` (legacy) -> can rejoin with invite and become `JOINED`
+  - `SUSPENDED`/`REMOVED` -> cannot self-rejoin via invite code
 - Membership is locked while a round is active (`EqubRound.closedAt == null`); join/accept-invite/add-member paths must be blocked at API level with `409` (`GROUP_LOCKED_ACTIVE_ROUND`).
 - Invite creation is allowed during an active round, but invite acceptance remains blocked until the round ends.
 
@@ -84,6 +91,11 @@
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
   - `CUSTOM_INTERVAL` (ruleset frequency): add exactly `customIntervalDays` days (timezone-aware day boundaries)
 - Random-draw payout schedules are immutable per round after round start; cycle generation must consume schedule positions in order.
+- Round start eligibility gate is locked:
+  - ruleset must be configured
+  - eligible member count must be at least `2`
+  - if `requiresMemberVerification = true`, only `VERIFIED` members are eligible
+  - otherwise, joined/participating members are eligible.
 - Cycle auction impacts only the current cycle’s `finalPayoutUserId`; the scheduled recipient remains unchanged for round order continuity.
 - Auction winner selection is deterministic: highest bid wins, and ties are resolved by earliest bid `createdAt`.
 - Bid visibility rule is locked: active admins and the scheduled recipient can view all cycle bids; other active members can view only their own bid.

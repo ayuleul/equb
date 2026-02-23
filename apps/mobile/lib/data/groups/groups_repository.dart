@@ -131,6 +131,14 @@ class GroupsRepository {
     return members;
   }
 
+  Future<MemberModel> verifyMember(String groupId, String memberId) async {
+    final payload = await _groupsApi.verifyMember(groupId, memberId);
+    final member = MemberModel.fromJson({...payload, 'groupId': groupId});
+    invalidateMembers(groupId);
+    invalidateGroup(groupId);
+    return member;
+  }
+
   Future<bool> hasActiveRound(String groupId) {
     return _groupsApi.hasActiveRound(groupId);
   }

@@ -8,12 +8,12 @@ import {
   ContributionStatus,
   CycleStatus,
   GroupStatus,
-  MemberStatus,
   NotificationType,
 } from '@prisma/client';
 import { Job, Worker } from 'bullmq';
 
 import { DateService } from '../../../common/date/date.service';
+import { PARTICIPATING_MEMBER_STATUSES } from '../../../common/membership/member-status.util';
 import { BullMqService } from '../../../common/queues/bullmq.service';
 import { REMINDERS_QUEUE } from '../../../common/queues/queue.constants';
 import { ReminderJobData } from '../../../common/queues/queue.types';
@@ -106,7 +106,9 @@ export class ReminderProcessor implements OnModuleInit, OnModuleDestroy {
       const activeMembers = await this.prisma.equbMember.findMany({
         where: {
           groupId: cycle.groupId,
-          status: MemberStatus.ACTIVE,
+          status: {
+            in: PARTICIPATING_MEMBER_STATUSES,
+          },
         },
         select: {
           userId: true,

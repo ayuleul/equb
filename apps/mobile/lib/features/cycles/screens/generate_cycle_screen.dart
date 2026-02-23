@@ -50,7 +50,8 @@ class GenerateCycleScreen extends ConsumerWidget {
             return EmptyState(
               icon: Icons.rule_folder_outlined,
               title: 'Setup required',
-              message: 'Complete group rules before drawing the first winner.',
+              message:
+                  'Complete setup and ensure at least 2 eligible members before drawing the first winner.',
               ctaLabel: 'Open setup',
               onCtaPressed: () =>
                   context.push(AppRoutePaths.groupSetup(groupId)),

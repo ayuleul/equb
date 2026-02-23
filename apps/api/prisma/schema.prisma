@@ -48,6 +48,10 @@ enum MemberRole {
 
 enum MemberStatus {
   INVITED
+  JOINED
+  VERIFIED
+  SUSPENDED
+  // legacy statuses kept temporarily for compatibility while clients migrate
   ACTIVE
   LEFT
   REMOVED
@@ -114,6 +118,7 @@ model User {
   auditLogs      AuditLog[]
   createdGroups  EqubGroup[]    @relation("GroupCreator")
   memberships    EqubMember[]
+  verifiedMembers EqubMember[] @relation("MemberVerifiedBy")
   createdInvites InviteCode[]   @relation("InviteCreator")
   scheduledPayoutCycles EqubCycle[] @relation("CycleScheduledPayoutUser")
   finalPayoutCycles EqubCycle[] @relation("CycleFinalPayoutUser")
@@ -209,12 +214,16 @@ model EqubMember {
   status         MemberStatus @default(INVITED)
   payoutPosition Int?
   joinedAt       DateTime?
+  verifiedAt     DateTime?
+  verifiedByUserId String?
   createdAt      DateTime     @default(now())
   group          EqubGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verifiedByUser User?        @relation("MemberVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([groupId, userId])
   @@index([userId])
+  @@index([verifiedByUserId])
   @@index([groupId, status, role])
 }
 

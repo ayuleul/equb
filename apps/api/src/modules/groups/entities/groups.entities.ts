@@ -145,6 +145,9 @@ export class MemberProfileResponseDto {
 }
 
 export class GroupMemberResponseDto {
+  @ApiProperty()
+  id!: string;
+
   @ApiProperty({ type: () => MemberProfileResponseDto })
   user!: MemberProfileResponseDto;
 
@@ -159,6 +162,12 @@ export class GroupMemberResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   joinedAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  verifiedAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  verifiedByUserId!: string | null;
 }
 
 export class CyclePayoutUserResponseDto {

@@ -6,13 +6,13 @@ import {
 import {
   ContributionStatus,
   CycleStatus,
-  MemberStatus,
   NotificationType,
   Prisma,
   PayoutStatus,
 } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { PARTICIPATING_MEMBER_STATUSES } from '../../common/membership/member-status.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { isPayoutProofKeyScopedTo } from '../contributions/utils/proof-key.util';
@@ -184,7 +184,9 @@ export class PayoutsService {
           await tx.equbMember.findMany({
             where: {
               groupId: existing.groupId,
-              status: MemberStatus.ACTIVE,
+              status: {
+                in: PARTICIPATING_MEMBER_STATUSES,
+              },
             },
             select: { userId: true },
           })

@@ -8,6 +8,7 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/member_model.dart';
+import '../../../data/models/member_status_utils.dart';
 import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
@@ -195,7 +196,7 @@ class _LotterySummaryCard extends StatelessWidget {
 
     final members = membersAsync.valueOrNull ?? const <MemberModel>[];
     final activeMemberCount = members
-        .where((member) => member.status == MemberStatusModel.active)
+        .where((member) => isParticipatingMemberStatus(member.status))
         .length;
     final cycles = cyclesAsync.valueOrNull ?? const <CycleModel>[];
     final currentCycle = currentCycleAsync.valueOrNull;
@@ -540,11 +541,7 @@ class _MemberListRow extends StatelessWidget {
       MemberRoleModel.unknown => 'UNKNOWN',
     };
     final statusLabel = switch (member.status) {
-      MemberStatusModel.active => 'ACTIVE',
-      MemberStatusModel.invited => 'INVITED',
-      MemberStatusModel.left => 'LEFT',
-      MemberStatusModel.removed => 'REMOVED',
-      MemberStatusModel.unknown => 'UNKNOWN',
+      _ => memberStatusLabel(member.status),
     };
 
     return Row(
@@ -559,7 +556,7 @@ class _MemberListRow extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.xs),
         StatusPill.fromLabel(roleLabel),
-        if (member.status != MemberStatusModel.active) ...[
+        if (!isParticipatingMemberStatus(member.status)) ...[
           const SizedBox(width: AppSpacing.xs),
           StatusPill.fromLabel(statusLabel),
         ],

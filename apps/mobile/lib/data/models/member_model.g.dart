@@ -21,6 +21,7 @@ Map<String, dynamic> _$MemberUserModelToJson(_MemberUserModel instance) =>
     };
 
 _MemberModel _$MemberModelFromJson(Map<String, dynamic> json) => _MemberModel(
+  id: _readMemberId(json, 'id') as String,
   userId: _readUserId(json, 'userId') as String,
   groupId: json['groupId'] as String?,
   user: MemberUserModel.fromJson(json['user'] as Map<String, dynamic>),
@@ -38,10 +39,15 @@ _MemberModel _$MemberModelFromJson(Map<String, dynamic> json) => _MemberModel(
   joinedAt: json['joinedAt'] == null
       ? null
       : DateTime.parse(json['joinedAt'] as String),
+  verifiedAt: json['verifiedAt'] == null
+      ? null
+      : DateTime.parse(json['verifiedAt'] as String),
+  verifiedByUserId: json['verifiedByUserId'] as String?,
 );
 
 Map<String, dynamic> _$MemberModelToJson(_MemberModel instance) =>
     <String, dynamic>{
+      'id': instance.id,
       'userId': instance.userId,
       'groupId': instance.groupId,
       'user': instance.user,
@@ -49,6 +55,8 @@ Map<String, dynamic> _$MemberModelToJson(_MemberModel instance) =>
       'status': _$MemberStatusModelEnumMap[instance.status]!,
       'payoutPosition': instance.payoutPosition,
       'joinedAt': instance.joinedAt?.toIso8601String(),
+      'verifiedAt': instance.verifiedAt?.toIso8601String(),
+      'verifiedByUserId': instance.verifiedByUserId,
     };
 
 const _$MemberRoleModelEnumMap = {
@@ -59,6 +67,9 @@ const _$MemberRoleModelEnumMap = {
 
 const _$MemberStatusModelEnumMap = {
   MemberStatusModel.invited: 'INVITED',
+  MemberStatusModel.joined: 'JOINED',
+  MemberStatusModel.verified: 'VERIFIED',
+  MemberStatusModel.suspended: 'SUSPENDED',
   MemberStatusModel.active: 'ACTIVE',
   MemberStatusModel.left: 'LEFT',
   MemberStatusModel.removed: 'REMOVED',

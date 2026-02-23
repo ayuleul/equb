@@ -27,6 +27,13 @@ import { randomBytes } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
 import {
+  PARTICIPATING_MEMBER_STATUSES,
+  VERIFIED_MEMBER_STATUSES,
+  isParticipatingMemberStatus,
+  isSuspendedMemberStatus,
+  normalizeMemberStatus,
+} from '../../common/membership/member-status.util';
+import {
   decryptSeed,
   encryptSeed,
   parseDrawSeedEncryptionKey,
@@ -138,8 +145,10 @@ export class GroupsService {
           groupId: createdGroup.id,
           userId: currentUser.id,
           role: MemberRole.ADMIN,
-          status: MemberStatus.ACTIVE,
+          status: MemberStatus.VERIFIED,
           joinedAt: new Date(),
+          verifiedAt: new Date(),
+          verifiedByUserId: currentUser.id,
         },
       });
 
@@ -164,7 +173,9 @@ export class GroupsService {
     const memberships = await this.prisma.equbMember.findMany({
       where: {
         userId: currentUser.id,
-        status: MemberStatus.ACTIVE,
+        status: {
+          in: PARTICIPATING_MEMBER_STATUSES,
+        },
       },
       include: {
         group: {
@@ -172,6 +183,12 @@ export class GroupsService {
             rules: {
               select: {
                 groupId: true,
+                requiresMemberVerification: true,
+              },
+            },
+            members: {
+              select: {
+                status: true,
               },
             },
           },
@@ -183,7 +200,11 @@ export class GroupsService {
     });
 
     return memberships.map((membership) =>
-      this.toGroupSummaryResponse(membership.group, membership.group.rules != null),
+      this.toGroupSummaryResponse(
+        membership.group,
+        membership.group.rules,
+        membership.group.members.map((member) => member.status),
+      ),
     );
   }
 
@@ -198,6 +219,12 @@ export class GroupsService {
           rules: {
             select: {
               groupId: true,
+              requiresMemberVerification: true,
+            },
+          },
+          members: {
+            select: {
+              status: true,
             },
           },
         },
@@ -220,7 +247,12 @@ export class GroupsService {
       throw new NotFoundException('Membership not found');
     }
 
-    return this.toGroupDetailResponse(group, membership, group.rules != null);
+    return this.toGroupDetailResponse(
+      group,
+      membership,
+      group.rules,
+      group.members.map((member) => member.status),
+    );
   }
 
   async getGroupRules(groupId: string): Promise<GroupRulesResponseDto> {
@@ -513,15 +545,15 @@ export class GroupsService {
         },
       });
 
-      if (existingMembership?.status === MemberStatus.REMOVED) {
+      if (isSuspendedMemberStatus(existingMembership?.status)) {
         throw new ForbiddenException(
-          'You were removed from this group and cannot rejoin with invite code',
+          'Suspended members cannot self-rejoin with invite code',
         );
       }
 
-      if (existingMembership?.status === MemberStatus.ACTIVE) {
+      if (isParticipatingMemberStatus(existingMembership?.status)) {
         throw new BadRequestException(
-          'You are already an active member of this group',
+          'You are already a joined member of this group',
         );
       }
 
@@ -537,8 +569,10 @@ export class GroupsService {
         membership = await tx.equbMember.update({
           where: { id: existingMembership.id },
           data: {
-            status: MemberStatus.ACTIVE,
+            status: MemberStatus.JOINED,
             joinedAt,
+            verifiedAt: null,
+            verifiedByUserId: null,
           },
           select: {
             role: true,
@@ -552,7 +586,7 @@ export class GroupsService {
             groupId: invite.groupId,
             userId: currentUser.id,
             role: MemberRole.MEMBER,
-            status: MemberStatus.ACTIVE,
+            status: MemberStatus.JOINED,
             joinedAt,
           },
           select: {
@@ -583,7 +617,7 @@ export class GroupsService {
       return {
         groupId: invite.groupId,
         role: membership.role,
-        status: membership.status,
+        status: normalizeMemberStatus(membership.status),
         joinedAt: membership.joinedAt,
       };
     });
@@ -649,13 +683,86 @@ export class GroupsService {
       },
     });
 
-    return memberships.map((membership) => ({
-      user: membership.user,
-      role: membership.role,
-      status: membership.status,
-      payoutPosition: membership.payoutPosition,
-      joinedAt: membership.joinedAt,
-    }));
+    return memberships.map((membership) => this.toMemberResponse(membership));
+  }
+
+  async verifyMember(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    memberId: string,
+  ): Promise<GroupMemberResponseDto> {
+    const membership = await this.prisma.equbMember.findFirst({
+      where: {
+        id: memberId,
+        groupId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('Member not found in this group');
+    }
+
+    const normalizedStatus = normalizeMemberStatus(membership.status);
+    if (normalizedStatus === MemberStatus.SUSPENDED) {
+      throw new BadRequestException('Suspended members cannot be verified');
+    }
+
+    if (normalizedStatus === MemberStatus.VERIFIED) {
+      return this.toMemberResponse(membership);
+    }
+
+    if (
+      normalizedStatus !== MemberStatus.JOINED &&
+      normalizedStatus !== MemberStatus.INVITED
+    ) {
+      throw new BadRequestException('Only joined or invited members can be verified');
+    }
+
+    const verifiedAt = new Date();
+
+    const updatedMembership = await this.prisma.equbMember.update({
+      where: {
+        id: membership.id,
+      },
+      data: {
+        status: MemberStatus.VERIFIED,
+        verifiedAt,
+        verifiedByUserId: currentUser.id,
+        joinedAt: membership.joinedAt ?? verifiedAt,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    await this.auditService.log(
+      'MEMBER_VERIFIED',
+      currentUser.id,
+      {
+        memberId,
+        targetUserId: updatedMembership.userId,
+        previousStatus: membership.status,
+        nextStatus: updatedMembership.status,
+      },
+      groupId,
+    );
+
+    return this.toMemberResponse(updatedMembership);
   }
 
   async updateMemberRole(
@@ -686,8 +793,8 @@ export class GroupsService {
       throw new NotFoundException('Member not found in this group');
     }
 
-    if (targetMembership.status !== MemberStatus.ACTIVE) {
-      throw new BadRequestException('Only active members can change roles');
+    if (!isParticipatingMemberStatus(targetMembership.status)) {
+      throw new BadRequestException('Only joined members can change roles');
     }
 
     if (
@@ -732,13 +839,7 @@ export class GroupsService {
       groupId,
     );
 
-    return {
-      user: updatedMembership.user,
-      role: updatedMembership.role,
-      status: updatedMembership.status,
-      payoutPosition: updatedMembership.payoutPosition,
-      joinedAt: updatedMembership.joinedAt,
-    };
+    return this.toMemberResponse(updatedMembership);
   }
 
   async updateMemberStatus(
@@ -747,6 +848,11 @@ export class GroupsService {
     targetUserId: string,
     dto: UpdateMemberStatusDto,
   ): Promise<GroupMemberResponseDto> {
+    const requestedStatus = normalizeMemberStatus(dto.status);
+    if (requestedStatus !== MemberStatus.SUSPENDED) {
+      throw new BadRequestException('Only SUSPENDED status is supported');
+    }
+
     const [actorMembership, targetMembership] = await Promise.all([
       this.prisma.equbMember.findUnique({
         where: {
@@ -775,35 +881,34 @@ export class GroupsService {
       }),
     ]);
 
-    if (!actorMembership || actorMembership.status !== MemberStatus.ACTIVE) {
-      throw new ForbiddenException('Only active members can update statuses');
+    if (
+      !actorMembership ||
+      !isParticipatingMemberStatus(actorMembership.status)
+    ) {
+      throw new ForbiddenException('Only joined members can update statuses');
     }
 
     if (!targetMembership) {
       throw new NotFoundException('Member not found in this group');
     }
 
-    if (targetMembership.status !== MemberStatus.ACTIVE) {
-      throw new BadRequestException('Only active members can change status');
+    if (!isParticipatingMemberStatus(targetMembership.status)) {
+      throw new BadRequestException('Only joined members can change status');
     }
 
-    if (dto.status === 'LEFT') {
-      if (currentUser.id !== targetUserId) {
-        throw new ForbiddenException('Members can only leave for themselves');
-      }
+    const isSelfAction = currentUser.id === targetUserId;
+    if (isSelfAction && dto.status === MemberStatus.REMOVED) {
+      throw new BadRequestException('Use SUSPENDED status to leave group');
     }
 
-    if (dto.status === 'REMOVED') {
-      if (currentUser.id === targetUserId) {
-        throw new BadRequestException('Use LEFT status to leave group');
-      }
-
-      if (actorMembership.role !== MemberRole.ADMIN) {
-        throw new ForbiddenException('Only admins can remove members');
-      }
+    if (!isSelfAction && actorMembership.role !== MemberRole.ADMIN) {
+      throw new ForbiddenException('Only admins can suspend other members');
     }
 
-    if (targetMembership.role === MemberRole.ADMIN) {
+    if (
+      targetMembership.role === MemberRole.ADMIN &&
+      isParticipatingMemberStatus(targetMembership.status)
+    ) {
       const activeAdminCount = await this.countActiveAdmins(groupId);
       if (activeAdminCount <= 1) {
         throw new BadRequestException(
@@ -817,7 +922,8 @@ export class GroupsService {
         id: targetMembership.id,
       },
       data: {
-        status: dto.status,
+        status: requestedStatus,
+        payoutPosition: null,
       },
       include: {
         user: {
@@ -836,18 +942,12 @@ export class GroupsService {
       {
         targetUserId,
         previousStatus: targetMembership.status,
-        nextStatus: dto.status,
+        nextStatus: requestedStatus,
       },
       groupId,
     );
 
-    return {
-      user: updatedMembership.user,
-      role: updatedMembership.role,
-      status: updatedMembership.status,
-      payoutPosition: updatedMembership.payoutPosition,
-      joinedAt: updatedMembership.joinedAt,
-    };
+    return this.toMemberResponse(updatedMembership);
   }
 
   async updatePayoutOrder(
@@ -864,7 +964,9 @@ export class GroupsService {
     const activeMembers = await this.prisma.equbMember.findMany({
       where: {
         groupId,
-        status: MemberStatus.ACTIVE,
+        status: {
+          in: PARTICIPATING_MEMBER_STATUSES,
+        },
       },
       include: {
         user: {
@@ -881,12 +983,12 @@ export class GroupsService {
     });
 
     if (activeMembers.length === 0) {
-      throw new BadRequestException('No active members found for this group');
+      throw new BadRequestException('No joined members found for this group');
     }
 
     if (payload.length !== activeMembers.length) {
       throw new BadRequestException(
-        'Payout order must include every active member exactly once',
+        'Payout order must include every joined member exactly once',
       );
     }
 
@@ -900,7 +1002,7 @@ export class GroupsService {
     for (const userId of payloadUserIds) {
       if (!activeUserIds.has(userId)) {
         throw new BadRequestException(
-          `Payout order contains non-active member userId=${userId}`,
+          `Payout order contains non-joined member userId=${userId}`,
         );
       }
     }
@@ -960,13 +1062,7 @@ export class GroupsService {
       groupId,
     );
 
-    return updatedMembers.map((member) => ({
-      user: member.user,
-      role: member.role,
-      status: member.status,
-      payoutPosition: member.payoutPosition,
-      joinedAt: member.joinedAt,
-    }));
+    return updatedMembers.map((member) => this.toMemberResponse(member));
   }
 
   async startRound(
@@ -990,6 +1086,7 @@ export class GroupsService {
           rules: {
             select: {
               groupId: true,
+              requiresMemberVerification: true,
             },
           },
         },
@@ -1038,10 +1135,16 @@ export class GroupsService {
         throw new BadRequestException('An active round already exists');
       }
 
+      const eligibleStatuses = group.rules.requiresMemberVerification
+        ? VERIFIED_MEMBER_STATUSES
+        : PARTICIPATING_MEMBER_STATUSES;
+
       const activeMembers = await tx.equbMember.findMany({
         where: {
           groupId,
-          status: MemberStatus.ACTIVE,
+          status: {
+            in: eligibleStatuses,
+          },
         },
         include: {
           user: {
@@ -1055,8 +1158,12 @@ export class GroupsService {
         orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
       });
 
-      if (activeMembers.length === 0) {
-        throw new BadRequestException('No active members found for this group');
+      if (activeMembers.length < 2) {
+        throw new BadRequestException(
+          group.rules.requiresMemberVerification
+            ? 'At least 2 verified members are required to start a round'
+            : 'At least 2 joined members are required to start a round',
+        );
       }
 
       const shuffledMembers = seededShuffle(activeMembers, drawSeed);
@@ -1776,9 +1883,13 @@ export class GroupsService {
       startDate: Date;
       status: GroupStatus;
     },
-    rulesetConfigured: boolean,
+    rules: {
+      groupId: string;
+      requiresMemberVerification: boolean;
+    } | null,
+    memberStatuses: MemberStatus[],
   ): GroupSummaryResponseDto {
-    const flags = this.toRulesGateFlags(rulesetConfigured);
+    const flags = this.toRulesGateFlags(rules, memberStatuses);
 
     return {
       id: group.id,
@@ -1810,9 +1921,13 @@ export class GroupsService {
       role: MemberRole;
       status: MemberStatus;
     },
-    rulesetConfigured: boolean,
+    rules: {
+      groupId: string;
+      requiresMemberVerification: boolean;
+    } | null,
+    memberStatuses: MemberStatus[],
   ): GroupDetailResponseDto {
-    const summary = this.toGroupSummaryResponse(group, rulesetConfigured);
+    const summary = this.toGroupSummaryResponse(group, rules, memberStatuses);
 
     return {
       ...summary,
@@ -1822,7 +1937,7 @@ export class GroupsService {
       timezone: group.timezone,
       membership: {
         role: membership.role,
-        status: membership.status,
+        status: normalizeMemberStatus(membership.status),
       },
     };
   }
@@ -1859,15 +1974,73 @@ export class GroupsService {
     };
   }
 
-  private toRulesGateFlags(rulesetConfigured: boolean): {
+  private toRulesGateFlags(
+    rules: {
+      groupId: string;
+      requiresMemberVerification: boolean;
+    } | null,
+    memberStatuses: MemberStatus[],
+  ): {
     rulesetConfigured: boolean;
     canInviteMembers: boolean;
     canStartCycle: boolean;
   } {
+    const rulesetConfigured = rules != null;
+    if (!rulesetConfigured) {
+      return {
+        rulesetConfigured: false,
+        canInviteMembers: false,
+        canStartCycle: false,
+      };
+    }
+
+    const eligibleCount = this.countEligibleMembers(
+      memberStatuses,
+      rules.requiresMemberVerification,
+    );
+
     return {
       rulesetConfigured,
       canInviteMembers: rulesetConfigured,
-      canStartCycle: rulesetConfigured,
+      canStartCycle: eligibleCount >= 2,
+    };
+  }
+
+  private countEligibleMembers(
+    memberStatuses: MemberStatus[],
+    requiresMemberVerification: boolean,
+  ): number {
+    const eligibleStatuses = requiresMemberVerification
+      ? VERIFIED_MEMBER_STATUSES
+      : PARTICIPATING_MEMBER_STATUSES;
+
+    return memberStatuses.filter((status) => eligibleStatuses.includes(status))
+      .length;
+  }
+
+  private toMemberResponse(member: {
+    id: string;
+    user: {
+      id: string;
+      phone: string;
+      fullName: string | null;
+    };
+    role: MemberRole;
+    status: MemberStatus;
+    payoutPosition: number | null;
+    joinedAt: Date | null;
+    verifiedAt?: Date | null;
+    verifiedByUserId?: string | null;
+  }): GroupMemberResponseDto {
+    return {
+      id: member.id,
+      user: member.user,
+      role: member.role,
+      status: normalizeMemberStatus(member.status),
+      payoutPosition: member.payoutPosition,
+      joinedAt: member.joinedAt,
+      verifiedAt: member.verifiedAt ?? null,
+      verifiedByUserId: member.verifiedByUserId ?? null,
     };
   }
 
@@ -1876,7 +2049,9 @@ export class GroupsService {
       where: {
         groupId,
         role: MemberRole.ADMIN,
-        status: MemberStatus.ACTIVE,
+        status: {
+          in: PARTICIPATING_MEMBER_STATUSES,
+        },
       },
     });
   }

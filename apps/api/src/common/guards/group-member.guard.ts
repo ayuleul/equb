@@ -5,9 +5,9 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { MemberStatus } from '@prisma/client';
 import { Request } from 'express';
 
+import { isParticipatingMemberStatus } from '../membership/member-status.util';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../types/authenticated-user.type';
 
@@ -44,8 +44,8 @@ export class GroupMemberGuard implements CanActivate {
       },
     });
 
-    if (!membership || membership.status !== MemberStatus.ACTIVE) {
-      throw new ForbiddenException('Active group membership is required');
+    if (!membership || !isParticipatingMemberStatus(membership.status)) {
+      throw new ForbiddenException('Joined group membership is required');
     }
 
     return true;

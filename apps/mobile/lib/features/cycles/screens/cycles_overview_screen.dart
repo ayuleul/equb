@@ -13,7 +13,6 @@ import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
-import '../../auth/auth_controller.dart';
 import '../../groups/group_detail_controller.dart';
 import '../current_cycle_provider.dart';
 import '../cycles_list_provider.dart';
@@ -52,31 +51,13 @@ class _CyclesOverviewBody extends ConsumerWidget {
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
     final cyclesAsync = ref.watch(cyclesListProvider(group.id));
 
-    final isAdminFromGroup = group.membership?.role == MemberRoleModel.admin;
-    final currentUser = ref.watch(currentUserProvider);
-    var isAdminFromMembers = false;
-    if (!isAdminFromGroup && currentUser != null) {
-      final members = ref.watch(groupMembersProvider(group.id)).valueOrNull;
-      if (members != null) {
-        for (final member in members) {
-          if (member.userId == currentUser.id &&
-              member.status == MemberStatusModel.active &&
-              member.role == MemberRoleModel.admin) {
-            isAdminFromMembers = true;
-            break;
-          }
-        }
-      }
-    }
-    final isAdmin = isAdminFromGroup || isAdminFromMembers;
+    final isAdmin = group.membership?.role == MemberRoleModel.admin;
 
     Future<void> onRefresh() async {
       ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
       ref.read(groupsRepositoryProvider).invalidateGroup(group.id);
-      ref.read(groupsRepositoryProvider).invalidateMembers(group.id);
       await Future.wait([
         ref.refresh(groupDetailProvider(group.id).future),
-        ref.refresh(groupMembersProvider(group.id).future),
         ref.refresh(currentCycleProvider(group.id).future),
         ref.refresh(cyclesListProvider(group.id).future),
       ]);
@@ -89,7 +70,8 @@ class _CyclesOverviewBody extends ConsumerWidget {
           if (isAdmin && !group.canStartCycle) ...[
             KitBanner(
               title: 'Rules setup required',
-              message: 'Save group rules before drawing the first winner.',
+              message:
+                  'Complete setup and ensure at least 2 eligible members before drawing the first winner.',
               tone: KitBadgeTone.warning,
               icon: Icons.rule_folder_outlined,
               ctaLabel: 'Open setup',

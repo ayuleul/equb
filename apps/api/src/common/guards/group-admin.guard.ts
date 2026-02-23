@@ -5,9 +5,10 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { MemberRole, MemberStatus } from '@prisma/client';
+import { MemberRole } from '@prisma/client';
 import { Request } from 'express';
 
+import { isParticipatingMemberStatus } from '../membership/member-status.util';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../types/authenticated-user.type';
 
@@ -48,10 +49,10 @@ export class GroupAdminGuard implements CanActivate {
 
     if (
       !membership ||
-      membership.status !== MemberStatus.ACTIVE ||
+      !isParticipatingMemberStatus(membership.status) ||
       membership.role !== MemberRole.ADMIN
     ) {
-      throw new ForbiddenException('Active admin membership is required');
+      throw new ForbiddenException('Joined admin membership is required');
     }
 
     return true;

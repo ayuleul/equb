@@ -71,7 +71,7 @@ export class GroupsController {
 
   @Get()
   @ApiOperation({
-    summary: 'List groups where current user is an active member',
+    summary: 'List groups where current user is a joined member',
   })
   @ApiOkResponse({ type: GroupSummaryResponseDto, isArray: true })
   listGroups(
@@ -121,7 +121,7 @@ export class GroupsController {
   @ApiTags('Members')
   @ApiOperation({ summary: 'Get group details for current member' })
   @ApiOkResponse({ type: GroupDetailResponseDto })
-  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiForbiddenResponse({ description: 'Joined group membership required' })
   @ApiNotFoundResponse({ description: 'Group or membership not found' })
   getGroup(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -135,7 +135,7 @@ export class GroupsController {
   @ApiTags('Rules')
   @ApiOperation({ summary: 'Get group ruleset' })
   @ApiOkResponse({ type: GroupRulesResponseDto })
-  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiForbiddenResponse({ description: 'Joined group membership required' })
   @ApiNotFoundResponse({ description: 'Group not found or rules not configured' })
   getGroupRules(
     @Param('id', new ParseUUIDPipe()) groupId: string,
@@ -149,7 +149,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Create or update group ruleset' })
   @ApiBody({ type: UpdateGroupRulesDto })
   @ApiOkResponse({ type: GroupRulesResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiBadRequestResponse({ description: 'Invalid rules configuration' })
   @ApiNotFoundResponse({ description: 'Group not found' })
   updateGroupRules(
@@ -160,12 +160,12 @@ export class GroupsController {
     return this.groupsService.updateGroupRules(currentUser, groupId, dto);
   }
 
-  @Post(':id/invite')
+  @Post(':id/invites')
   @UseGuards(GroupAdminGuard)
   @ApiOperation({ summary: 'Create invite code for group' })
   @ApiBody({ type: CreateInviteDto })
   @ApiOkResponse({ type: InviteCodeResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiBadRequestResponse({ description: 'Invalid invite constraints' })
   @ApiConflictResponse({
     description: 'Ruleset must be configured before creating invites',
@@ -179,16 +179,53 @@ export class GroupsController {
     return this.groupsService.createInvite(currentUser, groupId, dto);
   }
 
+  @Post(':id/invite')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({
+    summary: 'Create invite code for group (legacy compatibility route)',
+  })
+  @ApiBody({ type: CreateInviteDto })
+  @ApiOkResponse({ type: InviteCodeResponseDto })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiBadRequestResponse({ description: 'Invalid invite constraints' })
+  @ApiConflictResponse({
+    description: 'Ruleset must be configured before creating invites',
+  })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  createInviteLegacy(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Body() dto: CreateInviteDto,
+  ): Promise<InviteCodeResponseDto> {
+    return this.groupsService.createInvite(currentUser, groupId, dto);
+  }
+
   @Get(':id/members')
   @UseGuards(GroupMemberGuard)
   @ApiTags('Members')
   @ApiOperation({ summary: 'List members in a group' })
   @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
-  @ApiForbiddenResponse({ description: 'Active group membership required' })
+  @ApiForbiddenResponse({ description: 'Joined group membership required' })
   listMembers(
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupMemberResponseDto[]> {
     return this.groupsService.listMembers(groupId);
+  }
+
+  @Post(':id/members/:memberId/verify')
+  @UseGuards(GroupAdminGuard)
+  @ApiTags('Members')
+  @ApiOperation({ summary: 'Verify a joined member in a group' })
+  @ApiOkResponse({ type: GroupMemberResponseDto })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiBadRequestResponse({ description: 'Member cannot be verified' })
+  @ApiNotFoundResponse({ description: 'Member not found in group' })
+  verifyMember(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Param('memberId', new ParseUUIDPipe()) memberId: string,
+  ): Promise<GroupMemberResponseDto> {
+    return this.groupsService.verifyMember(currentUser, groupId, memberId);
   }
 
   @Patch(':id/members/:userId/role')
@@ -197,7 +234,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Update member role in a group' })
   @ApiBody({ type: UpdateMemberRoleDto })
   @ApiOkResponse({ type: GroupMemberResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiBadRequestResponse({ description: 'Last active admin cannot be removed' })
   @ApiNotFoundResponse({ description: 'Member not found in group' })
   updateMemberRole(
@@ -246,7 +283,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Set payout order for active members' })
   @ApiBody({ type: PayoutOrderItemDto, isArray: true })
   @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiBadRequestResponse({
     description: 'Payout positions must be contiguous and unique',
   })
@@ -268,7 +305,7 @@ export class GroupsController {
   @ApiOperation({ summary: 'Generate next cycle (sequential only)' })
   @ApiBody({ type: GenerateCyclesDto, required: false })
   @ApiOkResponse({ type: GroupCycleResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiBadRequestResponse({
     description: 'Cycle generation constraints not satisfied',
   })
@@ -289,7 +326,7 @@ export class GroupsController {
   @ApiTags('Rounds')
   @ApiOperation({ summary: 'Start a random-draw payout round and schedule' })
   @ApiOkResponse({ type: RoundStartResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiBadRequestResponse({
     description:
       'Group is inactive, round already active, or no active members',
@@ -310,7 +347,7 @@ export class GroupsController {
   @ApiTags('Rounds')
   @ApiOperation({ summary: 'Get current round payout schedule commitment' })
   @ApiOkResponse({ type: CurrentRoundScheduleResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
   @ApiNotFoundResponse({ description: 'Active round not found' })
   getCurrentRoundSchedule(
     @Param('id', new ParseUUIDPipe()) groupId: string,

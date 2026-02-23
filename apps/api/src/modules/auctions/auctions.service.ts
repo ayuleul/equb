@@ -8,11 +8,11 @@ import {
   AuctionStatus,
   CycleStatus,
   MemberRole,
-  MemberStatus,
   Prisma,
 } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { isParticipatingMemberStatus } from '../../common/membership/member-status.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { SubmitBidDto } from './dto/submit-bid.dto';
@@ -357,7 +357,8 @@ export class AuctionsService {
     });
 
     return (
-      membership?.status === MemberStatus.ACTIVE &&
+      !!membership &&
+      isParticipatingMemberStatus(membership.status) &&
       membership.role === MemberRole.ADMIN
     );
   }

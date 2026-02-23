@@ -77,6 +77,11 @@ class _FakeGroupsApi implements GroupsApi {
   }
 
   @override
+  Future<Map<String, dynamic>> verifyMember(String groupId, String memberId) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Map<String, dynamic>> upsertGroupRules(
     String groupId,
     UpdateGroupRulesRequest request,

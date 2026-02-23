@@ -36,6 +36,9 @@ const _$MemberRoleModelEnumMap = {
 
 const _$MemberStatusModelEnumMap = {
   MemberStatusModel.invited: 'INVITED',
+  MemberStatusModel.joined: 'JOINED',
+  MemberStatusModel.verified: 'VERIFIED',
+  MemberStatusModel.suspended: 'SUSPENDED',
   MemberStatusModel.active: 'ACTIVE',
   MemberStatusModel.left: 'LEFT',
   MemberStatusModel.removed: 'REMOVED',
