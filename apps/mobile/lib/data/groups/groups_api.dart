@@ -17,7 +17,7 @@ abstract class GroupsApi {
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request);
   Future<List<Map<String, dynamic>>> listMembers(String groupId);
   Future<Map<String, dynamic>> verifyMember(String groupId, String memberId);
-  Future<bool> hasActiveRound(String groupId);
+  Future<bool> hasOpenCycle(String groupId);
 }
 
 class DioGroupsApi implements GroupsApi {
@@ -86,10 +86,12 @@ class DioGroupsApi implements GroupsApi {
   }
 
   @override
-  Future<bool> hasActiveRound(String groupId) async {
+  Future<bool> hasOpenCycle(String groupId) async {
     try {
-      await _apiClient.getMap('/groups/$groupId/rounds/current/schedule');
-      return true;
+      final payload = await _apiClient.getObject(
+        '/groups/$groupId/cycles/current',
+      );
+      return payload != null;
     } on ApiError catch (error) {
       if (error.statusCode == 404) {
         return false;

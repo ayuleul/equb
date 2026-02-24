@@ -407,9 +407,9 @@ describe('Auctions (e2e)', () => {
     jest.clearAllMocks();
   });
 
-  it('scheduled recipient opens auction, members bid, and close selects highest bidder as final recipient', async () => {
+  it('admin opens auction, members bid, and close selects highest bidder as final recipient', async () => {
     const opened = await auctionsController.openAuction(
-      scheduledUser,
+      adminUser,
       '00000000-0000-0000-0000-000000000201',
     );
     expect(opened.auctionStatus).toBe(AuctionStatus.OPEN);
@@ -426,7 +426,7 @@ describe('Auctions (e2e)', () => {
     );
 
     const closed = await auctionsController.closeAuction(
-      scheduledUser,
+      adminUser,
       '00000000-0000-0000-0000-000000000201',
     );
 

@@ -4,7 +4,7 @@ class CycleAuctionStateModel {
   const CycleAuctionStateModel({
     required this.cycleId,
     required this.auctionStatus,
-    required this.scheduledPayoutUserId,
+    required this.selectedWinnerUserId,
     required this.finalPayoutUserId,
     required this.winningBidAmount,
     required this.winningBidUserId,
@@ -12,7 +12,7 @@ class CycleAuctionStateModel {
 
   final String cycleId;
   final AuctionStatusModel auctionStatus;
-  final String scheduledPayoutUserId;
+  final String selectedWinnerUserId;
   final String finalPayoutUserId;
   final int? winningBidAmount;
   final String? winningBidUserId;
@@ -21,7 +21,10 @@ class CycleAuctionStateModel {
     return CycleAuctionStateModel(
       cycleId: (json['cycleId'] as String?) ?? '',
       auctionStatus: _parseAuctionStatus(json['auctionStatus']),
-      scheduledPayoutUserId: (json['scheduledPayoutUserId'] as String?) ?? '',
+      selectedWinnerUserId:
+          (json['selectedWinnerUserId'] as String?) ??
+          (json['scheduledPayoutUserId'] as String?) ??
+          '',
       finalPayoutUserId: (json['finalPayoutUserId'] as String?) ?? '',
       winningBidAmount: _toNullableInt(json['winningBidAmount']),
       winningBidUserId: json['winningBidUserId'] as String?,

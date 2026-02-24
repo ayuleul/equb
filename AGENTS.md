@@ -45,7 +45,6 @@
 - Signed upload URLs must be scoped to authenticated user and group membership.
 - Use rate limiting on OTP endpoints.
 - Group role/status transitions must never leave a group with zero ACTIVE admins.
-- Random-draw round seeds must be stored only as encrypted ciphertext at rest; audit logs and API logs must never include plaintext seed values.
 
 ## Profile completion rules
 - Ethiopian-style legal profile names are mandatory before main app access:
@@ -61,13 +60,11 @@
 - Migrations must be deterministic and checked in.
 
 ## Group membership rules
-- Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, payout-order updates, and round/cycle generation must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
+- Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, and cycle start must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
 - Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).
-- `POST /groups` compatibility is temporarily preserved: if legacy create payload includes `contributionAmount + frequency + startDate`, backend auto-seeds `GroupRules`; otherwise group is created with rules unset.
 - Membership lifecycle is verification-based:
   - canonical statuses: `INVITED` -> `JOINED` -> `VERIFIED`
   - suspension/removal state: `SUSPENDED`
-  - legacy statuses (`ACTIVE`, `LEFT`, `REMOVED`) are temporary compatibility aliases and should be normalized in API responses/checks.
 - Membership verification metadata is tracked with:
   - `verifiedAt`
   - `verifiedByUserId`
@@ -76,19 +73,13 @@
 - Invite codes are uppercase URL-safe strings (8 chars) and must be unique.
 - Rejoin policy:
   - `INVITED` -> can activate membership by joining with invite
-  - `LEFT` (legacy) -> can rejoin with invite and become `JOINED`
-  - `SUSPENDED`/`REMOVED` -> cannot self-rejoin via invite code
-- Membership is locked while a round is active (`EqubRound.closedAt == null`); join/accept-invite/add-member paths must be blocked at API level with `409` (`GROUP_LOCKED_ACTIVE_ROUND`).
-- Invite creation is allowed during an active round, but invite acceptance remains blocked until the round ends.
+  - `SUSPENDED` -> cannot self-rejoin via invite code
+- Membership is locked while a cycle is open (`EqubCycle.status == OPEN`); join/accept-invite/add-member paths must be blocked at API level with `409` (`GROUP_LOCKED_OPEN_CYCLE`).
+- Invite creation is allowed during an open cycle, but invite acceptance remains blocked until the cycle closes.
 
 ## Cycle rules
-- Random draw schedule generation is locked to a seeded deterministic Fisher–Yates shuffle using cryptographic randomness and rejection sampling (no `Math.random`).
-- Random draw round start must persist a SHA-256 seed commitment (`drawSeedHash`) and encrypted seed ciphertext for later verification.
-- Seed reveal endpoints are admin-only and may return plaintext seed only after commitment verification (`sha256(seed) == drawSeedHash`).
-- Random-draw rounds use an immutable per-round schedule; manual payout order is not required for cycle generation in random mode.
 - Only one `OPEN` cycle is allowed per group at any time.
-- Cycle generation is sequential only: each request generates exactly one next cycle; never generate future cycles in bulk.
-- Admin cycle start endpoint is locked to `POST /groups/:id/cycles/start`; legacy cycle-generation/draw-next routes are temporary compatibility aliases only.
+- Cycle start endpoint is locked to `POST /groups/:id/cycles/start`; legacy round/draw-next/payout-order and batch-generation routes are removed.
 - Cycle lifecycle state machine is locked to:
   - `DUE -> COLLECTING -> READY_FOR_PAYOUT -> DISBURSED -> CLOSED`
 - Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.
@@ -100,16 +91,15 @@
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
   - `CUSTOM_INTERVAL` (ruleset frequency): add exactly `customIntervalDays` days (timezone-aware day boundaries)
-- Random-draw payout schedules are immutable per round after round start; cycle generation must consume schedule positions in order.
-- Round start eligibility gate is locked:
+- Cycle start eligibility gate is locked:
   - ruleset must be configured
   - eligible member count must be at least `2`
   - if `requiresMemberVerification = true`, only `VERIFIED` members are eligible
   - otherwise, joined/participating members are eligible.
-- Cycle auction impacts only the current cycle’s `finalPayoutUserId`; the scheduled recipient remains unchanged for round order continuity.
+- Cycle auction impacts only the current cycle’s `finalPayoutUserId`; no pre-generated payout order/schedule is used.
 - Auction winner selection is deterministic: highest bid wins, and ties are resolved by earliest bid `createdAt`.
 - Winner selection is explicit per cycle and must run only after cycle state reaches `READY_FOR_PAYOUT`.
-- Bid visibility rule is locked: active admins and the scheduled recipient can view all cycle bids; other active members can view only their own bid.
+- Bid visibility rule is locked: active admins can view all cycle bids; other active members can view only their own bid.
 
 ## Contribution rules
 - Contribution proof object key format is locked to:
@@ -122,7 +112,7 @@
   - verify: `PAID_SUBMITTED|SUBMITTED|LATE -> VERIFIED`
   - reject: `PAID_SUBMITTED|SUBMITTED|LATE -> REJECTED`
   - late marking: when `dueAt + graceDays` has passed and status is not `VERIFIED|CONFIRMED`, `status -> LATE`
-  - legacy confirm endpoint is compatibility-only and maps to verification behavior.
+  - confirm actions must preserve `VERIFIED` semantics for existing integrations.
 - Verified/confirmed contributions are immutable (no resubmit/update).
 - Each payment submission must create/update a `ContributionReceipt` record and append a `LedgerEntry` of type `MEMBER_PAYMENT`.
 - Each admin verification must append a `LedgerEntry` of type `CONTRIBUTION_VERIFIED` with confirmer metadata.
@@ -139,7 +129,6 @@
   - `POST /cycles/:cycleId/winner/select`
   - `POST /cycles/:cycleId/payout/disburse`
   - `POST /cycles/:cycleId/close` (optional `autoNext`)
-- Legacy payout endpoints (`POST /cycles/:cycleId/payout`, `PATCH /payouts/:id/confirm`) are compatibility paths only.
 - Payout recipient is strict: payout `toUserId` must match `EqubCycle.finalPayoutUserId` (no override in MVP).
 - Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `VERIFIED|CONFIRMED` contribution for the cycle.
 - In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
@@ -176,7 +165,7 @@
   - `PAYOUT_CONFIRMED` -> notify active group members
   - `DUE_REMINDER` -> notify active members missing `PAID_SUBMITTED|SUBMITTED|VERIFIED|CONFIRMED` contribution
   - `LOTTERY_WINNER` -> notify drawn cycle winner
-  - `LOTTERY_ANNOUNCEMENT` -> notify all other round snapshot members
+  - `LOTTERY_ANNOUNCEMENT` -> notify all other active group members
 - Lottery draw notifications are idempotent per user/event via `Notification.eventId` (for example `DRAW_<cycleId>_WINNER` and `DRAW_<cycleId>_ANNOUNCEMENT`).
 - Winner selection/disbursement notifications are idempotent per user/event via `Notification.eventId`:
   - winner: `SELECT_<cycleId>_WINNER`

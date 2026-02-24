@@ -74,7 +74,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       }
       AppSnackbars.success(
         context,
-        'Group created. Complete setup before inviting or drawing cycles.',
+        'Group created. Complete setup before inviting members or starting cycles.',
       );
       if (context.canPop()) {
         context.pop();

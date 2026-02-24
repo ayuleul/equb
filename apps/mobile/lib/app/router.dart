@@ -19,7 +19,6 @@ import '../features/groups/screens/groups_list_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
 import '../features/cycles/screens/cycle_detail_screen.dart';
 import '../features/cycles/screens/cycles_overview_screen.dart';
-import '../features/cycles/screens/generate_cycle_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/contribution_disputes_screen.dart';
 import '../features/contributions/screens/submit_contribution_screen.dart';
@@ -53,8 +52,6 @@ class AppRoutePaths {
       '/groups/$groupId/cycles/current';
   static String groupCycleDetail(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId';
-  static String groupCyclesGenerate(String groupId) =>
-      '/groups/$groupId/cycles/generate';
   static String groupCycleContributions(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId/contributions';
   static String groupCycleContributionsSubmit(String groupId, String cycleId) =>
@@ -63,7 +60,8 @@ class AppRoutePaths {
     String groupId,
     String cycleId,
     String contributionId,
-  ) => '/groups/$groupId/cycles/$cycleId/contributions/$contributionId/disputes';
+  ) =>
+      '/groups/$groupId/cycles/$cycleId/contributions/$contributionId/disputes';
   static String groupCyclePayout(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId/payout';
 }
@@ -184,13 +182,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                           },
                         ),
                         GoRoute(
-                          path: 'generate',
-                          builder: (context, state) {
-                            final groupId = state.pathParameters['id'] ?? '';
-                            return GenerateCycleScreen(groupId: groupId);
-                          },
-                        ),
-                        GoRoute(
                           path: ':cycleId',
                           builder: (context, state) {
                             final groupId = state.pathParameters['id'] ?? '';
@@ -236,7 +227,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                                     final cycleId =
                                         state.pathParameters['cycleId'] ?? '';
                                     final contributionId =
-                                        state.pathParameters['contributionId'] ??
+                                        state
+                                            .pathParameters['contributionId'] ??
                                         '';
                                     return ContributionDisputesScreen(
                                       groupId: groupId,

@@ -2,9 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  InternalServerErrorException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -35,42 +33,28 @@ import {
   isSuspendedMemberStatus,
   normalizeMemberStatus,
 } from '../../common/membership/member-status.util';
-import {
-  decryptSeed,
-  encryptSeed,
-  parseDrawSeedEncryptionKey,
-} from '../../common/crypto/seed-encryption';
-import {
-  createSecureSeed,
-  seededShuffle,
-  sha256Hex,
-} from '../../common/crypto/secure-shuffle';
+import { createSecureSeed, sha256Hex } from '../../common/crypto/secure-shuffle';
 import { DateService } from '../../common/date/date.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
-import { GenerateCyclesDto } from './dto/generate-cycles.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
-import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
 import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
-  CurrentRoundScheduleResponseDto,
   GroupCycleResponseDto,
   GroupDetailResponseDto,
   GroupJoinResponseDto,
   GroupMemberResponseDto,
   GroupRulesResponseDto,
-  RoundSeedRevealResponseDto,
-  RoundStartResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
 } from './entities/groups.entities';
 import {
-  GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
-  GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+  GROUP_LOCKED_OPEN_CYCLE_MESSAGE,
+  GROUP_LOCKED_OPEN_CYCLE_REASON_CODE,
   GROUP_RULESET_REQUIRED_MESSAGE,
   GROUP_RULESET_REQUIRED_REASON_CODE,
 } from './groups.constants';
@@ -78,8 +62,6 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class GroupsService {
-  private readonly logger = new Logger(GroupsService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
@@ -954,638 +936,24 @@ export class GroupsService {
     return this.toMemberResponse(updatedMembership);
   }
 
-  async updatePayoutOrder(
+  async startCycle(
     currentUser: AuthenticatedUser,
     groupId: string,
-    payload: PayoutOrderItemDto[],
-  ): Promise<GroupMemberResponseDto[]> {
-    await this.assertRulesetConfigured(groupId);
-
-    if (payload.length === 0) {
-      throw new BadRequestException('Payout order payload cannot be empty');
-    }
-
-    const activeMembers = await this.prisma.equbMember.findMany({
-      where: {
-        groupId,
-        status: {
-          in: PARTICIPATING_MEMBER_STATUSES,
-        },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            phone: true,
-            fullName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-
-    if (activeMembers.length === 0) {
-      throw new BadRequestException('No joined members found for this group');
-    }
-
-    if (payload.length !== activeMembers.length) {
-      throw new BadRequestException(
-        'Payout order must include every joined member exactly once',
-      );
-    }
-
-    const activeUserIds = new Set(activeMembers.map((member) => member.userId));
-    const payloadUserIds = payload.map((item) => item.userId);
-
-    if (new Set(payloadUserIds).size !== payloadUserIds.length) {
-      throw new BadRequestException('Duplicate userId in payout order payload');
-    }
-
-    for (const userId of payloadUserIds) {
-      if (!activeUserIds.has(userId)) {
-        throw new BadRequestException(
-          `Payout order contains non-joined member userId=${userId}`,
-        );
-      }
-    }
-
-    const payoutPositions = payload.map((item) => item.payoutPosition);
-    this.assertContiguousPositions(payoutPositions);
-
-    const payoutPositionByUserId = new Map(
-      payload.map((item) => [item.userId, item.payoutPosition]),
-    );
-
-    const updatedMembers = await this.prisma.$transaction(async (tx) => {
-      await Promise.all(
-        activeMembers.map((member) => {
-          const payoutPosition = payoutPositionByUserId.get(member.userId);
-
-          if (!payoutPosition) {
-            throw new BadRequestException(
-              `Missing payout position for userId=${member.userId}`,
-            );
-          }
-
-          return tx.equbMember.update({
-            where: {
-              id: member.id,
-            },
-            data: {
-              payoutPosition,
-            },
-          });
-        }),
-      );
-
-      return tx.equbMember.findMany({
-        where: {
-          groupId,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-            },
-          },
-        },
-        orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
-      });
-    });
-
-    await this.auditService.log(
-      'PAYOUT_ORDER_UPDATED',
-      currentUser.id,
-      {
-        payload,
-      },
-      groupId,
-    );
-
-    return updatedMembers.map((member) => this.toMemberResponse(member));
-  }
-
-  async startRound(
-    currentUser: AuthenticatedUser,
-    groupId: string,
-  ): Promise<RoundStartResponseDto> {
-    const drawSeed = createSecureSeed(32);
-    const drawSeedHash = sha256Hex(drawSeed);
-    const encryptedSeed = encryptSeed(
-      drawSeed,
-      this.getDrawSeedEncryptionKey(),
-    );
-    let expectedScheduleCount = 0;
-
-    const round = await this.prisma.$transaction(async (tx) => {
+  ): Promise<GroupCycleResponseDto> {
+    const cycleResult = await this.prisma.$transaction(async (tx) => {
       const group = await tx.equbGroup.findUnique({
         where: { id: groupId },
         select: {
           id: true,
           status: true,
-          rules: {
-            select: {
-              groupId: true,
-              requiresMemberVerification: true,
-            },
-          },
-        },
-      });
-
-      if (!group) {
-        throw new NotFoundException('Group not found');
-      }
-
-      if (group.status !== GroupStatus.ACTIVE) {
-        throw new BadRequestException(
-          'Rounds can only be started for active groups',
-        );
-      }
-
-      if (!group.rules) {
-        throw new ConflictException({
-          message: GROUP_RULESET_REQUIRED_MESSAGE,
-          reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
-        });
-      }
-
-      const existingOpenCycle = await tx.equbCycle.findFirst({
-        where: {
-          groupId,
-          status: CycleStatus.OPEN,
-        },
-        select: { id: true },
-      });
-
-      if (existingOpenCycle) {
-        throw new BadRequestException(
-          'Cannot start a new round while a cycle is still open',
-        );
-      }
-
-      const existingActiveRound = await tx.equbRound.findFirst({
-        where: {
-          groupId,
-          closedAt: null,
-        },
-        select: { id: true },
-      });
-
-      if (existingActiveRound) {
-        throw new BadRequestException('An active round already exists');
-      }
-
-      const eligibleStatuses = group.rules.requiresMemberVerification
-        ? VERIFIED_MEMBER_STATUSES
-        : PARTICIPATING_MEMBER_STATUSES;
-
-      const activeMembers = await tx.equbMember.findMany({
-        where: {
-          groupId,
-          status: {
-            in: eligibleStatuses,
-          },
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-            },
-          },
-        },
-        orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
-      });
-
-      if (activeMembers.length < 2) {
-        throw new BadRequestException(
-          group.rules.requiresMemberVerification
-            ? 'At least 2 verified members are required to start a round'
-            : 'At least 2 joined members are required to start a round',
-        );
-      }
-
-      const shuffledMembers = seededShuffle(activeMembers, drawSeed);
-      expectedScheduleCount = shuffledMembers.length;
-
-      const latestRound = await tx.equbRound.findFirst({
-        where: { groupId },
-        orderBy: {
-          roundNo: 'desc',
-        },
-        select: {
-          roundNo: true,
-        },
-      });
-
-      return tx.equbRound.create({
-        data: {
-          groupId,
-          roundNo: (latestRound?.roundNo ?? 0) + 1,
-          payoutMode: PayoutMode.RANDOM_DRAW,
-          drawSeedHash,
-          drawSeedCiphertext: encryptedSeed,
-          startedByUserId: currentUser.id,
-          schedules: {
-            create: shuffledMembers.map((member, index) => ({
-              position: index + 1,
-              userId: member.userId,
-            })),
-          },
-        },
-        include: {
-          schedules: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  phone: true,
-                  fullName: true,
-                },
-              },
-            },
-            orderBy: {
-              position: 'asc',
-            },
-          },
-        },
-      });
-    });
-
-    if (round.schedules.length !== expectedScheduleCount) {
-      throw new InternalServerErrorException(
-        'Round schedule count mismatch after persistence',
-      );
-    }
-
-    this.assertContiguousPositions(
-      round.schedules.map((entry) => entry.position),
-    );
-    if (
-      new Set(round.schedules.map((entry) => entry.userId)).size !==
-      expectedScheduleCount
-    ) {
-      throw new InternalServerErrorException(
-        'Round schedule contains duplicate members',
-      );
-    }
-
-    await this.auditService.log(
-      'ROUND_STARTED',
-      currentUser.id,
-      {
-        roundId: round.id,
-        roundNo: round.roundNo,
-        payoutMode: round.payoutMode,
-        drawSeedHash: round.drawSeedHash,
-      },
-      groupId,
-    );
-
-    await this.auditService.log(
-      'SCHEDULE_GENERATED',
-      currentUser.id,
-      {
-        roundId: round.id,
-        drawSeedHash: round.drawSeedHash,
-        schedule: round.schedules.map((entry) => ({
-          position: entry.position,
-          userId: entry.userId,
-        })),
-      },
-      groupId,
-    );
-
-    return {
-      id: round.id,
-      groupId: round.groupId,
-      roundNo: round.roundNo,
-      payoutMode: round.payoutMode,
-      drawSeedHash: round.drawSeedHash,
-      startedByUserId: round.startedByUserId,
-      startedAt: round.startedAt,
-      schedule: round.schedules.map((entry) => ({
-        position: entry.position,
-        userId: entry.userId,
-        user: entry.user,
-      })),
-    };
-  }
-
-  async getCurrentRoundSchedule(
-    groupId: string,
-  ): Promise<CurrentRoundScheduleResponseDto> {
-    const activeRound = await this.prisma.equbRound.findFirst({
-      where: {
-        groupId,
-        closedAt: null,
-        payoutMode: PayoutMode.RANDOM_DRAW,
-      },
-      include: {
-        schedules: {
-          include: {
-            user: {
-              select: {
-                fullName: true,
-                phone: true,
-              },
-            },
-          },
-          orderBy: {
-            position: 'asc',
-          },
-        },
-      },
-    });
-
-    if (!activeRound) {
-      throw new NotFoundException('Active round not found');
-    }
-
-    if (activeRound.schedules.length === 0) {
-      throw new BadRequestException('Active round has no payout schedule');
-    }
-
-    this.assertContiguousPositions(
-      activeRound.schedules.map((entry) => entry.position),
-    );
-
-    return {
-      roundId: activeRound.id,
-      roundNo: activeRound.roundNo,
-      drawSeedHash: activeRound.drawSeedHash,
-      schedule: activeRound.schedules.map((entry) => ({
-        position: entry.position,
-        userId: entry.userId,
-        displayName: entry.user.fullName ?? entry.user.phone,
-      })),
-    };
-  }
-
-  async revealCurrentRoundSeed(
-    currentUser: AuthenticatedUser,
-    groupId: string,
-  ): Promise<RoundSeedRevealResponseDto> {
-    const drawSeedEncryptionKey = this.getDrawSeedEncryptionKey();
-    const revealResult = await this.prisma.$transaction(async (tx) => {
-      const activeRound = await tx.equbRound.findFirst({
-        where: {
-          groupId,
-          closedAt: null,
-          payoutMode: PayoutMode.RANDOM_DRAW,
-        },
-        select: {
-          id: true,
-          roundNo: true,
-          drawSeedHash: true,
-          drawSeedCiphertext: true,
-          drawSeedRevealedAt: true,
-          drawSeedRevealedByUserId: true,
-        },
-      });
-
-      if (!activeRound) {
-        throw new NotFoundException('Active round not found');
-      }
-
-      if (!activeRound.drawSeedCiphertext) {
-        throw new BadRequestException(
-          'Seed reveal is unavailable for this round',
-        );
-      }
-
-      let seed: Buffer;
-      try {
-        seed = decryptSeed(
-          activeRound.drawSeedCiphertext,
-          drawSeedEncryptionKey,
-        );
-      } catch {
-        throw new InternalServerErrorException(
-          'Failed to decrypt the current round seed',
-        );
-      }
-
-      const seedHash = sha256Hex(seed);
-      if (seedHash !== activeRound.drawSeedHash) {
-        throw new InternalServerErrorException(
-          'Current round seed commitment verification failed',
-        );
-      }
-
-      let revealedAt = activeRound.drawSeedRevealedAt;
-      let revealedByUserId = activeRound.drawSeedRevealedByUserId;
-      let createdAuditLog = false;
-
-      if (!revealedAt || !revealedByUserId) {
-        const updatedRound = await tx.equbRound.update({
-          where: { id: activeRound.id },
-          data: {
-            drawSeedRevealedAt: new Date(),
-            drawSeedRevealedByUserId: currentUser.id,
-          },
-          select: {
-            drawSeedRevealedAt: true,
-            drawSeedRevealedByUserId: true,
-          },
-        });
-        revealedAt = updatedRound.drawSeedRevealedAt;
-        revealedByUserId = updatedRound.drawSeedRevealedByUserId;
-        createdAuditLog = true;
-      }
-
-      if (!revealedAt || !revealedByUserId) {
-        throw new InternalServerErrorException(
-          'Current round reveal metadata is incomplete',
-        );
-      }
-
-      return {
-        roundId: activeRound.id,
-        roundNo: activeRound.roundNo,
-        seedHex: seed.toString('hex'),
-        seedHash,
-        revealedAt,
-        revealedByUserId,
-        createdAuditLog,
-      };
-    });
-
-    if (revealResult.createdAuditLog) {
-      await this.auditService.log(
-        'SEED_REVEALED',
-        currentUser.id,
-        {
-          roundId: revealResult.roundId,
-          roundNo: revealResult.roundNo,
-          drawSeedHash: revealResult.seedHash,
-        },
-        groupId,
-      );
-    }
-
-    return {
-      roundId: revealResult.roundId,
-      roundNo: revealResult.roundNo,
-      seedHex: revealResult.seedHex,
-      seedHash: revealResult.seedHash,
-      revealedAt: revealResult.revealedAt,
-      revealedByUserId: revealResult.revealedByUserId,
-    };
-  }
-
-  async drawNextCycle(
-    currentUser: AuthenticatedUser,
-    groupId: string,
-  ): Promise<GroupCycleResponseDto> {
-    return this.startCycle(currentUser, groupId);
-  }
-
-  async startCycle(
-    currentUser: AuthenticatedUser,
-    groupId: string,
-  ): Promise<GroupCycleResponseDto> {
-    const group = await this.prisma.equbGroup.findUnique({
-      where: { id: groupId },
-      select: {
-        id: true,
-        status: true,
-        contributionAmount: true,
-        rules: {
-          select: {
-            contributionAmount: true,
-            requiresMemberVerification: true,
-          },
-        },
-      },
-    });
-
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (group.status !== GroupStatus.ACTIVE) {
-      throw new BadRequestException(
-        'Cycles can only be started for active groups',
-      );
-    }
-
-    if (!group.rules) {
-      throw new ConflictException({
-        message: GROUP_RULESET_REQUIRED_MESSAGE,
-        reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
-      });
-    }
-
-    const eligibleStatuses = group.rules.requiresMemberVerification
-      ? VERIFIED_MEMBER_STATUSES
-      : PARTICIPATING_MEMBER_STATUSES;
-
-    const eligibleMembers = await this.prisma.equbMember.findMany({
-      where: {
-        groupId,
-        status: {
-          in: eligibleStatuses,
-        },
-      },
-      select: {
-        userId: true,
-      },
-      distinct: ['userId'],
-    });
-
-    if (eligibleMembers.length < 2) {
-      throw new BadRequestException(
-        group.rules.requiresMemberVerification
-          ? 'At least 2 verified members are required to start a cycle'
-          : 'At least 2 joined members are required to start a cycle',
-      );
-    }
-
-    const activeRound = await this.prisma.equbRound.findFirst({
-      where: {
-        groupId,
-        closedAt: null,
-        payoutMode: PayoutMode.RANDOM_DRAW,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!activeRound) {
-      await this.startRound(currentUser, groupId);
-    }
-
-    const createdCycle = await this.generateCycles(currentUser, groupId, {});
-
-    const dueRowsCreated = await this.prisma.$transaction(async (tx) => {
-      const result = await tx.contribution.createMany({
-        data: eligibleMembers.map((member) => ({
-          groupId,
-          cycleId: createdCycle.id,
-          userId: member.userId,
-          amount: group.rules?.contributionAmount ?? group.contributionAmount,
-          status: ContributionStatus.PENDING,
-        })),
-        skipDuplicates: true,
-      });
-
-      await tx.equbCycle.update({
-        where: { id: createdCycle.id },
-        data: {
-          dueAt: createdCycle.dueDate,
-          state: CycleState.DUE,
-        },
-      });
-
-      return result.count;
-    });
-
-    await this.auditService.log(
-      'CYCLE_STARTED',
-      currentUser.id,
-      {
-        cycleId: createdCycle.id,
-        dueAt: createdCycle.dueDate,
-        dueRowsCreated,
-        eligibleMemberCount: eligibleMembers.length,
-      },
-      groupId,
-    );
-
-    return this.getCycleById(groupId, createdCycle.id);
-  }
-
-  async generateCycles(
-    currentUser: AuthenticatedUser,
-    groupId: string,
-    dto: GenerateCyclesDto,
-  ): Promise<GroupCycleResponseDto> {
-    if (dto?.count != null) {
-      this.logger.warn(
-        `Deprecated generate count payload ignored for groupId=${groupId}`,
-      );
-    }
-
-    const drawResult = await this.prisma.$transaction(async (tx) => {
-      const group = await tx.equbGroup.findUnique({
-        where: {
-          id: groupId,
-        },
-        select: {
-          id: true,
+          contributionAmount: true,
           frequency: true,
           startDate: true,
           timezone: true,
-          status: true,
           rules: {
             select: {
+              contributionAmount: true,
+              requiresMemberVerification: true,
               frequency: true,
               customIntervalDays: true,
             },
@@ -1599,7 +967,7 @@ export class GroupsService {
 
       if (group.status !== GroupStatus.ACTIVE) {
         throw new BadRequestException(
-          'Cycles can only be generated for active groups',
+          'Cycles can only be started for active groups',
         );
       }
 
@@ -1615,13 +983,45 @@ export class GroupsService {
           groupId,
           status: CycleStatus.OPEN,
         },
+        select: { id: true },
       });
 
       if (existingOpenCycle) {
-        throw new ConflictException(
-          'An open cycle already exists for this group',
+        throw new ConflictException('An open cycle already exists for this group');
+      }
+
+      const eligibleStatuses = group.rules.requiresMemberVerification
+        ? VERIFIED_MEMBER_STATUSES
+        : PARTICIPATING_MEMBER_STATUSES;
+
+      const eligibleMembers = await tx.equbMember.findMany({
+        where: {
+          groupId,
+          status: {
+            in: eligibleStatuses,
+          },
+        },
+        select: {
+          userId: true,
+          payoutPosition: true,
+          createdAt: true,
+        },
+        orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
+      });
+
+      const uniqueEligibleUserIds = [
+        ...new Set(eligibleMembers.map((member) => member.userId)),
+      ];
+
+      if (uniqueEligibleUserIds.length < 2) {
+        throw new BadRequestException(
+          group.rules.requiresMemberVerification
+            ? 'At least 2 verified members are required to start a cycle'
+            : 'At least 2 joined members are required to start a cycle',
         );
       }
+
+      const defaultRecipientUserId = uniqueEligibleUserIds[0];
 
       const activeRound = await tx.equbRound.findFirst({
         where: {
@@ -1629,62 +1029,41 @@ export class GroupsService {
           closedAt: null,
           payoutMode: PayoutMode.RANDOM_DRAW,
         },
-        include: {
-          schedules: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  phone: true,
-                  fullName: true,
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                },
-              },
-            },
-            orderBy: {
-              position: 'asc',
-            },
-          },
-        },
-      });
-
-      if (!activeRound) {
-        throw new BadRequestException(
-          'Active round is required before generating cycles',
-        );
-      }
-
-      if (activeRound.schedules.length === 0) {
-        throw new BadRequestException('Active round has no payout schedule');
-      }
-
-      this.assertContiguousPositions(
-        activeRound.schedules.map((entry) => entry.position),
-      );
-
-      const latestRoundCycle = await tx.equbCycle.findFirst({
-        where: {
-          roundId: activeRound.id,
+        select: {
+          id: true,
         },
         orderBy: {
-          cycleNo: 'desc',
+          roundNo: 'desc',
         },
       });
 
-      const nextCycleNo = (latestRoundCycle?.cycleNo ?? 0) + 1;
-      if (nextCycleNo > activeRound.schedules.length) {
-        await tx.equbRound.update({
-          where: { id: activeRound.id },
-          data: { closedAt: new Date() },
-        });
-        throw new ConflictException('Round completed');
-      }
+      const roundId =
+        activeRound?.id ??
+        (
+          await tx.equbRound.create({
+            data: {
+              groupId,
+              roundNo:
+                ((await tx.equbRound.findFirst({
+                  where: { groupId },
+                  orderBy: { roundNo: 'desc' },
+                  select: { roundNo: true },
+                }))?.roundNo ?? 0) + 1,
+              payoutMode: PayoutMode.RANDOM_DRAW,
+              drawSeedHash: sha256Hex(createSecureSeed(32)),
+              startedByUserId: currentUser.id,
+            },
+            select: { id: true },
+          })
+        ).id;
 
       const latestCycle = await tx.equbCycle.findFirst({
         where: { groupId },
         orderBy: [{ dueDate: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          cycleNo: true,
+          dueDate: true,
+        },
       });
 
       const dueDate = latestCycle
@@ -1701,79 +1080,61 @@ export class GroupsService {
             )
         : this.dateService.normalizeGroupDate(group.startDate, group.timezone);
 
-      const scheduledEntry = activeRound.schedules.find(
-        (entry) => entry.position === nextCycleNo,
-      );
-      if (!scheduledEntry) {
-        throw new BadRequestException(
-          `No scheduled payout member found for position=${nextCycleNo}`,
-        );
-      }
-
       const createdCycle = await tx.equbCycle.create({
         data: {
           groupId,
-          roundId: activeRound.id,
-          cycleNo: nextCycleNo,
+          roundId,
+          cycleNo: (latestCycle?.cycleNo ?? 0) + 1,
           dueDate,
           dueAt: dueDate,
           state: CycleState.DUE,
-          scheduledPayoutUserId: scheduledEntry.userId,
-          finalPayoutUserId: scheduledEntry.userId,
+          scheduledPayoutUserId: defaultRecipientUserId,
+          finalPayoutUserId: defaultRecipientUserId,
+          selectedWinnerUserId: null,
+          selectionMethod: null,
+          selectionMetadata: Prisma.JsonNull,
           auctionStatus: AuctionStatus.NONE,
           status: CycleStatus.OPEN,
           createdByUserId: currentUser.id,
         },
-        include: {
-          scheduledPayoutUser: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-            },
-          },
-          finalPayoutUser: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-            },
-          },
-          selectedWinnerUser: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-            },
-          },
-          winningBidUser: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-            },
-          },
+        select: {
+          id: true,
+          dueDate: true,
         },
       });
 
-      return createdCycle;
+      const dueRows = await tx.contribution.createMany({
+        data: uniqueEligibleUserIds.map((userId) => ({
+          groupId,
+          cycleId: createdCycle.id,
+          userId,
+          amount: group.rules?.contributionAmount ?? group.contributionAmount,
+          status: ContributionStatus.PENDING,
+        })),
+        skipDuplicates: true,
+      });
+
+      return {
+        cycleId: createdCycle.id,
+        dueAt: createdCycle.dueDate,
+        dueRowsCreated: dueRows.count,
+        eligibleMemberCount: uniqueEligibleUserIds.length,
+      };
     });
 
     await this.auditService.log(
-      'CYCLE_GENERATED',
+      'CYCLE_STARTED',
       currentUser.id,
       {
-        roundId: drawResult.roundId,
-        cycleNo: drawResult.cycleNo,
-        dueDate: drawResult.dueDate,
-        scheduledPayoutUserId: drawResult.scheduledPayoutUserId,
-        finalPayoutUserId: drawResult.finalPayoutUserId,
-        status: drawResult.status,
+        cycleId: cycleResult.cycleId,
+        dueAt: cycleResult.dueAt,
+        dueRowsCreated: cycleResult.dueRowsCreated,
+        eligibleMemberCount: cycleResult.eligibleMemberCount,
       },
       groupId,
     );
 
-    return this.toCycleResponse(drawResult);
+    return this.getCycleById(groupId, cycleResult.cycleId);
   }
 
   async getCurrentCycle(
@@ -2104,69 +1465,29 @@ export class GroupsService {
   private async assertGroupMembershipOpen(
     groupId: string,
     prismaClient:
-      | Pick<Prisma.TransactionClient, 'equbRound'>
-      | Pick<PrismaService, 'equbRound'> = this.prisma,
+      | Pick<Prisma.TransactionClient, 'equbCycle'>
+      | Pick<PrismaService, 'equbCycle'> = this.prisma,
   ): Promise<void> {
-    const activeRound = await prismaClient.equbRound.findFirst({
+    const openCycle = await prismaClient.equbCycle.findFirst({
       where: {
         groupId,
-        closedAt: null,
+        status: CycleStatus.OPEN,
       },
       select: {
         id: true,
       },
     });
 
-    if (!activeRound) {
+    if (!openCycle) {
       return;
     }
 
     throw new ConflictException({
-      message: GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
-      reasonCode: GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
-      roundId: activeRound.id,
-      roundStatus: 'ACTIVE',
+      message: GROUP_LOCKED_OPEN_CYCLE_MESSAGE,
+      reasonCode: GROUP_LOCKED_OPEN_CYCLE_REASON_CODE,
+      cycleId: openCycle.id,
+      cycleStatus: CycleStatus.OPEN,
     });
-  }
-
-  private async assertRulesetConfigured(
-    groupId: string,
-    prismaClient:
-      | Pick<Prisma.TransactionClient, 'groupRules'>
-      | Pick<PrismaService, 'groupRules'> = this.prisma,
-  ): Promise<void> {
-    const rules = await prismaClient.groupRules.findUnique({
-      where: { groupId },
-      select: {
-        groupId: true,
-      },
-    });
-
-    if (rules) {
-      return;
-    }
-
-    throw new ConflictException({
-      message: GROUP_RULESET_REQUIRED_MESSAGE,
-      reasonCode: GROUP_RULESET_REQUIRED_REASON_CODE,
-    });
-  }
-
-  private assertContiguousPositions(positions: number[]): void {
-    const sorted = [...positions].sort((a, b) => a - b);
-
-    if (new Set(sorted).size !== sorted.length) {
-      throw new BadRequestException('Payout positions must be unique');
-    }
-
-    for (let index = 0; index < sorted.length; index += 1) {
-      const expectedPosition = index + 1;
-      if (sorted[index] !== expectedPosition) {
-        throw new BadRequestException(
-          'Payout positions must be contiguous from 1..N',
-        );
-      }
-    }
   }
 
   private toCycleResponse(cycle: {
@@ -2238,27 +1559,6 @@ export class GroupsService {
       winningBidUser: cycle.winningBidUser,
       payoutUser: cycle.finalPayoutUser,
     };
-  }
-
-  private getDrawSeedEncryptionKey(): Buffer {
-    const rawKey = this.configService.get<string>('DRAW_SEED_ENC_KEY')?.trim();
-    if (!rawKey) {
-      throw new InternalServerErrorException(
-        'DRAW_SEED_ENC_KEY is not configured',
-      );
-    }
-
-    try {
-      return parseDrawSeedEncryptionKey(rawKey);
-    } catch (error) {
-      this.logger.error(
-        'Invalid DRAW_SEED_ENC_KEY configuration',
-        error instanceof Error ? error.stack : undefined,
-      );
-      throw new InternalServerErrorException(
-        'DRAW_SEED_ENC_KEY is invalid; expected 32-byte hex/base64',
-      );
-    }
   }
 
   private generateInviteCode(): string {

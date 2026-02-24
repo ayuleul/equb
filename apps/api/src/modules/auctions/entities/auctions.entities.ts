@@ -43,7 +43,7 @@ export class CycleAuctionStateResponseDto {
   auctionStatus!: AuctionStatus;
 
   @ApiProperty()
-  scheduledPayoutUserId!: string;
+  selectedWinnerUserId!: string;
 
   @ApiProperty()
   finalPayoutUserId!: string;

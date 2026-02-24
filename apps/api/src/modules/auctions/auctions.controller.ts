@@ -41,8 +41,7 @@ export class AuctionsController {
   @ApiOperation({ summary: 'Open auction for the current cycle turn' })
   @ApiOkResponse({ type: CycleAuctionStateResponseDto })
   @ApiForbiddenResponse({
-    description:
-      'Only scheduled recipient or active admin can open auction for the cycle',
+    description: 'Only active admin can open auction for the cycle',
   })
   @ApiBadRequestResponse({
     description: 'Cycle is closed or auction is already opened/closed',
@@ -59,8 +58,7 @@ export class AuctionsController {
   @ApiOperation({ summary: 'Close auction and select final cycle recipient' })
   @ApiOkResponse({ type: CycleAuctionStateResponseDto })
   @ApiForbiddenResponse({
-    description:
-      'Only scheduled recipient or active admin can close auction for the cycle',
+    description: 'Only active admin can close auction for the cycle',
   })
   @ApiBadRequestResponse({
     description: 'Cycle is closed or auction is not open',
@@ -95,7 +93,7 @@ export class AuctionsController {
   @ApiTags('Bids')
   @ApiOperation({
     summary:
-      'List bids for a cycle. Admin/scheduled recipient can see all bids; other members see only their own bid.',
+      'List bids for a cycle. Active admins can see all bids; other members see only their own bid.',
   })
   @ApiOkResponse({ type: CycleBidResponseDto, isArray: true })
   @ApiNotFoundResponse({ description: 'Cycle not found' })

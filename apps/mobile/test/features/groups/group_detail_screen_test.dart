@@ -84,10 +84,6 @@ Widget _buildTestApp() {
         builder: (context, state) => const Scaffold(body: Text('Invite')),
       ),
       GoRoute(
-        path: '/groups/:id/cycles/generate',
-        builder: (context, state) => const Scaffold(body: Text('Generate')),
-      ),
-      GoRoute(
         path: '/groups/:id/cycles/:cycleId',
         builder: (context, state) => const Scaffold(body: Text('Cycle detail')),
       ),
@@ -216,7 +212,7 @@ class _FakeGroupsApi implements GroupsApi {
   }
 
   @override
-  Future<bool> hasActiveRound(String groupId) async {
+  Future<bool> hasOpenCycle(String groupId) async {
     return true;
   }
 
@@ -277,7 +273,7 @@ class _FakeGroupsApi implements GroupsApi {
 
 class _FakeCyclesApi implements CyclesApi {
   @override
-  Future<Map<String, dynamic>> generateCycles(String groupId) async {
+  Future<Map<String, dynamic>> startCycle(String groupId) async {
     return _cycle(groupId, 'cycle-generated');
   }
 
@@ -294,19 +290,6 @@ class _FakeCyclesApi implements CyclesApi {
   @override
   Future<List<Map<String, dynamic>>> listCycles(String groupId) async {
     return [_cycle(groupId, 'cycle-1')];
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> setPayoutOrder(
-    String groupId,
-    List<Map<String, dynamic>> payload,
-  ) async {
-    return <Map<String, dynamic>>[];
-  }
-
-  @override
-  Future<Map<String, dynamic>> startRound(String groupId) async {
-    return <String, dynamic>{'success': true};
   }
 
   Map<String, dynamic> _cycle(String groupId, String cycleId) {

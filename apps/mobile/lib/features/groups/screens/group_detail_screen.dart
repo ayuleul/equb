@@ -23,7 +23,7 @@ import '../../auth/auth_controller.dart';
 import '../../contributions/cycle_contributions_provider.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
-import '../../cycles/generate_cycle_controller.dart';
+import '../../cycles/start_cycle_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
 import '../../rounds/widgets/lottery_reveal_animation.dart';
 import '../group_detail_controller.dart';
@@ -107,7 +107,7 @@ class _GroupRoundHub extends ConsumerWidget {
             KitBanner(
               title: 'Complete group setup',
               message:
-                  'Rules must be saved before you can invite members or draw the first cycle.',
+                  'Rules must be saved before you can invite members or start the first cycle.',
               tone: KitBadgeTone.warning,
               icon: Icons.rule_folder_outlined,
               ctaLabel: 'Open setup',
@@ -163,14 +163,14 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
   bool _isDrawing = false;
   String? _highlightCycleId;
 
-  Future<void> _drawWinner() async {
+  Future<void> _startCycle() async {
     if (_isDrawing) {
       return;
     }
     if (!widget.group.canStartCycle) {
       AppSnackbars.error(
         context,
-        'Complete setup and ensure at least 2 eligible members before drawing the first winner.',
+        'Complete setup and ensure at least 2 eligible members before starting a cycle.',
       );
       return;
     }
@@ -178,11 +178,11 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
     setState(() => _isDrawing = true);
 
     final startedAt = DateTime.now();
-    final drawController = ref.read(
-      generateCycleControllerProvider(widget.group.id).notifier,
+    final startController = ref.read(
+      startCycleControllerProvider(widget.group.id).notifier,
     );
 
-    final created = await drawController.generateNextCycle();
+    final created = await startController.startCycle();
 
     final elapsed = DateTime.now().difference(startedAt);
     const minimumAnimation = Duration(milliseconds: 1200);
@@ -199,18 +199,13 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
     if (created == null) {
       final errorMessage =
           ref
-              .read(generateCycleControllerProvider(widget.group.id))
+              .read(startCycleControllerProvider(widget.group.id))
               .errorMessage ??
           'Could not start a cycle right now.';
       AppSnackbars.error(context, errorMessage);
       return;
     }
     final createdCycle = created;
-
-    final winnerName = _cycleUserLabel(
-      createdCycle.finalPayoutUser,
-      createdCycle.finalPayoutUserId ?? createdCycle.payoutUserId,
-    );
 
     setState(() => _highlightCycleId = createdCycle.id);
     Timer(const Duration(milliseconds: 1200), () {
@@ -220,10 +215,7 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
       setState(() => _highlightCycleId = null);
     });
 
-    AppSnackbars.success(
-      context,
-      '${LotteryCopy.drawSuccessPrefix} $winnerName won this turn!',
-    );
+    AppSnackbars.success(context, 'Cycle started. Contributions are now due.');
   }
 
   @override
@@ -270,19 +262,19 @@ class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
                 else
                   KitPrimaryButton(
                     label: !widget.isAdmin
-                        ? 'Waiting for admin draw'
+                        ? 'Waiting for admin start'
                         : widget.group.canStartCycle
                         ? LotteryCopy.drawWinnerButton
-                        : 'Complete setup to draw',
+                        : 'Complete setup to start',
                     icon: !widget.isAdmin
                         ? Icons.hourglass_top
                         : widget.group.canStartCycle
-                        ? Icons.casino_outlined
+                        ? Icons.play_arrow_rounded
                         : Icons.rule_folder_outlined,
                     onPressed: !widget.isAdmin
                         ? null
                         : widget.group.canStartCycle
-                        ? _drawWinner
+                        ? _startCycle
                         : () => context.push(
                             AppRoutePaths.groupSetup(widget.group.id),
                           ),
@@ -793,10 +785,10 @@ _PrimaryAction _resolvePrimaryAction({
   );
   final payoutRoute = AppRoutePaths.groupCyclePayout(groupId, cycle.id);
   final auctionStatus = cycle.auctionStatus ?? AuctionStatusModel.none;
-  final drawnWinnerUserId = cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
-  final isDrawnWinner =
-      currentUserId != null && currentUserId == drawnWinnerUserId;
-  final canManageAuction = isAdmin || isDrawnWinner;
+  final selectedWinnerUserId = cycle.finalPayoutUserId ?? cycle.payoutUserId;
+  final isSelectedWinner =
+      currentUserId != null && currentUserId == selectedWinnerUserId;
+  final canManageAuction = isAdmin;
 
   if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
     return _PrimaryAction(
@@ -829,7 +821,7 @@ _PrimaryAction _resolvePrimaryAction({
     );
   }
 
-  if (isDrawnWinner && auctionStatus != AuctionStatusModel.open) {
+  if (isSelectedWinner && auctionStatus != AuctionStatusModel.open && isAdmin) {
     return _PrimaryAction(
       label: 'Auction my turn',
       icon: Icons.gavel_rounded,
@@ -913,13 +905,6 @@ Future<void> _showAdminActions({
         label: 'Invite members',
         icon: Icons.person_add_alt_1_rounded,
         onPressed: () => context.push(AppRoutePaths.groupInvite(groupId)),
-      ),
-    if (cycle == null && canStartCycle)
-      KitActionSheetItem(
-        label: LotteryCopy.drawWinnerButton,
-        icon: Icons.casino_outlined,
-        onPressed: () =>
-            context.push(AppRoutePaths.groupCyclesGenerate(groupId)),
       ),
     if (cycle != null &&
         (cycle.auctionStatus ?? AuctionStatusModel.none) ==

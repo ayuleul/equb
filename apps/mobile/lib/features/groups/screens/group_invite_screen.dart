@@ -19,7 +19,7 @@ final groupInviteLockStatusProvider = FutureProvider.family<bool, String>((
   groupId,
 ) async {
   final repository = ref.watch(groupsRepositoryProvider);
-  return repository.hasActiveRound(groupId);
+  return repository.hasOpenCycle(groupId);
 });
 
 class GroupInviteScreen extends ConsumerWidget {
@@ -74,7 +74,7 @@ class GroupInviteScreen extends ConsumerWidget {
                   context.push(AppRoutePaths.groupSetup(groupId)),
             );
           }
-          final activeRoundAsync = ref.watch(
+          final openCycleAsync = ref.watch(
             groupInviteLockStatusProvider(groupId),
           );
 
@@ -82,11 +82,11 @@ class GroupInviteScreen extends ConsumerWidget {
 
           return ListView(
             children: [
-              if (activeRoundAsync.valueOrNull == true) ...[
+              if (openCycleAsync.valueOrNull == true) ...[
                 const KitBanner(
-                  title: 'Round in progress',
+                  title: 'Cycle in progress',
                   message:
-                      'Invites can be sent, but people can’t join until the current round ends.',
+                      'Invites can be sent, but people can’t join until the current cycle closes.',
                   tone: KitBadgeTone.info,
                   icon: Icons.info_outline_rounded,
                 ),

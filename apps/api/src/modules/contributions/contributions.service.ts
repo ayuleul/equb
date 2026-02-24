@@ -1343,7 +1343,32 @@ export class ContributionsService {
     allVerified: boolean;
     readyForPayout: boolean;
   }> {
-    const cycle = await tx.equbCycle.findUnique({
+    const cycleDelegate = (
+      tx as Prisma.TransactionClient & {
+        equbCycle?: {
+          findUnique?: (
+            args: Prisma.EqubCycleFindUniqueArgs,
+          ) => Promise<{
+            id: string;
+            status: CycleStatus;
+            state: CycleState | null;
+            group?: { rules?: { strictCollection: boolean } | null } | null;
+            contributions?: Array<{ status: ContributionStatus }>;
+          } | null>;
+          update?: (args: Prisma.EqubCycleUpdateArgs) => Promise<unknown>;
+        };
+      }
+    ).equbCycle;
+
+    if (typeof cycleDelegate?.findUnique !== 'function') {
+      return {
+        strictCollection: false,
+        allVerified: false,
+        readyForPayout: false,
+      };
+    }
+
+    const cycle = await cycleDelegate.findUnique({
       where: { id: cycleId },
       select: {
         id: true,
@@ -1370,13 +1395,14 @@ export class ContributionsService {
       throw new NotFoundException('Cycle not found');
     }
 
-    const strictCollection = cycle.group.rules?.strictCollection ?? false;
+    const contributionItems = cycle.contributions ?? [];
+    const strictCollection = cycle.group?.rules?.strictCollection ?? false;
     const allVerified =
-      cycle.contributions.length > 0 &&
-      cycle.contributions.every((item) =>
+      contributionItems.length > 0 &&
+      contributionItems.every((item) =>
         this.isContributionVerified(item.status),
       );
-    const anyVerified = cycle.contributions.some((item) =>
+    const anyVerified = contributionItems.some((item) =>
       this.isContributionVerified(item.status),
     );
 
@@ -1391,7 +1417,7 @@ export class ContributionsService {
       cycle.state !== CycleState.CLOSED &&
       cycle.state !== targetState
     ) {
-      await tx.equbCycle.update({
+      await cycleDelegate.update?.({
         where: { id: cycle.id },
         data: {
           state: targetState,

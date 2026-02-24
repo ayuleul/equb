@@ -409,7 +409,7 @@ describe('Contributions (e2e)', () => {
       },
     );
 
-    expect(response.status).toBe(ContributionStatus.SUBMITTED);
+    expect(response.status).toBe(ContributionStatus.PAID_SUBMITTED);
     expect(response.proofFileKey).toBe(proofFileKey);
   });
 
@@ -429,7 +429,7 @@ describe('Contributions (e2e)', () => {
       {},
     );
 
-    expect(confirmed.status).toBe(ContributionStatus.CONFIRMED);
+    expect(confirmed.status).toBe(ContributionStatus.VERIFIED);
     expect(confirmed.confirmedAt).not.toBeNull();
   });
 
@@ -463,7 +463,7 @@ describe('Contributions (e2e)', () => {
       },
     );
 
-    expect(resubmitted.status).toBe(ContributionStatus.SUBMITTED);
+    expect(resubmitted.status).toBe(ContributionStatus.PAID_SUBMITTED);
     expect(resubmitted.rejectReason).toBeNull();
   });
 });

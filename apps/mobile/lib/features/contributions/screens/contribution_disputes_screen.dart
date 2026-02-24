@@ -43,7 +43,9 @@ class _ContributionDisputesScreenState
 
     Future<void> reload() async {
       ref.invalidate(contributionDisputesProvider(widget.contributionId));
-      await ref.read(contributionDisputesProvider(widget.contributionId).future);
+      await ref.read(
+        contributionDisputesProvider(widget.contributionId).future,
+      );
     }
 
     return KitScaffold(
@@ -52,8 +54,9 @@ class _ContributionDisputesScreenState
         loading: () => const LoadingView(message: 'Loading disputes...'),
         error: (error, _) => ErrorView(
           message: mapFriendlyError(error),
-          onRetry: () =>
-              ref.invalidate(contributionDisputesProvider(widget.contributionId)),
+          onRetry: () => ref.invalidate(
+            contributionDisputesProvider(widget.contributionId),
+          ),
         ),
         data: (disputes) {
           final hasOpen = disputes.any(
@@ -85,9 +88,7 @@ class _ContributionDisputesScreenState
                 const SizedBox(height: AppSpacing.md),
                 if (!hasOpen)
                   KitPrimaryButton(
-                    onPressed: _isBusy
-                        ? null
-                        : _openDispute,
+                    onPressed: _isBusy ? null : _openDispute,
                     icon: Icons.report_gmailerrorred_outlined,
                     label: _isBusy ? 'Submitting...' : 'Report mismatch',
                   )
@@ -145,10 +146,7 @@ class _ContributionDisputesScreenState
     try {
       await ref
           .read(contributionsRepositoryProvider)
-          .createContributionDispute(
-            widget.contributionId,
-            reason: reason,
-          );
+          .createContributionDispute(widget.contributionId, reason: reason);
       if (!mounted) {
         return;
       }
@@ -214,11 +212,9 @@ class _ContributionDisputesScreenState
 
     setState(() => _isBusy = true);
     try {
-      await ref.read(contributionsRepositoryProvider).resolveDispute(
-            disputeId,
-            outcome: outcome,
-            note: null,
-          );
+      await ref
+          .read(contributionsRepositoryProvider)
+          .resolveDispute(disputeId, outcome: outcome, note: null);
       if (!mounted) {
         return;
       }
@@ -292,7 +288,8 @@ class _DisputeCard extends StatelessWidget {
             Text('Resolution note: ${dispute.resolutionNote}'),
           if (isAdmin &&
               (dispute.status == ContributionDisputeStatusModel.open ||
-                  dispute.status == ContributionDisputeStatusModel.mediating)) ...[
+                  dispute.status ==
+                      ContributionDisputeStatusModel.mediating)) ...[
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,

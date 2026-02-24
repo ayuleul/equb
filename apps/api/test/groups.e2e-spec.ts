@@ -12,8 +12,8 @@ import { PrismaService } from '../src/common/prisma/prisma.service';
 import { AuthenticatedUser } from '../src/common/types/authenticated-user.type';
 import { GroupsController } from '../src/modules/groups/groups.controller';
 import {
-  GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
-  GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
+  GROUP_LOCKED_OPEN_CYCLE_MESSAGE,
+  GROUP_LOCKED_OPEN_CYCLE_REASON_CODE,
   GROUP_RULESET_REQUIRED_MESSAGE,
   GROUP_RULESET_REQUIRED_REASON_CODE,
 } from '../src/modules/groups/groups.constants';
@@ -369,14 +369,18 @@ describe('Groups (e2e)', () => {
           where: {
             groupId: string;
             role: MemberRole;
-            status: MemberStatus;
+            status: MemberStatus | { in: MemberStatus[] };
           };
         }) => {
+          const allowedStatuses =
+            typeof where.status === 'object' && where.status != null && 'in' in where.status
+              ? where.status.in
+              : [where.status as MemberStatus];
           return members.filter(
             (item) =>
               item.groupId === where.groupId &&
               item.role === where.role &&
-              item.status === where.status,
+              allowedStatuses.includes(item.status),
           ).length;
         },
       ),
@@ -492,6 +496,38 @@ describe('Groups (e2e)', () => {
 
           invite.usedCount += data.usedCount.increment;
           return { count: 1 };
+        },
+      ),
+    },
+    equbCycle: {
+      findFirst: jest.fn(
+        ({
+          where,
+          select,
+        }: {
+          where: { groupId: string; status?: string };
+          select?: { id?: boolean; status?: boolean };
+        }) => {
+          const activeRound =
+            rounds.find(
+              (item) => item.groupId === where.groupId && item.closedAt === null,
+            ) ?? null;
+          if (!activeRound) {
+            return null;
+          }
+
+          if (!select) {
+            return {
+              id: activeRound.id,
+              groupId: activeRound.groupId,
+              status: 'OPEN',
+            };
+          }
+
+          return {
+            ...(select.id ? { id: activeRound.id } : {}),
+            ...(select.status ? { status: 'OPEN' } : {}),
+          };
         },
       ),
     },
@@ -648,15 +684,15 @@ describe('Groups (e2e)', () => {
       if (error instanceof ConflictException) {
         expect(error.getStatus()).toBe(409);
         expect(error.getResponse()).toMatchObject({
-          message: GROUP_LOCKED_ACTIVE_ROUND_MESSAGE,
-          reasonCode: GROUP_LOCKED_ACTIVE_ROUND_REASON_CODE,
-          roundStatus: 'ACTIVE',
+          message: GROUP_LOCKED_OPEN_CYCLE_MESSAGE,
+          reasonCode: GROUP_LOCKED_OPEN_CYCLE_REASON_CODE,
+          cycleStatus: 'OPEN',
         });
       }
     }
   }
 
-  it('create group sets creator as ACTIVE ADMIN member', async () => {
+  it('create group sets creator as VERIFIED ADMIN member', async () => {
     const group = await groupsController.createGroup(actorAdmin, {
       name: 'Family Equb',
       contributionAmount: 500,
@@ -666,17 +702,17 @@ describe('Groups (e2e)', () => {
     });
 
     expect(group.membership.role).toBe(MemberRole.ADMIN);
-    expect(group.membership.status).toBe(MemberStatus.ACTIVE);
+    expect(group.membership.status).toBe(MemberStatus.VERIFIED);
 
     const creatorMembership = members.find(
       (item) => item.groupId === group.id && item.userId === actorAdmin.id,
     );
 
     expect(creatorMembership?.role).toBe(MemberRole.ADMIN);
-    expect(creatorMembership?.status).toBe(MemberStatus.ACTIVE);
+    expect(creatorMembership?.status).toBe(MemberStatus.VERIFIED);
     expect(group.rulesetConfigured).toBe(true);
     expect(group.canInviteMembers).toBe(true);
-    expect(group.canStartCycle).toBe(true);
+    expect(group.canStartCycle).toBe(false);
   });
 
   it('blocks invite creation until ruleset is configured', async () => {
@@ -704,7 +740,7 @@ describe('Groups (e2e)', () => {
     }
   });
 
-  it('create invite and join with code sets joining member ACTIVE', async () => {
+  it('create invite and join with code sets joining member JOINED', async () => {
     const group = await groupsController.createGroup(actorAdmin, {
       name: 'Office Equb',
       contributionAmount: 750,
@@ -722,13 +758,13 @@ describe('Groups (e2e)', () => {
     });
 
     expect(joinResult.groupId).toBe(group.id);
-    expect(joinResult.status).toBe(MemberStatus.ACTIVE);
+    expect(joinResult.status).toBe(MemberStatus.JOINED);
 
     const joinedMembership = members.find(
       (item) => item.groupId === group.id && item.userId === actorMember.id,
     );
 
-    expect(joinedMembership?.status).toBe(MemberStatus.ACTIVE);
+    expect(joinedMembership?.status).toBe(MemberStatus.JOINED);
   });
 
   it('role updates work and last-admin protection is enforced', async () => {
@@ -834,6 +870,6 @@ describe('Groups (e2e)', () => {
     });
 
     expect(joinResult.groupId).toBe(group.id);
-    expect(joinResult.status).toBe(MemberStatus.ACTIVE);
+    expect(joinResult.status).toBe(MemberStatus.JOINED);
   });
 });

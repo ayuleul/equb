@@ -52,7 +52,6 @@ export class AuctionsService {
         groupId: true,
         status: true,
         auctionStatus: true,
-        scheduledPayoutUserId: true,
         finalPayoutUserId: true,
         winningBidAmount: true,
         winningBidUserId: true,
@@ -74,9 +73,9 @@ export class AuctionsService {
     }
 
     const isAdmin = await this.isActiveAdmin(cycle.groupId, currentUser.id);
-    if (currentUser.id !== cycle.scheduledPayoutUserId && !isAdmin) {
+    if (!isAdmin) {
       throw new ForbiddenException(
-        'Only the scheduled recipient or an admin can open auction',
+        'Only active admins can open auction',
       );
     }
 
@@ -96,7 +95,6 @@ export class AuctionsService {
         select: {
           id: true,
           auctionStatus: true,
-          scheduledPayoutUserId: true,
           finalPayoutUserId: true,
           winningBidAmount: true,
           winningBidUserId: true,
@@ -109,7 +107,7 @@ export class AuctionsService {
       currentUser.id,
       {
         cycleId: cycle.id,
-        scheduledPayoutUserId: cycle.scheduledPayoutUserId,
+        finalPayoutUserId: cycle.finalPayoutUserId,
       },
       cycle.groupId,
     );
@@ -129,6 +127,7 @@ export class AuctionsService {
         groupId: true,
         status: true,
         auctionStatus: true,
+        finalPayoutUserId: true,
       },
     });
 
@@ -193,7 +192,6 @@ export class AuctionsService {
       select: {
         id: true,
         groupId: true,
-        scheduledPayoutUserId: true,
       },
     });
 
@@ -202,8 +200,7 @@ export class AuctionsService {
     }
 
     const isAdmin = await this.isActiveAdmin(cycle.groupId, currentUser.id);
-    const canSeeAllBids =
-      isAdmin || currentUser.id === cycle.scheduledPayoutUserId;
+    const canSeeAllBids = isAdmin;
 
     const bids = await this.prisma.cycleBid.findMany({
       where: canSeeAllBids
@@ -235,7 +232,7 @@ export class AuctionsService {
         groupId: true,
         status: true,
         auctionStatus: true,
-        scheduledPayoutUserId: true,
+        finalPayoutUserId: true,
       },
     });
 
@@ -254,9 +251,9 @@ export class AuctionsService {
     }
 
     const isAdmin = await this.isActiveAdmin(cycle.groupId, currentUser.id);
-    if (currentUser.id !== cycle.scheduledPayoutUserId && !isAdmin) {
+    if (!isAdmin) {
       throw new ForbiddenException(
-        'Only the scheduled recipient or an admin can close auction',
+        'Only active admins can close auction',
       );
     }
 
@@ -282,12 +279,10 @@ export class AuctionsService {
         const updatedCycle = await tx.equbCycle.update({
           where: { id: cycle.id },
           data: {
-            finalPayoutUserId: winner
-              ? winner.userId
-              : cycle.scheduledPayoutUserId,
+            finalPayoutUserId: winner ? winner.userId : cycle.finalPayoutUserId,
             selectedWinnerUserId: winner
               ? winner.userId
-              : cycle.scheduledPayoutUserId,
+              : cycle.finalPayoutUserId,
             selectionMethod: GroupRulePayoutMode.AUCTION,
             selectionMetadata: {
               bidId: winner?.id ?? null,
@@ -302,7 +297,6 @@ export class AuctionsService {
           select: {
             id: true,
             auctionStatus: true,
-            scheduledPayoutUserId: true,
             finalPayoutUserId: true,
             winningBidAmount: true,
             winningBidUserId: true,
@@ -389,7 +383,6 @@ export class AuctionsService {
   private toAuctionStateResponse(cycle: {
     id: string;
     auctionStatus: AuctionStatus;
-    scheduledPayoutUserId: string;
     finalPayoutUserId: string;
     winningBidAmount: number | null;
     winningBidUserId: string | null;
@@ -397,7 +390,7 @@ export class AuctionsService {
     return {
       cycleId: cycle.id,
       auctionStatus: cycle.auctionStatus,
-      scheduledPayoutUserId: cycle.scheduledPayoutUserId,
+      selectedWinnerUserId: cycle.finalPayoutUserId,
       finalPayoutUserId: cycle.finalPayoutUserId,
       winningBidAmount: cycle.winningBidAmount,
       winningBidUserId: cycle.winningBidUserId,

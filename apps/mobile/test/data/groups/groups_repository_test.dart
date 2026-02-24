@@ -90,7 +90,7 @@ class _FakeGroupsApi implements GroupsApi {
   }
 
   @override
-  Future<bool> hasActiveRound(String groupId) async {
+  Future<bool> hasOpenCycle(String groupId) async {
     return false;
   }
 }

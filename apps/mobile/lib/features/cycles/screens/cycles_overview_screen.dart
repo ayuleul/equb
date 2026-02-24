@@ -7,7 +7,6 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
-import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
@@ -71,7 +70,7 @@ class _CyclesOverviewBody extends ConsumerWidget {
             KitBanner(
               title: 'Rules setup required',
               message:
-                  'Complete setup and ensure at least 2 eligible members before drawing the first winner.',
+                  'Complete setup and ensure at least 2 eligible members before starting the first cycle.',
               tone: KitBadgeTone.warning,
               icon: Icons.rule_folder_outlined,
               ctaLabel: 'Open setup',
@@ -90,9 +89,9 @@ class _CyclesOverviewBody extends ConsumerWidget {
               group.canStartCycle)
             KitPrimaryButton(
               onPressed: () =>
-                  context.push(AppRoutePaths.groupCyclesGenerate(group.id)),
+                  context.push(AppRoutePaths.groupDetail(group.id)),
               icon: Icons.add_circle_outline,
-              label: LotteryCopy.drawWinnerButton,
+              label: 'Go to current turn',
             ),
           if (isAdmin &&
               currentCycleAsync.valueOrNull == null &&
@@ -100,13 +99,13 @@ class _CyclesOverviewBody extends ConsumerWidget {
             KitPrimaryButton(
               onPressed: () => context.push(AppRoutePaths.groupSetup(group.id)),
               icon: Icons.rule_folder_outlined,
-              label: 'Complete setup to draw',
+              label: 'Complete setup to start',
             ),
           if (isAdmin && currentCycleAsync.valueOrNull != null)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Text(
-                'Finish the current open turn before drawing the next winner.',
+                'Finish the current open turn before starting the next cycle.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -188,7 +187,7 @@ class _CurrentCycleCard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Text('Due ${formatDate(cycle.dueDate)}'),
                   const SizedBox(height: AppSpacing.xs),
-                  Text('🎲 Winner: ${_recipientLabel(cycle)}'),
+                  Text('Recipient: ${_recipientLabel(cycle)}'),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Progress: --/-- paid',
@@ -225,9 +224,9 @@ class _EmptyCyclesView extends StatelessWidget {
       title: 'No cycles generated',
       message: isAdmin
           ? canStartCycle
-                ? 'Draw the first winner to start the round.'
-                : 'Complete setup before starting the round.'
-          : 'Ask a group admin to draw the first winner.',
+                ? 'Start the first cycle from current turn.'
+                : 'Complete setup before starting the first cycle.'
+          : 'Ask a group admin to start the first cycle.',
     );
   }
 }

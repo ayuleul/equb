@@ -11,10 +11,9 @@ class AuthRepository {
     required AuthApi authApi,
     required ProfileApi profileApi,
     required TokenStore tokenStore,
-  })
-    : _authApi = authApi,
-      _profileApi = profileApi,
-      _tokenStore = tokenStore;
+  }) : _authApi = authApi,
+       _profileApi = profileApi,
+       _tokenStore = tokenStore;
 
   final AuthApi _authApi;
   final ProfileApi _profileApi;

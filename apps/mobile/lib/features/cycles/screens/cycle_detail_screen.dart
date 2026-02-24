@@ -6,7 +6,6 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
-import '../../../features/auth/auth_controller.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -51,7 +50,6 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
       cycleDetailProvider((groupId: widget.groupId, cycleId: widget.cycleId)),
     );
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
-    final currentUser = ref.watch(currentUserProvider);
     final args = (groupId: widget.groupId, cycleId: widget.cycleId);
     final actionState = ref.watch(cycleAuctionActionControllerProvider(args));
 
@@ -81,10 +79,7 @@ class _CycleDetailScreenState extends ConsumerState<CycleDetailScreen> {
         data: (cycle) {
           final isAdmin =
               groupAsync.valueOrNull?.membership?.role == MemberRoleModel.admin;
-          final drawnWinnerUserId =
-              cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
-          final isDrawnWinner = currentUser?.id == drawnWinnerUserId;
-          final canManageAuction = isAdmin || isDrawnWinner;
+          final canManageAuction = isAdmin;
 
           return _CycleDetailBody(
             groupId: widget.groupId,
@@ -125,9 +120,9 @@ class _CycleDetailBody extends ConsumerWidget {
       CycleStatusModel.unknown => 'UNKNOWN',
     };
 
-    final drawnWinner = _recipientLabel(
-      cycle.scheduledPayoutUser ?? cycle.payoutUser,
-      cycle.scheduledPayoutUserId ?? cycle.payoutUserId,
+    final selectedWinner = _recipientLabel(
+      cycle.finalPayoutUser ?? cycle.payoutUser,
+      cycle.finalPayoutUserId ?? cycle.payoutUserId,
     );
     final finalRecipient = _recipientLabel(
       cycle.finalPayoutUser ?? cycle.payoutUser,
@@ -155,8 +150,8 @@ class _CycleDetailBody extends ConsumerWidget {
               const SizedBox(height: AppSpacing.sm),
               Text('Due date: ${formatDate(cycle.dueDate)}'),
               const SizedBox(height: AppSpacing.xs),
-              Text('Drawn winner: $drawnWinner'),
-              if (finalRecipient != drawnWinner) ...[
+              Text('Selected winner: $selectedWinner'),
+              if (finalRecipient != selectedWinner) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text('Final recipient after auction: $finalRecipient'),
               ],
@@ -290,7 +285,7 @@ class _AuctionCard extends ConsumerWidget {
             Text(
               canManageAuction
                   ? 'Auction is not open yet for this cycle.'
-                  : 'The drawn winner has not opened auction.',
+                  : 'Auction is not open for this cycle.',
             ),
             if (canManageAuction) ...[
               const SizedBox(height: AppSpacing.md),
@@ -299,7 +294,7 @@ class _AuctionCard extends ConsumerWidget {
                 isLoading:
                     isLoading &&
                     actionState.actionType == CycleAuctionActionType.opening,
-                label: 'Auction my turn',
+                label: 'Open auction',
               ),
             ],
           ],
@@ -376,9 +371,7 @@ class _AuctionCard extends ConsumerWidget {
           ],
           if (auctionStatus == AuctionStatusModel.closed) ...[
             if (cycle.winningBidUserId == null)
-              const Text(
-                'Auction closed with no bids. The drawn winner keeps this turn.',
-              )
+              const Text('Auction closed with no bids.')
             else ...[
               Text(
                 'Winner: ${_recipientLabel(cycle.winningBidUser, cycle.winningBidUserId)}',

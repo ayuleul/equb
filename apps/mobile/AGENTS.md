@@ -84,41 +84,35 @@
 - Group setup flow is locked to a two-step gate:
   - Step 1: `Rules`
   - Step 2: `Invite & Verify` (member status pills + admin verify action)
-- Group actions that depend on rules (`Invite members`, `Draw winner` / cycle start) must stay disabled or redirect to setup until `rulesetConfigured` is true in group payloads.
+- Group actions that depend on rules (`Invite members`, `Start cycle`) must stay disabled or redirect to setup until `rulesetConfigured` is true in group payloads.
 - Cycle-start CTAs must respect backend `canStartCycle` (includes eligibility count and verification requirements), not rules-only assumptions.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
-- If a group has an active round, joining and invite acceptance are blocked; join surfaces must explain that joining is available after the round ends.
-- Backend lock responses are source-of-truth; mobile must always handle `409` with reason code `GROUP_LOCKED_ACTIVE_ROUND` even when UI pre-checks exist.
+- If a group has an open cycle, joining and invite acceptance are blocked; join surfaces must explain that joining is available after the cycle closes.
+- Backend lock responses are source-of-truth; mobile must always handle `409` with reason code `GROUP_LOCKED_OPEN_CYCLE` even when UI pre-checks exist.
 - Group detail header title is tappable and navigates to the full-screen Group Overview route (`/groups/:id/overview`).
 - Members list lives only in Group Overview; there is no standalone Members screen route.
-- Group detail is the current-round hub and must not render the members list.
+- Group detail is the current-cycle hub and must not render the members list.
 - Group detail should favor collapsed summaries and a single primary member CTA over dense list sections.
 - Admin controls in group detail must be grouped inside a collapsed Admin actions container/action sheet.
 - Group Overview content must reuse existing group detail/members providers; do not introduce duplicate fetch pathways.
 
 ## Cycles rules
-- Payout order positions are always saved as contiguous `1..N` after reorder; the UI order is the source of truth.
-- Admin-only cycle actions (set payout order, generate cycles) must only be shown when `membership.role == ADMIN`.
 - No batch cycle generation in UI; cycle start is always a single "Start cycle" action (`POST /groups/:id/cycles/start`).
-- After cycle mutations (`setPayoutOrder`, `generateCycles`/start-cycle), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
+- After cycle mutations (`start-cycle`, payout, close), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
 - Group detail current-turn summary must show due-date context and keep member payment entry as a primary `Pay now` CTA.
 - Group detail contribution summary for admins must surface overdue/late counts and link to the contributions list for triage.
-- Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); it must not mutate the scheduled recipient or round order.
-- Scheduled recipient (and admins) can open/close cycle auction; non-admin, non-scheduled members can only submit bids while auction is open.
-- Bid visibility in UI is locked to backend scope: admins/scheduled recipient see all bids, other members see only their own bid entries.
-- User-facing round language is locked to `🎲 Lottery`.
-- Lottery is per-turn only; future winners must never be visible in UI.
-- No UI element may imply a pre-generated visible winner list/order.
-- Admins must manually initiate each turn by tapping `🎲 Draw winner`.
-- Draw reveal animation is cosmetic only; winner data must come from backend draw response.
-- Group Overview must show lottery summary (turns completed, last winner, round status) and must not show future-turn lists.
+- Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); no pre-generated payout order/schedule is shown in UI.
+- Auction open/close actions are admin-only; non-admin members can only submit bids while auction is open.
+- Bid visibility in UI is locked to backend scope: admins see all bids, other members see only their own bid entries.
+- Winner information must come from cycle winner-selection/disbursement state; no UI element may imply pre-generated future winners.
+- Group Overview must show cycle summary (completed cycles, last winner, current status) and must not show future-turn lists.
 
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.
 - The `Content-Type` used for signed upload request must exactly match the `Content-Type` sent in signed PUT upload.
 - Contribution payment submit payload is locked to include payment rail (`BANK` | `TELEBIRR` | `CASH_ACK`) plus receipt upload key (`receiptFileKey`) and optional reference.
-- Contribution state transitions are backend-authoritative: submit/resubmit payment to `PAID_SUBMITTED`, admin verify to `VERIFIED`, admin reject to `REJECTED`; legacy `SUBMITTED`/`CONFIRMED` remain compatibility states.
+- Contribution state transitions are backend-authoritative: submit/resubmit payment to `PAID_SUBMITTED`, admin verify to `VERIFIED`, and admin reject to `REJECTED`.
 - Late handling is backend-authoritative: `LATE` contributions must be shown with warning emphasis and member-facing copy should mention grace/fine implications.
 - Admin contributions screen must expose a manual cycle evaluation action (`POST /cycles/:cycleId/evaluate`) and refresh cycle/contribution providers after evaluation.
 - Dispute workflow UI is required from contribution context:
@@ -132,7 +126,7 @@
 - Admin payout screen must show winner-selection controls only when cycle state is `READY_FOR_PAYOUT`.
 - Winner-selection UI must adapt to ruleset payout mode (`LOTTERY`, `AUCTION`, `ROTATION`, `DECISION`).
 - Close-cycle UI should support `autoNext` and, on success, refresh current-cycle state so the next due cycle appears when created.
-- Payout recipient must always follow cycle `finalPayoutUserId` (not scheduled recipient) in UI labels and actions.
+- Payout recipient must always follow cycle `finalPayoutUserId` in UI labels and actions.
 - Strict payout failures must show guidance to review cycle contributions before retrying confirmation.
 - Closing a cycle must invalidate and refresh cycle detail, current cycle, cycles list, and cycle payout state.
 

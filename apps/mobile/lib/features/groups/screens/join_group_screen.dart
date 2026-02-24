@@ -23,7 +23,7 @@ class JoinGroupScreen extends ConsumerStatefulWidget {
 class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   late final TextEditingController _codeController;
   bool _isSubmitting = false;
-  bool _isLockedByActiveRound = false;
+  bool _isLockedByOpenCycle = false;
   String? _formError;
 
   @override
@@ -58,7 +58,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     setState(() {
       _isSubmitting = true;
       _formError = null;
-      _isLockedByActiveRound = false;
+      _isLockedByOpenCycle = false;
     });
 
     try {
@@ -83,9 +83,9 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       }
       final openedFromInviteLink =
           (widget.initialCode?.trim().isNotEmpty ?? false);
-      if (openedFromInviteLink && isGroupLockedActiveRoundError(error)) {
+      if (openedFromInviteLink && isGroupLockedOpenCycleError(error)) {
         setState(() {
-          _isLockedByActiveRound = true;
+          _isLockedByOpenCycle = true;
           _formError = null;
         });
         return;
@@ -103,7 +103,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLockedByActiveRound) {
+    if (_isLockedByOpenCycle) {
       return KitScaffold(
         appBar: const KitAppBar(title: 'Group is locked'),
         child: Center(
@@ -118,7 +118,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'A round is currently in progress. You can join after it ends.',
+                  'A cycle is currently open. You can join after it closes.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.lg),

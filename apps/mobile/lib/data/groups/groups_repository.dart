@@ -139,8 +139,8 @@ class GroupsRepository {
     return member;
   }
 
-  Future<bool> hasActiveRound(String groupId) {
-    return _groupsApi.hasActiveRound(groupId);
+  Future<bool> hasOpenCycle(String groupId) {
+    return _groupsApi.hasOpenCycle(groupId);
   }
 
   void invalidateGroup(String groupId) {

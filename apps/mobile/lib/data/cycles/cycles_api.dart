@@ -1,14 +1,7 @@
 import '../api/api_client.dart';
 
 abstract class CyclesApi {
-  Future<Map<String, dynamic>> startRound(String groupId);
-
-  Future<List<Map<String, dynamic>>> setPayoutOrder(
-    String groupId,
-    List<Map<String, dynamic>> payload,
-  );
-
-  Future<Map<String, dynamic>> generateCycles(String groupId);
+  Future<Map<String, dynamic>> startCycle(String groupId);
 
   Future<Map<String, dynamic>?> getCurrentCycle(String groupId);
   Future<List<Map<String, dynamic>>> listCycles(String groupId);
@@ -21,24 +14,7 @@ class DioCyclesApi implements CyclesApi {
   final ApiClient _apiClient;
 
   @override
-  Future<Map<String, dynamic>> startRound(String groupId) {
-    return _apiClient.postMap('/groups/$groupId/rounds/start');
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> setPayoutOrder(
-    String groupId,
-    List<Map<String, dynamic>> payload,
-  ) async {
-    final response = await _apiClient.patchList(
-      '/groups/$groupId/payout-order',
-      data: payload,
-    );
-    return response.map(_toMap).toList(growable: false);
-  }
-
-  @override
-  Future<Map<String, dynamic>> generateCycles(String groupId) async {
+  Future<Map<String, dynamic>> startCycle(String groupId) async {
     final response = await _apiClient.postMap('/groups/$groupId/cycles/start');
     return _toMap(response);
   }

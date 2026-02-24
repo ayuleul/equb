@@ -71,7 +71,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         lastName: _lastNameController.text,
       );
 
-      await ref.read(authControllerProvider.notifier).setAuthenticatedUser(user);
+      await ref
+          .read(authControllerProvider.notifier)
+          .setAuthenticatedUser(user);
       if (!mounted) {
         return;
       }
@@ -144,10 +146,8 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                               ),
                               onFieldSubmitted: (_) =>
                                   _lastNameFocusNode.requestFocus(),
-                              validator: (value) => _validateName(
-                                value,
-                                label: "Father's Name",
-                              ),
+                              validator: (value) =>
+                                  _validateName(value, label: "Father's Name"),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             TextFormField(

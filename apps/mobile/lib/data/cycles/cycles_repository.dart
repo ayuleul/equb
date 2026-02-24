@@ -1,7 +1,4 @@
 import '../models/cycle_model.dart';
-import '../models/member_model.dart';
-import '../models/payout_order_item.dart';
-import '../models/set_payout_order_request.dart';
 import 'cycles_api.dart';
 
 class CyclesRepository {
@@ -71,30 +68,8 @@ class CyclesRepository {
     return cycle;
   }
 
-  Future<List<MemberModel>> setPayoutOrder(
-    String groupId,
-    List<PayoutOrderItem> items,
-  ) async {
-    final request = SetPayoutOrderRequest(items: items);
-    final payload = await _cyclesApi.setPayoutOrder(
-      groupId,
-      request.toRequestBody(),
-    );
-
-    invalidateGroupCache(groupId);
-
-    return payload
-        .map((json) => MemberModel.fromJson({...json, 'groupId': groupId}))
-        .toList(growable: false);
-  }
-
-  Future<void> startRound(String groupId) async {
-    await _cyclesApi.startRound(groupId);
-    invalidateGroupCache(groupId);
-  }
-
-  Future<CycleModel> generateNextCycle(String groupId) async {
-    final payload = await _cyclesApi.generateCycles(groupId);
+  Future<CycleModel> startCycle(String groupId) async {
+    final payload = await _cyclesApi.startCycle(groupId);
     final cycle = CycleModel.fromJson(payload);
 
     invalidateGroupCache(groupId);

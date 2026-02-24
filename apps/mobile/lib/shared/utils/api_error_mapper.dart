@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 
 import '../../data/api/api_error.dart';
 
-const groupLockedActiveRoundReasonCode = 'GROUP_LOCKED_ACTIVE_ROUND';
-const groupLockedActiveRoundFriendlyMessage =
-    'A round is currently in progress. You can join after it ends.';
+const groupLockedOpenCycleReasonCode = 'GROUP_LOCKED_OPEN_CYCLE';
+const groupLockedOpenCycleFriendlyMessage =
+    'A cycle is currently open. You can join after it closes.';
 const groupRulesetRequiredReasonCode = 'GROUP_RULESET_REQUIRED';
 const groupRulesetRequiredFriendlyMessage =
     'Complete group rules setup before continuing.';
@@ -22,13 +22,17 @@ String mapApiErrorToMessage(Object error) {
   return 'Something went wrong. Please try again.';
 }
 
-bool isGroupLockedActiveRoundError(Object error) {
+bool isGroupLockedOpenCycleError(Object error) {
   final apiError = _normalizeApiError(error);
   if (apiError == null) {
     return false;
   }
 
   return _isGroupLockedError(apiError);
+}
+
+bool isGroupLockedActiveRoundError(Object error) {
+  return isGroupLockedOpenCycleError(error);
 }
 
 ApiError? _normalizeApiError(Object error) {
@@ -45,7 +49,7 @@ ApiError? _normalizeApiError(Object error) {
 
 String _mapApiError(ApiError error) {
   if (_isGroupLockedError(error)) {
-    return groupLockedActiveRoundFriendlyMessage;
+    return groupLockedOpenCycleFriendlyMessage;
   }
 
   if (_isGroupRulesetRequiredError(error)) {
@@ -74,10 +78,6 @@ String _mapApiError(ApiError error) {
 
   if (normalized.contains('too many')) {
     return 'Too many requests. Please wait and try again.';
-  }
-
-  if (normalized.contains('payout order is incomplete')) {
-    return 'A round must be started before drawing a winner.';
   }
 
   if (normalized.contains('open cycle already exists')) {
@@ -112,11 +112,15 @@ String _mapApiError(ApiError error) {
     return 'Only submitted contributions can be rejected.';
   }
 
-  if (normalized.contains('only paid-submitted contributions can be verified')) {
+  if (normalized.contains(
+    'only paid-submitted contributions can be verified',
+  )) {
     return 'Only submitted payments can be verified.';
   }
 
-  if (normalized.contains('only paid-submitted contributions can be rejected')) {
+  if (normalized.contains(
+    'only paid-submitted contributions can be rejected',
+  )) {
     return 'Only submitted payments can be rejected.';
   }
 
@@ -181,14 +185,12 @@ String _mapApiError(ApiError error) {
 
 bool _isGroupLockedError(ApiError error) {
   if (error.statusCode == 409 &&
-      error.reasonCode == groupLockedActiveRoundReasonCode) {
+      error.reasonCode == groupLockedOpenCycleReasonCode) {
     return true;
   }
 
   final normalizedMessage = error.message.toLowerCase();
-  return normalizedMessage.contains(
-    'group is locked while a round is in progress',
-  );
+  return normalizedMessage.contains('group is locked while a cycle is open');
 }
 
 bool _isGroupRulesetRequiredError(ApiError error) {

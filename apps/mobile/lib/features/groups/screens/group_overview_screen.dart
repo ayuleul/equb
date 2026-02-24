@@ -68,7 +68,7 @@ class _GroupOverviewBody extends ConsumerWidget {
             KitBanner(
               title: 'Rules setup required',
               message:
-                  'Save group rules before inviting members or drawing the first cycle.',
+                  'Save group rules before inviting members or starting the first cycle.',
               tone: KitBadgeTone.warning,
               icon: Icons.rule_folder_outlined,
               ctaLabel: 'Open setup',
@@ -325,7 +325,8 @@ class _WinnerHistoryCard extends ConsumerWidget {
               return const KitEmptyState(
                 icon: Icons.emoji_events_outlined,
                 title: 'No winners yet',
-                message: 'Winners will appear here after each turn draw.',
+                message:
+                    'Winners will appear here after cycle winner selection.',
               );
             }
 
@@ -508,15 +509,13 @@ class _OverviewAdminActionsCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.sm),
                 KitPrimaryButton(
                   label: canStartCycle
-                      ? LotteryCopy.drawWinnerButton
-                      : 'Complete setup to draw',
+                      ? 'Go to current turn'
+                      : 'Complete setup to start',
                   icon: canStartCycle
-                      ? Icons.casino_outlined
+                      ? Icons.play_arrow_rounded
                       : Icons.rule_folder_outlined,
                   onPressed: canStartCycle
-                      ? () => context.push(
-                          AppRoutePaths.groupCyclesGenerate(groupId),
-                        )
+                      ? () => context.push(AppRoutePaths.groupDetail(groupId))
                       : () => context.push(AppRoutePaths.groupSetup(groupId)),
                 ),
               ],

@@ -224,8 +224,8 @@ class _CycleHeaderCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
           const SizedBox(height: AppSpacing.xs),
-          Text('Drawn winner: ${_drawnWinnerLabel(cycle)}'),
-          if (_drawnWinnerLabel(cycle) != _cycleRecipientLabel(cycle))
+          Text('Selected winner: ${_selectedWinnerLabel(cycle)}'),
+          if (_selectedWinnerLabel(cycle) != _cycleRecipientLabel(cycle))
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
@@ -927,8 +927,8 @@ String _cycleRecipientLabel(CycleModel cycle) {
   return cycle.finalPayoutUserId ?? cycle.payoutUserId;
 }
 
-String _drawnWinnerLabel(CycleModel cycle) {
-  final user = cycle.scheduledPayoutUser ?? cycle.payoutUser;
+String _selectedWinnerLabel(CycleModel cycle) {
+  final user = cycle.finalPayoutUser ?? cycle.payoutUser;
   final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {
     return fullName;
@@ -939,5 +939,5 @@ String _drawnWinnerLabel(CycleModel cycle) {
     return phone;
   }
 
-  return cycle.scheduledPayoutUserId ?? cycle.payoutUserId;
+  return cycle.finalPayoutUserId ?? cycle.payoutUserId;
 }

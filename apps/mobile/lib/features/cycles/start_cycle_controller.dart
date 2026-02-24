@@ -2,36 +2,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/bootstrap.dart';
 import '../../data/cycles/cycles_repository.dart';
+import '../../data/models/cycle_model.dart';
 import '../../shared/utils/api_error_mapper.dart';
-import '../cycles/current_cycle_provider.dart';
-import '../cycles/cycles_list_provider.dart';
 import '../groups/group_detail_controller.dart';
+import 'current_cycle_provider.dart';
+import 'cycles_list_provider.dart';
 
-class StartRoundState {
-  const StartRoundState({required this.isSubmitting, this.errorMessage});
+class StartCycleState {
+  const StartCycleState({required this.isSubmitting, this.errorMessage});
 
-  const StartRoundState.initial() : this(isSubmitting: false);
+  const StartCycleState.initial() : this(isSubmitting: false);
 
   final bool isSubmitting;
   final String? errorMessage;
 
-  StartRoundState copyWith({
+  StartCycleState copyWith({
     bool? isSubmitting,
     String? errorMessage,
     bool clearError = false,
   }) {
-    return StartRoundState(
+    return StartCycleState(
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }
 
-final startRoundControllerProvider =
-    StateNotifierProvider.family<StartRoundController, StartRoundState, String>(
+final startCycleControllerProvider =
+    StateNotifierProvider.family<StartCycleController, StartCycleState, String>(
       (ref, groupId) {
         final repository = ref.watch(cyclesRepositoryProvider);
-        return StartRoundController(
+        return StartCycleController(
           ref: ref,
           groupId: groupId,
           repository: repository,
@@ -39,41 +40,38 @@ final startRoundControllerProvider =
       },
     );
 
-class StartRoundController extends StateNotifier<StartRoundState> {
-  StartRoundController({
+class StartCycleController extends StateNotifier<StartCycleState> {
+  StartCycleController({
     required Ref ref,
     required this.groupId,
     required CyclesRepository repository,
   }) : _ref = ref,
        _repository = repository,
-       super(const StartRoundState.initial());
+       super(const StartCycleState.initial());
 
   final Ref _ref;
   final String groupId;
   final CyclesRepository _repository;
 
-  Future<bool> startRound() async {
+  Future<CycleModel?> startCycle() async {
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     try {
-      await _repository.startRound(groupId);
+      final createdCycle = await _repository.startCycle(groupId);
 
-      _ref.invalidate(groupDetailProvider(groupId));
+      _repository.invalidateGroupCache(groupId);
       _ref.invalidate(currentCycleProvider(groupId));
       _ref.invalidate(cyclesListProvider(groupId));
+      _ref.invalidate(groupDetailProvider(groupId));
 
       state = state.copyWith(isSubmitting: false, clearError: true);
-      return true;
+      return createdCycle;
     } catch (error) {
       state = state.copyWith(
         isSubmitting: false,
         errorMessage: mapApiErrorToMessage(error),
       );
-      return false;
+      return null;
     }
-  }
-
-  void clearError() {
-    state = state.copyWith(clearError: true);
   }
 }

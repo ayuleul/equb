@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseArrayPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -30,14 +29,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
-import { GenerateCyclesDto } from './dto/generate-cycles.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
-import { PayoutOrderItemDto } from './dto/payout-order-item.dto';
 import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
-  CurrentRoundScheduleResponseDto,
   GroupCycleResponseDto,
   GroupDetailResponseDto,
   GroupJoinResponseDto,
@@ -45,8 +41,6 @@ import {
   GroupRulesResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
-  RoundSeedRevealResponseDto,
-  RoundStartResponseDto,
 } from './entities/groups.entities';
 import { GroupsService } from './groups.service';
 
@@ -89,7 +83,7 @@ export class GroupsController {
   @ApiForbiddenResponse({ description: 'Removed members cannot self-rejoin' })
   @ApiConflictResponse({
     description:
-      'Group is locked while a round is in progress or invite became unavailable',
+      'Group is locked while a cycle is open or invite became unavailable',
   })
   joinGroup(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -106,7 +100,7 @@ export class GroupsController {
   @ApiForbiddenResponse({ description: 'Removed members cannot self-rejoin' })
   @ApiConflictResponse({
     description:
-      'Group is locked while a round is in progress or invite became unavailable',
+      'Group is locked while a cycle is open or invite became unavailable',
   })
   acceptInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -279,28 +273,6 @@ export class GroupsController {
     );
   }
 
-  @Patch(':id/payout-order')
-  @UseGuards(GroupAdminGuard)
-  @ApiTags('Cycles')
-  @ApiOperation({ summary: 'Set payout order for active members' })
-  @ApiBody({ type: PayoutOrderItemDto, isArray: true })
-  @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
-  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
-  @ApiBadRequestResponse({
-    description: 'Payout positions must be contiguous and unique',
-  })
-  @ApiConflictResponse({
-    description: 'Ruleset must be configured before setting payout order',
-  })
-  updatePayoutOrder(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id', new ParseUUIDPipe()) groupId: string,
-    @Body(new ParseArrayPipe({ items: PayoutOrderItemDto }))
-    payload: PayoutOrderItemDto[],
-  ): Promise<GroupMemberResponseDto[]> {
-    return this.groupsService.updatePayoutOrder(currentUser, groupId, payload);
-  }
-
   @Post(':id/cycles/start')
   @UseGuards(GroupAdminGuard)
   @ApiTags('Cycles')
@@ -318,104 +290,6 @@ export class GroupsController {
   })
   @ApiNotFoundResponse({ description: 'Group not found' })
   startCycle(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id', new ParseUUIDPipe()) groupId: string,
-  ): Promise<GroupCycleResponseDto> {
-    return this.groupsService.startCycle(currentUser, groupId);
-  }
-
-  @Post(':id/cycles/generate')
-  @UseGuards(GroupAdminGuard)
-  @ApiTags('Cycles')
-  @ApiOperation({
-    summary: 'Generate next cycle (legacy route; uses cycle start flow)',
-  })
-  @ApiBody({ type: GenerateCyclesDto, required: false })
-  @ApiOkResponse({ type: GroupCycleResponseDto })
-  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
-  @ApiBadRequestResponse({
-    description: 'Cycle generation constraints not satisfied',
-  })
-  @ApiConflictResponse({
-    description: 'Open cycle already exists or round is completed',
-  })
-  @ApiNotFoundResponse({ description: 'Group not found' })
-  generateCycles(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id', new ParseUUIDPipe()) groupId: string,
-    @Body() dto: GenerateCyclesDto,
-  ): Promise<GroupCycleResponseDto> {
-    void dto;
-    return this.groupsService.startCycle(currentUser, groupId);
-  }
-
-  @Post(':id/rounds/start')
-  @UseGuards(GroupAdminGuard)
-  @ApiTags('Rounds')
-  @ApiOperation({ summary: 'Start a random-draw payout round and schedule' })
-  @ApiOkResponse({ type: RoundStartResponseDto })
-  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
-  @ApiBadRequestResponse({
-    description:
-      'Group is inactive, round already active, or no active members',
-  })
-  @ApiConflictResponse({
-    description: 'Ruleset must be configured before starting rounds',
-  })
-  @ApiNotFoundResponse({ description: 'Group not found' })
-  startRound(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id', new ParseUUIDPipe()) groupId: string,
-  ): Promise<RoundStartResponseDto> {
-    return this.groupsService.startRound(currentUser, groupId);
-  }
-
-  @Get(':id/rounds/current/schedule')
-  @UseGuards(GroupAdminGuard)
-  @ApiTags('Rounds')
-  @ApiOperation({ summary: 'Get current round payout schedule commitment' })
-  @ApiOkResponse({ type: CurrentRoundScheduleResponseDto })
-  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
-  @ApiNotFoundResponse({ description: 'Active round not found' })
-  getCurrentRoundSchedule(
-    @Param('id', new ParseUUIDPipe()) groupId: string,
-  ): Promise<CurrentRoundScheduleResponseDto> {
-    return this.groupsService.getCurrentRoundSchedule(groupId);
-  }
-
-  @Post(':id/rounds/current/reveal-seed')
-  @UseGuards(GroupAdminGuard)
-  @ApiTags('Rounds')
-  @ApiOperation({
-    summary: 'Reveal current round seed for external schedule verification',
-  })
-  @ApiOkResponse({ type: RoundSeedRevealResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
-  @ApiBadRequestResponse({
-    description: 'Seed reveal is unavailable for this round',
-  })
-  @ApiNotFoundResponse({ description: 'Active round not found' })
-  revealCurrentRoundSeed(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id', new ParseUUIDPipe()) groupId: string,
-  ): Promise<RoundSeedRevealResponseDto> {
-    return this.groupsService.revealCurrentRoundSeed(currentUser, groupId);
-  }
-
-  @Post(':id/rounds/current/draw-next')
-  @UseGuards(GroupAdminGuard)
-  @ApiTags('Rounds')
-  @ApiOperation({ summary: 'Draw next cycle recipient for current round' })
-  @ApiOkResponse({ type: GroupCycleResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
-  @ApiBadRequestResponse({
-    description: 'Cycle generation constraints not satisfied',
-  })
-  @ApiConflictResponse({
-    description: 'Open cycle already exists or round is completed',
-  })
-  @ApiNotFoundResponse({ description: 'Group not found' })
-  drawNextCycle(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupCycleResponseDto> {

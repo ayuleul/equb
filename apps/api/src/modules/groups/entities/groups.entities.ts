@@ -10,7 +10,6 @@ import {
   GroupStatus,
   MemberRole,
   MemberStatus,
-  PayoutMode,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -180,91 +179,6 @@ export class CyclePayoutUserResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   fullName!: string | null;
-}
-
-export class RoundScheduleResponseDto {
-  @ApiProperty()
-  position!: number;
-
-  @ApiProperty()
-  userId!: string;
-
-  @ApiProperty({ type: () => CyclePayoutUserResponseDto })
-  user!: CyclePayoutUserResponseDto;
-}
-
-export class RoundStartResponseDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty()
-  groupId!: string;
-
-  @ApiProperty()
-  roundNo!: number;
-
-  @ApiProperty({ enum: PayoutMode })
-  payoutMode!: PayoutMode;
-
-  @ApiProperty()
-  drawSeedHash!: string;
-
-  @ApiProperty()
-  startedByUserId!: string;
-
-  @ApiProperty()
-  startedAt!: Date;
-
-  @ApiProperty({ type: () => RoundScheduleResponseDto, isArray: true })
-  schedule!: RoundScheduleResponseDto[];
-}
-
-export class CurrentRoundScheduleItemResponseDto {
-  @ApiProperty()
-  position!: number;
-
-  @ApiProperty()
-  userId!: string;
-
-  @ApiPropertyOptional({ nullable: true })
-  displayName!: string | null;
-}
-
-export class CurrentRoundScheduleResponseDto {
-  @ApiProperty()
-  roundId!: string;
-
-  @ApiProperty()
-  roundNo!: number;
-
-  @ApiProperty()
-  drawSeedHash!: string;
-
-  @ApiProperty({
-    type: () => CurrentRoundScheduleItemResponseDto,
-    isArray: true,
-  })
-  schedule!: CurrentRoundScheduleItemResponseDto[];
-}
-
-export class RoundSeedRevealResponseDto {
-  @ApiProperty()
-  roundId!: string;
-
-  @ApiProperty()
-  roundNo!: number;
-
-  @ApiProperty()
-  seedHex!: string;
-
-  @ApiProperty()
-  seedHash!: string;
-
-  @ApiProperty()
-  revealedAt!: Date;
-
-  @ApiProperty()
-  revealedByUserId!: string;
 }
 
 export class GroupCycleResponseDto {

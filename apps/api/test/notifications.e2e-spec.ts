@@ -416,7 +416,7 @@ describe('Notifications (e2e)', () => {
       {},
     );
 
-    expect(confirmed.status).toBe(ContributionStatus.CONFIRMED);
+    expect(confirmed.status).toBe(ContributionStatus.VERIFIED);
 
     const contributorNotifications = notifications.filter(
       (item) => item.userId === memberUser.id,

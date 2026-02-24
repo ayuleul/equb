@@ -261,12 +261,7 @@ class _FakeCyclesRepository extends CyclesRepository {
 
 class _FakeCyclesApi implements CyclesApi {
   @override
-  Future<Map<String, dynamic>> startRound(String groupId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Map<String, dynamic>> generateCycles(String groupId) {
+  Future<Map<String, dynamic>> startCycle(String groupId) {
     throw UnimplementedError();
   }
 
@@ -282,14 +277,6 @@ class _FakeCyclesApi implements CyclesApi {
 
   @override
   Future<List<Map<String, dynamic>>> listCycles(String groupId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> setPayoutOrder(
-    String groupId,
-    List<Map<String, dynamic>> payload,
-  ) {
     throw UnimplementedError();
   }
 }
