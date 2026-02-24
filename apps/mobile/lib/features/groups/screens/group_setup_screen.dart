@@ -17,6 +17,7 @@ import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../../data/api/api_error.dart';
 import '../group_detail_controller.dart';
 
 class GroupSetupScreen extends ConsumerStatefulWidget {
@@ -93,6 +94,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       setState(() => _isLoading = false);
     } catch (error) {
       if (!mounted) {
+        return;
+      }
+      final apiError = error is ApiError ? error : null;
+      if (apiError?.statusCode == 404 &&
+          apiError!.message.toLowerCase().contains('rules')) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = null;
+        });
         return;
       }
       setState(() {

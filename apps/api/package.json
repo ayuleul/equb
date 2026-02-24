@@ -21,7 +21,9 @@
     "typecheck": "tsc --noEmit",
     "openapi:export": "node -r ts-node/register -r tsconfig-paths/register scripts/export-openapi.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.992.0",

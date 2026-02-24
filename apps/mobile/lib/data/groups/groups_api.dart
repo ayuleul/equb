@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../api/api_error.dart';
 import '../api/api_client.dart';
 import '../models/create_group_request.dart';
@@ -47,6 +49,12 @@ class DioGroupsApi implements GroupsApi {
       return _apiClient.getMap('/groups/$groupId/rules');
     } on ApiError catch (error) {
       if (error.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    } on DioException catch (error) {
+      final mapped = ApiError.fromDioException(error);
+      if (mapped.statusCode == 404) {
         return null;
       }
       rethrow;
