@@ -295,6 +295,15 @@ export class GroupCycleResponseDto {
   @ApiProperty()
   finalPayoutUserId!: string;
 
+  @ApiPropertyOptional({ nullable: true })
+  selectedWinnerUserId!: string | null;
+
+  @ApiPropertyOptional({ enum: GroupRulePayoutMode, nullable: true })
+  selectionMethod!: GroupRulePayoutMode | null;
+
+  @ApiPropertyOptional({ nullable: true, type: Object })
+  selectionMetadata!: Record<string, unknown> | null;
+
   @ApiProperty()
   payoutUserId!: string;
 
@@ -321,6 +330,12 @@ export class GroupCycleResponseDto {
 
   @ApiProperty({ type: () => CyclePayoutUserResponseDto })
   finalPayoutUser!: CyclePayoutUserResponseDto;
+
+  @ApiPropertyOptional({
+    type: () => CyclePayoutUserResponseDto,
+    nullable: true,
+  })
+  selectedWinnerUser!: CyclePayoutUserResponseDto | null;
 
   @ApiPropertyOptional({
     type: () => CyclePayoutUserResponseDto,

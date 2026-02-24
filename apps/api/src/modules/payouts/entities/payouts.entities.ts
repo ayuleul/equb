@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PayoutStatus } from '@prisma/client';
+import { GroupCycleResponseDto } from '../../groups/entities/groups.entities';
 
 export class PayoutUserResponseDto {
   @ApiProperty()
@@ -54,4 +55,15 @@ export class PayoutResponseDto {
 
   @ApiProperty({ type: () => PayoutUserResponseDto })
   toUser!: PayoutUserResponseDto;
+}
+
+export class CloseCycleResponseDto {
+  @ApiProperty()
+  success!: true;
+
+  @ApiPropertyOptional({ nullable: true })
+  nextCycleId!: string | null;
+
+  @ApiPropertyOptional({ type: () => GroupCycleResponseDto, nullable: true })
+  nextCycle!: GroupCycleResponseDto | null;
 }

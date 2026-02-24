@@ -108,6 +108,7 @@
   - otherwise, joined/participating members are eligible.
 - Cycle auction impacts only the current cycle’s `finalPayoutUserId`; the scheduled recipient remains unchanged for round order continuity.
 - Auction winner selection is deterministic: highest bid wins, and ties are resolved by earliest bid `createdAt`.
+- Winner selection is explicit per cycle and must run only after cycle state reaches `READY_FOR_PAYOUT`.
 - Bid visibility rule is locked: active admins and the scheduled recipient can view all cycle bids; other active members can view only their own bid.
 
 ## Contribution rules
@@ -134,6 +135,11 @@
 - Privacy rule: contribution list responses expose member phone numbers only to ACTIVE admins; non-admin members receive `phone = null`.
 
 ## Payout rules
+- Canonical payout flow is locked to:
+  - `POST /cycles/:cycleId/winner/select`
+  - `POST /cycles/:cycleId/payout/disburse`
+  - `POST /cycles/:cycleId/close` (optional `autoNext`)
+- Legacy payout endpoints (`POST /cycles/:cycleId/payout`, `PATCH /payouts/:id/confirm`) are compatibility paths only.
 - Payout recipient is strict: payout `toUserId` must match `EqubCycle.finalPayoutUserId` (no override in MVP).
 - Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `VERIFIED|CONFIRMED` contribution for the cycle.
 - In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
@@ -144,6 +150,7 @@
   - cycle transition is one-way: `OPEN -> CLOSED`
 - Payout proof object key format is locked to:
   - `groups/<groupId>/cycles/<cycleId>/payouts/<uuid>_<sanitizedFileName>`
+- Cycle close with `autoNext = true` should attempt next-cycle start; if auto-next fails, cycle close remains successful and next cycle can be started manually.
 
 ## Notification and jobs rules
 - Notification types are locked to:
@@ -171,6 +178,10 @@
   - `LOTTERY_WINNER` -> notify drawn cycle winner
   - `LOTTERY_ANNOUNCEMENT` -> notify all other round snapshot members
 - Lottery draw notifications are idempotent per user/event via `Notification.eventId` (for example `DRAW_<cycleId>_WINNER` and `DRAW_<cycleId>_ANNOUNCEMENT`).
+- Winner selection/disbursement notifications are idempotent per user/event via `Notification.eventId`:
+  - winner: `SELECT_<cycleId>_WINNER`
+  - announcement: `SELECT_<cycleId>_ANNOUNCEMENT`
+  - payout disbursed: `PAYOUT_DISBURSED_<cycleId>`
 - Reminder scheduler runs daily at `09:00` in `Africa/Addis_Ababa` and enqueues a reminder-scan job.
 - Reminder dedup strategy is locked to one reminder per `(userId, cycleId, type, local-date)` using `dataJson.dedupKey` and queue `jobId`.
 - FCM config method is env-based (no JSON file path):

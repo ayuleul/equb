@@ -156,7 +156,20 @@ class _FakePayoutsRepository extends PayoutsRepository {
 
 class _FakePayoutsApi implements PayoutsApi {
   @override
-  Future<Map<String, dynamic>> closeCycle(String cycleId) {
+  Future<Map<String, dynamic>> closeCycle(
+    String cycleId, {
+    bool autoNext = false,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> disbursePayout(
+    String cycleId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  }) {
     throw UnimplementedError();
   }
 
@@ -178,6 +191,11 @@ class _FakePayoutsApi implements PayoutsApi {
 
   @override
   Future<Map<String, dynamic>?> getPayout(String cycleId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> selectWinner(String cycleId, {String? userId}) {
     throw UnimplementedError();
   }
 }

@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AuctionStatus, CycleStatus, MemberRole, Prisma } from '@prisma/client';
+import {
+  AuctionStatus,
+  CycleStatus,
+  GroupRulePayoutMode,
+  MemberRole,
+  Prisma,
+} from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
 import { isParticipatingMemberStatus } from '../../common/membership/member-status.util';
@@ -279,6 +285,16 @@ export class AuctionsService {
             finalPayoutUserId: winner
               ? winner.userId
               : cycle.scheduledPayoutUserId,
+            selectedWinnerUserId: winner
+              ? winner.userId
+              : cycle.scheduledPayoutUserId,
+            selectionMethod: GroupRulePayoutMode.AUCTION,
+            selectionMetadata: {
+              bidId: winner?.id ?? null,
+              bidCount: bids.length,
+              selectedAt: new Date().toISOString(),
+              mode: GroupRulePayoutMode.AUCTION,
+            },
             winningBidAmount: winner ? winner.amount : null,
             winningBidUserId: winner ? winner.userId : null,
             auctionStatus: AuctionStatus.CLOSED,

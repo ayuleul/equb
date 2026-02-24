@@ -26,8 +26,15 @@ import { GroupMemberGuard } from '../../common/guards/group-member.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { ConfirmPayoutDto } from './dto/confirm-payout.dto';
+import { CloseCycleDto } from './dto/close-cycle.dto';
 import { CreatePayoutDto } from './dto/create-payout.dto';
-import { PayoutResponseDto } from './entities/payouts.entities';
+import { DisbursePayoutDto } from './dto/disburse-payout.dto';
+import { SelectWinnerDto } from './dto/select-winner.dto';
+import { GroupCycleResponseDto } from '../groups/entities/groups.entities';
+import {
+  CloseCycleResponseDto,
+  PayoutResponseDto,
+} from './entities/payouts.entities';
 import { PayoutsService } from './payouts.service';
 
 @ApiTags('Payouts')
@@ -37,6 +44,45 @@ import { PayoutsService } from './payouts.service';
 @Controller()
 export class PayoutsController {
   constructor(private readonly payoutsService: PayoutsService) {}
+
+  @Post('cycles/:cycleId/winner/select')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Select payout winner for cycle based on ruleset' })
+  @ApiBody({ type: SelectWinnerDto, required: false })
+  @ApiOkResponse({ type: GroupCycleResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Cycle is not ready or winner selection input is invalid',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
+  selectWinner(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
+    @Body() dto: SelectWinnerDto,
+  ): Promise<GroupCycleResponseDto> {
+    return this.payoutsService.selectWinner(currentUser, cycleId, dto);
+  }
+
+  @Post('cycles/:cycleId/payout/disburse')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({
+    summary:
+      'Disburse payout for selected winner, create payout row, and ledger entry',
+  })
+  @ApiBody({ type: DisbursePayoutDto, required: false })
+  @ApiOkResponse({ type: PayoutResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Winner is not selected or disbursement prerequisites failed',
+  })
+  @ApiNotFoundResponse({ description: 'Cycle not found' })
+  disbursePayout(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
+    @Body() dto: DisbursePayoutDto,
+  ): Promise<PayoutResponseDto> {
+    return this.payoutsService.disbursePayout(currentUser, cycleId, dto);
+  }
 
   @Post('cycles/:cycleId/payout')
   @UseGuards(GroupAdminGuard)
@@ -76,15 +122,11 @@ export class PayoutsController {
 
   @Post('cycles/:cycleId/close')
   @UseGuards(GroupAdminGuard)
-  @ApiOperation({ summary: 'Close cycle after payout is confirmed' })
-  @ApiOkResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-      },
-    },
+  @ApiOperation({
+    summary: 'Close cycle after payout is disbursed and optionally auto-start next',
   })
+  @ApiBody({ type: CloseCycleDto, required: false })
+  @ApiOkResponse({ type: CloseCycleResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
   @ApiBadRequestResponse({
     description: 'Cycle is closed or payout is not confirmed',
@@ -93,8 +135,9 @@ export class PayoutsController {
   closeCycle(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('cycleId', new ParseUUIDPipe()) cycleId: string,
-  ): Promise<{ success: true }> {
-    return this.payoutsService.closeCycle(currentUser, cycleId);
+    @Body() dto: CloseCycleDto,
+  ): Promise<CloseCycleResponseDto> {
+    return this.payoutsService.closeCycle(currentUser, cycleId, dto);
   }
 
   @Get('cycles/:cycleId/payout')

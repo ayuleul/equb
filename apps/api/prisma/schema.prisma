@@ -151,6 +151,7 @@ model User {
   createdInvites InviteCode[]   @relation("InviteCreator")
   scheduledPayoutCycles EqubCycle[] @relation("CycleScheduledPayoutUser")
   finalPayoutCycles EqubCycle[] @relation("CycleFinalPayoutUser")
+  selectedWinnerCycles EqubCycle[] @relation("CycleSelectedWinnerUser")
   winningBidCycles EqubCycle[] @relation("CycleWinningBidUser")
   createdCycles  EqubCycle[]    @relation("CycleCreator")
   startedRounds  EqubRound[]    @relation("RoundStarter")
@@ -329,6 +330,9 @@ model EqubCycle {
   state           CycleState  @default(DUE)
   scheduledPayoutUserId String
   finalPayoutUserId String
+  selectedWinnerUserId String?
+  selectionMethod GroupRulePayoutMode?
+  selectionMetadata Json?
   auctionStatus AuctionStatus @default(NONE)
   winningBidAmount Int?
   winningBidUserId String?
@@ -343,6 +347,7 @@ model EqubCycle {
   round           EqubRound   @relation(fields: [roundId], references: [id], onDelete: Restrict)
   scheduledPayoutUser User @relation("CycleScheduledPayoutUser", fields: [scheduledPayoutUserId], references: [id], onDelete: Restrict)
   finalPayoutUser User @relation("CycleFinalPayoutUser", fields: [finalPayoutUserId], references: [id], onDelete: Restrict)
+  selectedWinnerUser User? @relation("CycleSelectedWinnerUser", fields: [selectedWinnerUserId], references: [id], onDelete: SetNull)
   winningBidUser User? @relation("CycleWinningBidUser", fields: [winningBidUserId], references: [id], onDelete: SetNull)
   closedByUser    User?       @relation("CycleClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
   createdByUser   User        @relation("CycleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -357,6 +362,7 @@ model EqubCycle {
   @@unique([roundId, cycleNo])
   @@index([groupId, status])
   @@index([groupId, roundId])
+  @@index([selectedWinnerUserId])
 }
 
 model CycleAuction {

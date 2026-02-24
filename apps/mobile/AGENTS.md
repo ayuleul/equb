@@ -128,7 +128,10 @@
 - Resubmission UX should only be offered when contribution is not `VERIFIED|CONFIRMED`, and primarily after `REJECTED` as permitted by backend rules.
 
 ## Payout rules
-- Payout flow order is locked to: create payout -> confirm payout -> close cycle.
+- Payout flow order is locked to: select winner -> disburse payout -> close cycle.
+- Admin payout screen must show winner-selection controls only when cycle state is `READY_FOR_PAYOUT`.
+- Winner-selection UI must adapt to ruleset payout mode (`LOTTERY`, `AUCTION`, `ROTATION`, `DECISION`).
+- Close-cycle UI should support `autoNext` and, on success, refresh current-cycle state so the next due cycle appears when created.
 - Payout recipient must always follow cycle `finalPayoutUserId` (not scheduled recipient) in UI labels and actions.
 - Strict payout failures must show guidance to review cycle contributions before retrying confirmation.
 - Closing a cycle must invalidate and refresh cycle detail, current cycle, cycles list, and cycle payout state.

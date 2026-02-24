@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   ContributionStatus,
+  CycleState,
   CycleStatus,
   GroupFrequency,
   GroupStatus,
@@ -36,6 +37,7 @@ type CycleRecord = {
   finalPayoutUserId: string;
   winningBidAmount: number | null;
   winningBidUserId: string | null;
+  state: CycleState;
   status: CycleStatus;
   closedAt: Date | null;
   closedByUserId: string | null;
@@ -106,6 +108,7 @@ describe('Payouts (e2e)', () => {
       finalPayoutUserId: '00000000-0000-0000-0000-000000000022',
       winningBidAmount: 250,
       winningBidUserId: '00000000-0000-0000-0000-000000000022',
+      state: CycleState.DUE,
       status: CycleStatus.OPEN,
       closedAt: null,
       closedByUserId: null,
@@ -202,20 +205,30 @@ describe('Payouts (e2e)', () => {
           data,
         }: {
           where: { id: string };
-          data: {
+          data: Partial<{
             status: CycleStatus;
+            state: CycleState;
             closedAt: Date;
             closedByUserId: string;
-          };
+          }>;
         }) => {
           const cycle = cycles.find((item) => item.id === where.id);
           if (!cycle) {
             throw new Error('Cycle not found');
           }
 
-          cycle.status = data.status;
-          cycle.closedAt = data.closedAt;
-          cycle.closedByUserId = data.closedByUserId;
+          if (data.status !== undefined) {
+            cycle.status = data.status;
+          }
+          if (data.state !== undefined) {
+            cycle.state = data.state;
+          }
+          if (data.closedAt !== undefined) {
+            cycle.closedAt = data.closedAt;
+          }
+          if (data.closedByUserId !== undefined) {
+            cycle.closedByUserId = data.closedByUserId;
+          }
 
           return cycle;
         },
@@ -361,13 +374,18 @@ describe('Payouts (e2e)', () => {
           where,
           select,
         }: {
-          where: { groupId: string; status: MemberStatus };
+          where: { groupId: string; status: MemberStatus | { in: MemberStatus[] } };
           select: { userId: true };
         }) => {
+          const allowedStatuses =
+            typeof where.status === 'object' && where.status != null && 'in' in where.status
+              ? where.status.in
+              : [where.status as MemberStatus];
           return members
             .filter(
               (item) =>
-                item.groupId === where.groupId && item.status === where.status,
+                item.groupId === where.groupId &&
+                allowedStatuses.includes(item.status),
             )
             .map((item) => ({
               ...(select.userId ? { userId: item.userId } : {}),
@@ -381,13 +399,25 @@ describe('Payouts (e2e)', () => {
           where,
           select,
         }: {
-          where: { cycleId: string; status: ContributionStatus };
+          where: {
+            cycleId: string;
+            status:
+              | ContributionStatus
+              | {
+                  in: ContributionStatus[];
+                };
+          };
           select: { userId: true };
         }) => {
+          const allowedStatuses =
+            typeof where.status === 'object' && where.status != null && 'in' in where.status
+              ? where.status.in
+              : [where.status as ContributionStatus];
           return contributions
             .filter(
               (item) =>
-                item.cycleId === where.cycleId && item.status === where.status,
+                item.cycleId === where.cycleId &&
+                allowedStatuses.includes(item.status),
             )
             .map((item) => ({
               ...(select.userId ? { userId: item.userId } : {}),
@@ -432,6 +462,7 @@ describe('Payouts (e2e)', () => {
     cycles[0].finalPayoutUserId = '00000000-0000-0000-0000-000000000022';
     cycles[0].winningBidAmount = 250;
     cycles[0].winningBidUserId = '00000000-0000-0000-0000-000000000022';
+    cycles[0].state = CycleState.DUE;
     cycles[0].status = CycleStatus.OPEN;
     cycles[0].closedAt = null;
     cycles[0].closedByUserId = null;
@@ -465,9 +496,14 @@ describe('Payouts (e2e)', () => {
     const closed = await payoutsController.closeCycle(
       adminUser,
       '00000000-0000-0000-0000-000000000201',
+      {},
     );
 
-    expect(closed).toEqual({ success: true });
+    expect(closed).toEqual({
+      success: true,
+      nextCycleId: null,
+      nextCycle: null,
+    });
     expect(cycles[0].status).toBe(CycleStatus.CLOSED);
   });
 

@@ -7,6 +7,8 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/group_rules_model.dart';
+import '../../../data/models/member_model.dart';
 import '../../../data/models/member_status_utils.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../features/auth/auth_controller.dart';
@@ -17,6 +19,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/cycle_detail_provider.dart';
 import '../../groups/group_detail_controller.dart';
+import '../../groups/group_rules_provider.dart';
 import '../cycle_payout_provider.dart';
 import '../payout_action_controller.dart';
 
@@ -31,20 +34,22 @@ class PayoutScreen extends ConsumerStatefulWidget {
 }
 
 class _PayoutScreenState extends ConsumerState<PayoutScreen> {
-  late final TextEditingController _confirmPaymentRefController;
-  late final TextEditingController _confirmNoteController;
+  late final TextEditingController _disbursePaymentRefController;
+  late final TextEditingController _disburseNoteController;
+  String? _decisionWinnerUserId;
+  bool _autoNext = true;
 
   @override
   void initState() {
     super.initState();
-    _confirmPaymentRefController = TextEditingController();
-    _confirmNoteController = TextEditingController();
+    _disbursePaymentRefController = TextEditingController();
+    _disburseNoteController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _confirmPaymentRefController.dispose();
-    _confirmNoteController.dispose();
+    _disbursePaymentRefController.dispose();
+    _disburseNoteController.dispose();
     super.dispose();
   }
 
@@ -57,6 +62,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     );
     final payoutAsync = ref.watch(cyclePayoutProvider(widget.cycleId));
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final rulesAsync = ref.watch(groupRulesProvider(widget.groupId));
     final currentUser = ref.watch(currentUserProvider);
     final actionState = ref.watch(payoutActionControllerProvider(args));
 
@@ -114,12 +120,6 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
       }
     }
 
-    final activeMembersCount =
-        members
-            ?.where((member) => isParticipatingMemberStatus(member.status))
-            .length ??
-        0;
-
     return KitScaffold(
       appBar: const KitAppBar(title: 'Payout'),
       child: groupAsync.when(
@@ -164,64 +164,30 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                       const SizedBox(height: AppSpacing.md),
                       _PayoutTimelineCard(cycle: cycleData, payout: payout),
                       const SizedBox(height: AppSpacing.md),
-                      if (payout == null)
-                        _CreatePayoutSection(
-                          isAdmin: isAdmin,
-                          defaultAmount:
-                              (group?.contributionAmount ?? 0) *
-                              (activeMembersCount > 0 ? activeMembersCount : 1),
-                          isLoading: actionState.isLoading,
-                          onCreatePressed: isAdmin
-                              ? () => _showCreatePayoutDialog(
-                                  context: context,
-                                  defaultAmount:
-                                      (group?.contributionAmount ?? 0) *
-                                      (activeMembersCount > 0
-                                          ? activeMembersCount
-                                          : 1),
-                                  onSubmit:
-                                      ({
-                                        required amount,
-                                        paymentRef,
-                                        note,
-                                      }) async {
-                                        final success = await ref
-                                            .read(
-                                              payoutActionControllerProvider(
-                                                args,
-                                              ).notifier,
-                                            )
-                                            .createPayout(
-                                              amount: amount,
-                                              paymentRef: paymentRef,
-                                              note: note,
-                                            );
-
-                                        if (!context.mounted) {
-                                          return;
-                                        }
-
-                                        if (success) {
-                                          KitToast.success(
-                                            context,
-                                            'Payout created.',
-                                          );
-                                        }
-                                      },
-                                )
-                              : null,
-                        ),
-                      if (payout != null)
-                        _PayoutActionsSection(
-                          args: args,
-                          cycle: cycleData,
-                          payout: payout,
-                          isAdmin: isAdmin,
-                          actionState: actionState,
-                          confirmPaymentRefController:
-                              _confirmPaymentRefController,
-                          confirmNoteController: _confirmNoteController,
-                        ),
+                      _PhaseFiveActionsSection(
+                        args: args,
+                        cycle: cycleData,
+                        payout: payout,
+                        isAdmin: isAdmin,
+                        actionState: actionState,
+                        rules: rulesAsync.valueOrNull,
+                        members: members ?? const [],
+                        decisionWinnerUserId: _decisionWinnerUserId,
+                        onDecisionWinnerChanged: (userId) {
+                          setState(() {
+                            _decisionWinnerUserId = userId;
+                          });
+                        },
+                        disbursePaymentRefController:
+                            _disbursePaymentRefController,
+                        disburseNoteController: _disburseNoteController,
+                        autoNext: _autoNext,
+                        onAutoNextChanged: (value) {
+                          setState(() {
+                            _autoNext = value;
+                          });
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -357,8 +323,15 @@ class _PayoutTimelineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCreated = payout != null;
-    final isConfirmed = payout?.status == PayoutStatusModel.confirmed;
+    final collectionComplete =
+        cycle.state == CycleStateModel.readyForPayout ||
+        cycle.state == CycleStateModel.disbursed ||
+        cycle.state == CycleStateModel.closed;
+    final winnerSelected =
+        payout != null ||
+        cycle.state == CycleStateModel.disbursed ||
+        cycle.state == CycleStateModel.closed;
+    final isDisbursed = payout?.status == PayoutStatusModel.confirmed;
     final isClosed = cycle.status == CycleStatusModel.closed;
 
     return KitCard(
@@ -371,14 +344,19 @@ class _PayoutTimelineCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _TimelineRow(
-            label: 'Payout created',
-            done: isCreated,
-            detail: isCreated ? 'Recorded by admin' : 'Pending',
+            label: 'Collection complete',
+            done: collectionComplete,
+            detail: collectionComplete ? 'Ready for payout stage' : 'Pending',
           ),
           _TimelineRow(
-            label: 'Payout confirmed',
-            done: isConfirmed,
-            detail: isConfirmed ? 'Confirmed and locked' : 'Pending',
+            label: 'Winner selected',
+            done: winnerSelected,
+            detail: winnerSelected ? 'Winner set for cycle' : 'Pending',
+          ),
+          _TimelineRow(
+            label: 'Payout disbursed',
+            done: isDisbursed,
+            detail: isDisbursed ? 'Disbursement recorded' : 'Pending',
           ),
           _TimelineRow(
             label: 'Cycle closed',
@@ -435,117 +413,110 @@ class _TimelineRow extends StatelessWidget {
   }
 }
 
-class _CreatePayoutSection extends StatelessWidget {
-  const _CreatePayoutSection({
-    required this.isAdmin,
-    required this.defaultAmount,
-    required this.isLoading,
-    required this.onCreatePressed,
-  });
-
-  final bool isAdmin;
-  final int defaultAmount;
-  final bool isLoading;
-  final Future<void> Function()? onCreatePressed;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isAdmin) {
-      return KitCard(
-        child: Text(
-          'Waiting for admin to record payout.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      );
-    }
-
-    return KitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'No payout exists yet.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text('Suggested amount: $defaultAmount'),
-          const SizedBox(height: AppSpacing.md),
-          KitPrimaryButton(
-            label: 'Create payout',
-            isLoading: isLoading,
-            onPressed: isLoading || onCreatePressed == null
-                ? null
-                : () => onCreatePressed!(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PayoutActionsSection extends ConsumerWidget {
-  const _PayoutActionsSection({
+class _PhaseFiveActionsSection extends ConsumerWidget {
+  const _PhaseFiveActionsSection({
     required this.args,
     required this.cycle,
-    required this.payout,
     required this.isAdmin,
+    required this.payout,
     required this.actionState,
-    required this.confirmPaymentRefController,
-    required this.confirmNoteController,
+    required this.rules,
+    required this.members,
+    required this.decisionWinnerUserId,
+    required this.onDecisionWinnerChanged,
+    required this.disbursePaymentRefController,
+    required this.disburseNoteController,
+    required this.autoNext,
+    required this.onAutoNextChanged,
   });
 
   final PayoutActionArgs args;
   final CycleModel cycle;
-  final PayoutModel payout;
   final bool isAdmin;
+  final PayoutModel? payout;
   final PayoutActionState actionState;
-  final TextEditingController confirmPaymentRefController;
-  final TextEditingController confirmNoteController;
+  final GroupRulesModel? rules;
+  final List<MemberModel> members;
+  final String? decisionWinnerUserId;
+  final ValueChanged<String?> onDecisionWinnerChanged;
+  final TextEditingController disbursePaymentRefController;
+  final TextEditingController disburseNoteController;
+  final bool autoNext;
+  final ValueChanged<bool> onAutoNextChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!isAdmin) {
-      if (payout.status == PayoutStatusModel.confirmed) {
-        return KitCard(
-          child: Text(
-            'Payout is confirmed.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        );
-      }
-
       return KitCard(
         child: Text(
-          'Waiting for admin confirmation.',
+          payout?.status == PayoutStatusModel.confirmed
+              ? 'Payout is disbursed.'
+              : 'Waiting for admin payout actions.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }
 
-    final canConfirm = payout.status == PayoutStatusModel.pending;
-    final canClose =
-        payout.status == PayoutStatusModel.confirmed &&
-        cycle.status == CycleStatusModel.open;
+    final isReadyForPayout = cycle.state == CycleStateModel.readyForPayout;
+    final isPayoutDisbursed = payout?.status == PayoutStatusModel.confirmed;
+    final canSelectAndDisburse =
+        isReadyForPayout &&
+        cycle.status == CycleStatusModel.open &&
+        !isPayoutDisbursed;
+    final canClose = isPayoutDisbursed && cycle.status == CycleStatusModel.open;
+
+    if (!canSelectAndDisburse && !canClose) {
+      return KitCard(
+        child: Text(
+          isPayoutDisbursed
+              ? 'Payout is disbursed. Close cycle to continue.'
+              : 'Winner selection becomes available when cycle is READY_FOR_PAYOUT.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
 
     return Column(
       children: [
-        if (canConfirm)
+        if (canSelectAndDisburse)
           KitCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Admin actions',
+                  'Select winner',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _WinnerSelectionContent(
+                  args: args,
+                  cycle: cycle,
+                  rules: rules,
+                  members: members,
+                  decisionWinnerUserId: decisionWinnerUserId,
+                  onDecisionWinnerChanged: onDecisionWinnerChanged,
+                  actionState: actionState,
+                ),
+              ],
+            ),
+          ),
+        if (canSelectAndDisburse)
+          KitCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Disburse payout',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 KitTextField(
-                  controller: confirmPaymentRefController,
+                  controller: disbursePaymentRefController,
                   label: 'Payment ref (optional)',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 KitTextArea(
-                  controller: confirmNoteController,
+                  controller: disburseNoteController,
                   label: 'Note (optional)',
                   maxLines: 2,
                 ),
@@ -616,14 +587,14 @@ class _PayoutActionsSection extends ConsumerWidget {
                   ),
                 ],
                 if (actionState.actionType == PayoutActionType.uploadingProof ||
-                    actionState.actionType == PayoutActionType.confirming) ...[
+                    actionState.actionType == PayoutActionType.disbursing) ...[
                   const SizedBox(height: AppSpacing.md),
                   LinearProgressIndicator(value: actionState.uploadProgress),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     actionState.actionType == PayoutActionType.uploadingProof
                         ? 'Uploading payout proof...'
-                        : 'Confirming payout...',
+                        : 'Disbursing payout...',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -651,8 +622,10 @@ class _PayoutActionsSection extends ConsumerWidget {
                 ],
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
-                  label: 'Confirm payout',
-                  isLoading: actionState.isLoading,
+                  label: 'Disburse payout',
+                  isLoading:
+                      actionState.isLoading &&
+                      actionState.actionType == PayoutActionType.disbursing,
                   onPressed: actionState.isLoading
                       ? null
                       : () async {
@@ -660,10 +633,9 @@ class _PayoutActionsSection extends ConsumerWidget {
                               .read(
                                 payoutActionControllerProvider(args).notifier,
                               )
-                              .confirmPayout(
-                                payoutId: payout.id,
-                                paymentRef: confirmPaymentRefController.text,
-                                note: confirmNoteController.text,
+                              .disbursePayout(
+                                paymentRef: disbursePaymentRefController.text,
+                                note: disburseNoteController.text,
                               );
 
                           if (!context.mounted) {
@@ -671,7 +643,7 @@ class _PayoutActionsSection extends ConsumerWidget {
                           }
 
                           if (success) {
-                            KitToast.success(context, 'Payout confirmed.');
+                            KitToast.success(context, 'Payout disbursed.');
                           }
                         },
                 ),
@@ -691,6 +663,13 @@ class _PayoutActionsSection extends ConsumerWidget {
                 Text(
                   'Payout is confirmed. You can close this cycle now.',
                   style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Auto-start next cycle'),
+                  value: autoNext,
+                  onChanged: actionState.isLoading ? null : onAutoNextChanged,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
@@ -718,7 +697,7 @@ class _PayoutActionsSection extends ConsumerWidget {
                               .read(
                                 payoutActionControllerProvider(args).notifier,
                               )
-                              .closeCycle();
+                              .closeCycle(autoNext: autoNext);
 
                           if (!context.mounted) {
                             return;
@@ -726,9 +705,6 @@ class _PayoutActionsSection extends ConsumerWidget {
 
                           if (success) {
                             KitToast.success(context, 'Cycle closed.');
-                            if (context.canPop()) {
-                              context.pop();
-                            }
                             if (context.canPop()) {
                               context.pop();
                             }
@@ -743,92 +719,134 @@ class _PayoutActionsSection extends ConsumerWidget {
   }
 }
 
-Future<void> _showCreatePayoutDialog({
-  required BuildContext context,
-  required int defaultAmount,
-  required Future<void> Function({
-    required int amount,
-    String? paymentRef,
-    String? note,
-  })
-  onSubmit,
-}) async {
-  final amountController = TextEditingController(
-    text: defaultAmount > 0 ? defaultAmount.toString() : '',
-  );
-  final paymentRefController = TextEditingController();
-  final noteController = TextEditingController();
-  String? validationError;
+class _WinnerSelectionContent extends ConsumerWidget {
+  const _WinnerSelectionContent({
+    required this.args,
+    required this.cycle,
+    required this.rules,
+    required this.members,
+    required this.decisionWinnerUserId,
+    required this.onDecisionWinnerChanged,
+    required this.actionState,
+  });
 
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) {
-      return StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          return AlertDialog(
-            title: const Text('Create payout'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  KitNumberField(controller: amountController, label: 'Amount'),
-                  const SizedBox(height: AppSpacing.md),
-                  KitTextField(
-                    controller: paymentRefController,
-                    label: 'Payment ref (optional)',
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  KitTextArea(
-                    controller: noteController,
-                    label: 'Note (optional)',
-                    maxLines: 2,
-                  ),
-                  if (validationError != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      validationError!,
-                      style: Theme.of(dialogContext).textTheme.bodySmall
-                          ?.copyWith(
-                            color: Theme.of(dialogContext).colorScheme.error,
-                          ),
-                    ),
-                  ],
-                ],
-              ),
+  final PayoutActionArgs args;
+  final CycleModel cycle;
+  final GroupRulesModel? rules;
+  final List<MemberModel> members;
+  final String? decisionWinnerUserId;
+  final ValueChanged<String?> onDecisionWinnerChanged;
+  final PayoutActionState actionState;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = rules?.payoutMode ?? GroupRulePayoutModeModel.unknown;
+    final requiresVerification = rules?.requiresMemberVerification ?? false;
+    final eligibleMembers = members
+        .where(
+          (member) => requiresVerification
+              ? isVerifiedMemberStatus(member.status)
+              : isParticipatingMemberStatus(member.status),
+        )
+        .toList(growable: false);
+
+    final isSelecting =
+        actionState.isLoading &&
+        actionState.actionType == PayoutActionType.selectingWinner;
+
+    Future<void> runSelection({String? userId}) async {
+      final success = await ref
+          .read(payoutActionControllerProvider(args).notifier)
+          .selectWinner(userId: userId);
+
+      if (!context.mounted) {
+        return;
+      }
+      if (success) {
+        KitToast.success(context, 'Winner selected.');
+      }
+    }
+
+    final helperText = switch (mode) {
+      GroupRulePayoutModeModel.lottery =>
+        'Run a turn draw among eligible members.',
+      GroupRulePayoutModeModel.auction =>
+        'Close bids and select highest bid winner (tie: earliest bid).',
+      GroupRulePayoutModeModel.rotation =>
+        'System picks the next eligible member in rotation.',
+      GroupRulePayoutModeModel.decision =>
+        'Admin selects one eligible member manually.',
+      GroupRulePayoutModeModel.unknown => 'Ruleset payout mode is unavailable.',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(helperText, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: AppSpacing.sm),
+        if (mode == GroupRulePayoutModeModel.decision) ...[
+          DropdownButtonFormField<String>(
+            initialValue: decisionWinnerUserId,
+            decoration: const InputDecoration(
+              labelText: 'Choose winner',
+              border: OutlineInputBorder(),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
+            items: eligibleMembers
+                .map(
+                  (member) => DropdownMenuItem<String>(
+                    value: member.userId,
+                    child: Text(member.displayName),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: isSelecting ? null : onDecisionWinnerChanged,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (mode == GroupRulePayoutModeModel.auction)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: KitSecondaryButton(
+              onPressed: () => context.push(
+                AppRoutePaths.groupCycleDetail(args.groupId, cycle.id),
               ),
-              FilledButton(
-                onPressed: () async {
-                  final amount = int.tryParse(amountController.text.trim());
-                  if (amount == null || amount <= 0) {
-                    setDialogState(() {
-                      validationError = 'Amount must be greater than 0.';
-                    });
-                    return;
-                  }
-
-                  await onSubmit(
-                    amount: amount,
-                    paymentRef: paymentRefController.text,
-                    note: noteController.text,
-                  );
-
-                  if (dialogContext.mounted) {
-                    Navigator.of(dialogContext).pop();
-                  }
-                },
-                child: const Text('Create'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
+              icon: Icons.gavel_rounded,
+              label: 'Open bids',
+              expand: false,
+            ),
+          ),
+        KitPrimaryButton(
+          label: switch (mode) {
+            GroupRulePayoutModeModel.lottery => 'Draw winner',
+            GroupRulePayoutModeModel.auction => 'Close bids & select winner',
+            GroupRulePayoutModeModel.rotation => 'Select next in rotation',
+            GroupRulePayoutModeModel.decision => 'Select chosen member',
+            GroupRulePayoutModeModel.unknown => 'Winner selection unavailable',
+          },
+          icon: switch (mode) {
+            GroupRulePayoutModeModel.lottery => Icons.casino_outlined,
+            GroupRulePayoutModeModel.auction => Icons.gavel_rounded,
+            GroupRulePayoutModeModel.rotation => Icons.swap_horiz_rounded,
+            GroupRulePayoutModeModel.decision => Icons.how_to_vote_outlined,
+            GroupRulePayoutModeModel.unknown => Icons.error_outline,
+          },
+          isLoading: isSelecting,
+          onPressed:
+              isSelecting ||
+                  mode == GroupRulePayoutModeModel.unknown ||
+                  (mode == GroupRulePayoutModeModel.decision &&
+                      (decisionWinnerUserId == null ||
+                          decisionWinnerUserId!.trim().isEmpty))
+              ? null
+              : () => runSelection(
+                  userId: mode == GroupRulePayoutModeModel.decision
+                      ? decisionWinnerUserId
+                      : null,
+                ),
+        ),
+      ],
+    );
+  }
 }
 
 Future<void> _viewProof(BuildContext context, WidgetRef ref, String key) async {

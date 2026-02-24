@@ -798,6 +798,14 @@ _PrimaryAction _resolvePrimaryAction({
       currentUserId != null && currentUserId == drawnWinnerUserId;
   final canManageAuction = isAdmin || isDrawnWinner;
 
+  if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
+    return _PrimaryAction(
+      label: 'Select winner',
+      icon: Icons.how_to_vote_outlined,
+      onPressed: () => context.push(payoutRoute),
+    );
+  }
+
   if (isAdmin && payout?.status == PayoutStatusModel.pending) {
     return _PrimaryAction(
       label: 'Manage payout',
@@ -924,7 +932,7 @@ Future<void> _showAdminActions({
       ),
     if (cycle != null)
       KitActionSheetItem(
-        label: 'Create / Confirm payout',
+        label: 'Select winner / Disburse payout',
         icon: Icons.account_balance_wallet_outlined,
         onPressed: () =>
             context.push(AppRoutePaths.groupCyclePayout(groupId, cycle.id)),

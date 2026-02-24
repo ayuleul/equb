@@ -10,6 +10,28 @@ class PayoutsRepository {
 
   final Map<String, PayoutModel?> _cyclePayoutCache = <String, PayoutModel?>{};
 
+  Future<void> selectWinner(String cycleId, {String? userId}) async {
+    await _api.selectWinner(cycleId, userId: userId);
+    _cyclePayoutCache.remove(cycleId);
+  }
+
+  Future<PayoutModel> disbursePayout(
+    String cycleId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  }) async {
+    final payload = await _api.disbursePayout(
+      cycleId,
+      proofFileKey: proofFileKey,
+      paymentRef: paymentRef,
+      note: note,
+    );
+    final payout = PayoutModel.fromJson(payload);
+    _cyclePayoutCache[cycleId] = payout;
+    return payout;
+  }
+
   Future<PayoutModel> createPayout(
     String cycleId,
     CreatePayoutRequest request,
@@ -49,14 +71,17 @@ class PayoutsRepository {
     return payout;
   }
 
-  Future<bool> closeCycle(String cycleId) async {
-    final payload = await _api.closeCycle(cycleId);
+  Future<Map<String, dynamic>> closeCycle(
+    String cycleId, {
+    bool autoNext = false,
+  }) async {
+    final payload = await _api.closeCycle(cycleId, autoNext: autoNext);
     final success = payload['success'] == true;
     if (success) {
       _cyclePayoutCache.remove(cycleId);
     }
 
-    return success;
+    return payload;
   }
 
   void invalidatePayout(String cycleId) {

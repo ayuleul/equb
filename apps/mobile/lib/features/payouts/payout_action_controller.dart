@@ -49,6 +49,8 @@ final payoutActionControllerProvider =
 enum PayoutActionType {
   none,
   pickingProof,
+  selectingWinner,
+  disbursing,
   creating,
   uploadingProof,
   confirming,
@@ -195,6 +197,115 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     state = state.copyWith(clearError: true);
   }
 
+  Future<bool> selectWinner({String? userId}) async {
+    state = state.copyWith(
+      isLoading: true,
+      actionType: PayoutActionType.selectingWinner,
+      clearError: true,
+      clearProgress: true,
+    );
+
+    try {
+      await _payoutsRepository.selectWinner(
+        args.cycleId,
+        userId: _normalizeOptional(userId),
+      );
+
+      _invalidateAfterMutation();
+
+      state = state.copyWith(
+        isLoading: false,
+        actionType: PayoutActionType.none,
+        clearError: true,
+      );
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        isLoading: false,
+        actionType: PayoutActionType.none,
+        errorMessage: mapApiErrorToMessage(error),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> disbursePayout({String? paymentRef, String? note}) async {
+    state = state.copyWith(
+      isLoading: true,
+      actionType: PayoutActionType.disbursing,
+      clearError: true,
+    );
+
+    try {
+      String? proofFileKey;
+      final proof = state.proofImage;
+      if (proof != null) {
+        state = state.copyWith(
+          actionType: PayoutActionType.uploadingProof,
+          uploadProgress: 0,
+        );
+
+        final signedUpload = await _filesRepository.requestSignedUpload(
+          purpose: UploadPurposeModel.payoutProof,
+          groupId: args.groupId,
+          cycleId: args.cycleId,
+          fileName: proof.fileName,
+          contentType: proof.contentType,
+        );
+
+        await _filesRepository.uploadToSignedUrl(
+          signedUpload.uploadUrl,
+          proof.bytes,
+          proof.contentType,
+          onProgress: (progress) {
+            state = state.copyWith(
+              actionType: PayoutActionType.uploadingProof,
+              uploadProgress: progress.clamp(0, 1),
+            );
+          },
+        );
+
+        proofFileKey = signedUpload.key;
+      }
+
+      state = state.copyWith(
+        actionType: PayoutActionType.disbursing,
+        uploadProgress: 1,
+      );
+
+      await _payoutsRepository.disbursePayout(
+        args.cycleId,
+        proofFileKey: proofFileKey,
+        paymentRef: _normalizeOptional(paymentRef),
+        note: _normalizeOptional(note),
+      );
+
+      _invalidateAfterMutation();
+
+      state = state.copyWith(
+        isLoading: false,
+        actionType: PayoutActionType.none,
+        clearError: true,
+        clearProgress: true,
+      );
+      return true;
+    } on DioException catch (error) {
+      state = state.copyWith(
+        isLoading: false,
+        actionType: PayoutActionType.none,
+        errorMessage: mapUploadErrorToMessage(error),
+      );
+      return false;
+    } catch (error) {
+      state = state.copyWith(
+        isLoading: false,
+        actionType: PayoutActionType.none,
+        errorMessage: mapApiErrorToMessage(error),
+      );
+      return false;
+    }
+  }
+
   Future<bool> createPayout({
     int? amount,
     String? paymentRef,
@@ -318,7 +429,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     }
   }
 
-  Future<bool> closeCycle() async {
+  Future<bool> closeCycle({bool autoNext = false}) async {
     state = state.copyWith(
       isLoading: true,
       actionType: PayoutActionType.closing,
@@ -327,7 +438,11 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     );
 
     try {
-      final success = await _payoutsRepository.closeCycle(args.cycleId);
+      final payload = await _payoutsRepository.closeCycle(
+        args.cycleId,
+        autoNext: autoNext,
+      );
+      final success = payload['success'] == true;
       if (!success) {
         state = state.copyWith(
           isLoading: false,

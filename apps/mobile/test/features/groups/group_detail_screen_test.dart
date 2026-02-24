@@ -458,7 +458,20 @@ class _FakeContributionsApi implements ContributionsApi {
 
 class _FakePayoutsApi implements PayoutsApi {
   @override
-  Future<Map<String, dynamic>> closeCycle(String cycleId) async {
+  Future<Map<String, dynamic>> closeCycle(
+    String cycleId, {
+    bool autoNext = false,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> disbursePayout(
+    String cycleId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  }) async {
     throw UnimplementedError();
   }
 
@@ -475,6 +488,14 @@ class _FakePayoutsApi implements PayoutsApi {
     String cycleId,
     CreatePayoutRequest request,
   ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> selectWinner(
+    String cycleId, {
+    String? userId,
+  }) async {
     throw UnimplementedError();
   }
 
