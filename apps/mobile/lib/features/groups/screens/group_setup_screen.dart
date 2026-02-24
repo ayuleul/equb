@@ -768,37 +768,49 @@ class _SetupMemberRow extends StatelessWidget {
       MemberRoleModel.unknown => 'UNKNOWN',
     };
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        KitAvatar(name: member.displayName, size: KitAvatarSize.sm),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                member.displayName,
-                style: Theme.of(context).textTheme.titleSmall,
+        Row(
+          children: [
+            KitAvatar(name: member.displayName, size: KitAvatarSize.sm),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    member.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  if (member.verifiedAt != null)
+                    Text(
+                      'Verified ${member.verifiedAt!.toLocal()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
-              if (member.verifiedAt != null)
-                Text(
-                  'Verified ${member.verifiedAt!.toLocal()}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.xs),
-        StatusPill.fromLabel(roleLabel),
-        const SizedBox(width: AppSpacing.xs),
-        StatusPill.fromLabel(memberStatusLabel(member.status)),
-        if (canVerify) ...[
-          const SizedBox(width: AppSpacing.xs),
-          TextButton(
-            onPressed: isVerifying ? null : onVerify,
-            child: Text(isVerifying ? 'Verifying...' : 'Verify'),
-          ),
-        ],
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            StatusPill.fromLabel(roleLabel),
+            StatusPill.fromLabel(memberStatusLabel(member.status)),
+            if (canVerify)
+              TextButton(
+                onPressed: isVerifying ? null : onVerify,
+                child: Text(isVerifying ? 'Verifying...' : 'Verify'),
+              ),
+          ],
+        ),
       ],
     );
   }
