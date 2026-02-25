@@ -248,6 +248,9 @@
 - Env strategy is locked to `flutter_dotenv`:
   - Load `.env` at startup from `apps/mobile/.env`
   - `API_BASE_URL` is required and must fail-fast if missing
+- Local host API base URL must be platform-aware:
+  - Android emulator: use `http://10.0.2.2:<port>`
+  - iOS simulator and macOS app: use `http://localhost:<port>` (or `127.0.0.1`)
 - Never hardcode API URLs or secrets in Flutter source.
 - Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.
 - Default in-app back navigation UI must use the shared rounded-square chevron style (`KitBackButton` in `shared/kit/kit_app_bar.dart`) unless a screen has an explicit product exception.

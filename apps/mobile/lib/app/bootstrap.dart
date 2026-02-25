@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +53,8 @@ class AppBootstrapConfig {
   }
 
   static AppBootstrapConfig fromMap(Map<String, String> env) {
-    final apiBaseUrl = (env['API_BASE_URL'] ?? '').trim();
+    final rawApiBaseUrl = (env['API_BASE_URL'] ?? '').trim();
+    final apiBaseUrl = _normalizeApiBaseUrlForPlatform(rawApiBaseUrl);
     if (apiBaseUrl.isEmpty) {
       throw StateError(
         'API_BASE_URL is missing in .env. Example: API_BASE_URL=http://localhost:3000',
@@ -71,6 +73,37 @@ class AppBootstrapConfig {
       apiBaseUrl: apiBaseUrl,
       apiTimeoutMs: parsedTimeout,
     );
+  }
+
+  static String _normalizeApiBaseUrlForPlatform(String value) {
+    if (value.isEmpty || kIsWeb) {
+      return value;
+    }
+
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.isEmpty) {
+      return value;
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        if (uri.host == 'localhost' || uri.host == '127.0.0.1') {
+          return uri.replace(host: '10.0.2.2').toString();
+        }
+        break;
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        if (uri.host == '10.0.2.2') {
+          return uri.replace(host: 'localhost').toString();
+        }
+        break;
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        break;
+    }
+
+    return value;
   }
 }
 
