@@ -80,6 +80,7 @@ class _EqubAppState extends ConsumerState<EqubApp> {
 
     return MaterialApp.router(
       title: 'Equb',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
