@@ -248,6 +248,7 @@
 - Env strategy is locked to `flutter_dotenv`:
   - Load `.env` at startup from `apps/mobile/.env`
   - `API_BASE_URL` is required and must fail-fast if missing
+- Mobile app entry is locked to `apps/mobile/lib/main.dart` -> `apps/mobile/lib/app/app.dart`; do not add or reintroduce a parallel app tree under `apps/mobile/lib/src/`.
 - Local host API base URL must be platform-aware:
   - Android emulator: use `http://10.0.2.2:<port>`
   - iOS simulator and macOS app: use `http://localhost:<port>` (or `127.0.0.1`)
