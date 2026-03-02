@@ -481,9 +481,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           onChanged: (_) => setState(() => _errorMessage = null),
         ),
         const SizedBox(height: AppSpacing.md),
-        DropdownButtonFormField<GroupRuleFrequencyModel>(
-          initialValue: _frequency,
-          decoration: const InputDecoration(labelText: 'Frequency'),
+        KitDropdownField<GroupRuleFrequencyModel>(
+          value: _frequency,
+          label: 'Frequency',
           items: const [
             DropdownMenuItem(
               value: GroupRuleFrequencyModel.weekly,
@@ -529,9 +529,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           onChanged: (_) => setState(() => _errorMessage = null),
         ),
         const SizedBox(height: AppSpacing.md),
-        DropdownButtonFormField<GroupRuleFineTypeModel>(
-          initialValue: _fineType,
-          decoration: const InputDecoration(labelText: 'Fine policy'),
+        KitDropdownField<GroupRuleFineTypeModel>(
+          value: _fineType,
+          label: 'Fine policy',
           items: const [
             DropdownMenuItem(
               value: GroupRuleFineTypeModel.none,
@@ -564,9 +564,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           ),
         ],
         const SizedBox(height: AppSpacing.md),
-        DropdownButtonFormField<GroupRulePayoutModeModel>(
-          initialValue: _payoutMode,
-          decoration: const InputDecoration(labelText: 'Payout mode'),
+        KitDropdownField<GroupRulePayoutModeModel>(
+          value: _payoutMode,
+          label: 'Payout mode',
           items: const [
             DropdownMenuItem(
               value: GroupRulePayoutModeModel.lottery,

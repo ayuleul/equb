@@ -785,12 +785,9 @@ class _WinnerSelectionContent extends ConsumerWidget {
         Text(helperText, style: Theme.of(context).textTheme.bodyMedium),
         const SizedBox(height: AppSpacing.sm),
         if (mode == GroupRulePayoutModeModel.decision) ...[
-          DropdownButtonFormField<String>(
-            initialValue: decisionWinnerUserId,
-            decoration: const InputDecoration(
-              labelText: 'Choose winner',
-              border: OutlineInputBorder(),
-            ),
+          KitDropdownField<String>(
+            value: decisionWinnerUserId,
+            label: 'Choose winner',
             items: eligibleMembers
                 .map(
                   (member) => DropdownMenuItem<String>(

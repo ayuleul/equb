@@ -288,9 +288,9 @@ class _SubmitForm extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const KitSectionHeader(title: '2) Payment details'),
-              DropdownButtonFormField<GroupPaymentMethodModel>(
-                initialValue: method,
-                decoration: const InputDecoration(labelText: 'Payment method'),
+              KitDropdownField<GroupPaymentMethodModel>(
+                value: method,
+                label: 'Payment method',
                 items: const [
                   DropdownMenuItem(
                     value: GroupPaymentMethodModel.bank,

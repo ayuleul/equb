@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_spacing.dart';
+
 class KitTextField extends StatelessWidget {
   const KitTextField({
     super.key,
@@ -86,6 +88,7 @@ class KitDropdownField<T> extends StatelessWidget {
     this.value,
     this.onChanged,
     this.label,
+    this.placeholder,
     this.supportText,
     this.errorText,
   });
@@ -94,19 +97,32 @@ class KitDropdownField<T> extends StatelessWidget {
   final T? value;
   final ValueChanged<T?>? onChanged;
   final String? label;
+  final String? placeholder;
   final String? supportText;
   final String? errorText;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return DropdownButtonFormField<T>(
       initialValue: value,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 22),
+      borderRadius: AppRadius.cardRounded,
+      dropdownColor: theme.colorScheme.surface,
+      menuMaxHeight: 320,
       items: items,
       onChanged: onChanged,
+      style: theme.textTheme.titleMedium?.copyWith(
+        color: theme.colorScheme.onSurface,
+      ),
       decoration: InputDecoration(
         labelText: label,
+        hintText: placeholder,
         helperText: supportText,
         errorText: errorText,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
       ),
     );
   }
