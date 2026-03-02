@@ -34,6 +34,10 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   late final TextEditingController _customIntervalDaysController;
   late final TextEditingController _graceDaysController;
   late final TextEditingController _fineAmountController;
+  late final FocusNode _contributionAmountFocusNode;
+  late final FocusNode _customIntervalDaysFocusNode;
+  late final FocusNode _graceDaysFocusNode;
+  late final FocusNode _fineAmountFocusNode;
 
   var _frequency = GroupRuleFrequencyModel.monthly;
   var _fineType = GroupRuleFineTypeModel.none;
@@ -54,6 +58,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
   var _currentStep = 0;
   var _rulesSaved = false;
+  var _isAnyRulesInputFocused = false;
 
   @override
   void initState() {
@@ -62,6 +67,14 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _customIntervalDaysController = TextEditingController();
     _graceDaysController = TextEditingController(text: '0');
     _fineAmountController = TextEditingController(text: '0');
+    _contributionAmountFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _customIntervalDaysFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _graceDaysFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _fineAmountFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
     _loadRules();
   }
 
@@ -71,7 +84,33 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _customIntervalDaysController.dispose();
     _graceDaysController.dispose();
     _fineAmountController.dispose();
+    _contributionAmountFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _customIntervalDaysFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _graceDaysFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _fineAmountFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  void _handleRulesInputFocusChanged() {
+    final isFocused =
+        _contributionAmountFocusNode.hasFocus ||
+        _customIntervalDaysFocusNode.hasFocus ||
+        _graceDaysFocusNode.hasFocus ||
+        _fineAmountFocusNode.hasFocus;
+    if (!mounted || _isAnyRulesInputFocused == isFocused) {
+      return;
+    }
+    setState(() {
+      _isAnyRulesInputFocused = isFocused;
+    });
   }
 
   Future<void> _loadRules() async {
@@ -325,7 +364,11 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             ? 'Step 1 of 2: Rules'
             : 'Step 2 of 2: Invite & Verify',
       ),
-      child: _buildBody(context, groupAsync, membersAsync),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: _buildBody(context, groupAsync, membersAsync),
+      ),
     );
   }
 
@@ -334,6 +377,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     AsyncValue<GroupModel> groupAsync,
     AsyncValue<List<MemberModel>> membersAsync,
   ) {
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final hideSaveRulesCta = isKeyboardOpen || _isAnyRulesInputFocused;
+
     if (_isLoading) {
       return const LoadingView(message: 'Loading setup...');
     }
@@ -399,7 +445,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
         ],
-        if (_currentStep == 0)
+        if (!hideSaveRulesCta && _currentStep == 0)
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -428,6 +474,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       children: [
         AppTextField(
           controller: _contributionAmountController,
+          focusNode: _contributionAmountFocusNode,
           label: 'Contribution amount',
           hint: '500',
           keyboardType: TextInputType.number,
@@ -465,6 +512,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           const SizedBox(height: AppSpacing.md),
           AppTextField(
             controller: _customIntervalDaysController,
+            focusNode: _customIntervalDaysFocusNode,
             label: 'Custom interval (days)',
             hint: '14',
             keyboardType: TextInputType.number,
@@ -474,6 +522,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         const SizedBox(height: AppSpacing.md),
         AppTextField(
           controller: _graceDaysController,
+          focusNode: _graceDaysFocusNode,
           label: 'Grace days',
           hint: '2',
           keyboardType: TextInputType.number,
@@ -507,6 +556,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           const SizedBox(height: AppSpacing.md),
           AppTextField(
             controller: _fineAmountController,
+            focusNode: _fineAmountFocusNode,
             label: 'Fine amount',
             hint: '50',
             keyboardType: TextInputType.number,

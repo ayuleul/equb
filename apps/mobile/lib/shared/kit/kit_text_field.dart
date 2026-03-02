@@ -4,6 +4,7 @@ class KitTextField extends StatelessWidget {
   const KitTextField({
     super.key,
     this.controller,
+    this.focusNode,
     this.label,
     this.placeholder,
     this.supportText,
@@ -15,6 +16,7 @@ class KitTextField extends StatelessWidget {
   });
 
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final String? label;
   final String? placeholder;
   final String? supportText;
@@ -28,6 +30,7 @@ class KitTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       onChanged: onChanged,
       keyboardType: keyboardType,
       obscureText: obscureText,
