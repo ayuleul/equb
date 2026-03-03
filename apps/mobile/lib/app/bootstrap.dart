@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../data/api/api_client.dart';
 import '../data/auth/auth_api.dart';
@@ -26,6 +27,7 @@ import '../data/payouts/payouts_api.dart';
 import '../data/payouts/payouts_repository.dart';
 import '../data/profile/profile_api.dart';
 import '../data/profile/profile_repository.dart';
+import '../data/settings/settings_local_store.dart';
 import '../data/auth/token_store.dart';
 import '../shared/utils/app_logger.dart';
 
@@ -119,6 +121,10 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage();
 });
 
+final localAuthenticationProvider = Provider<LocalAuthentication>((ref) {
+  return LocalAuthentication();
+});
+
 final tokenStoreProvider = Provider<TokenStore>((ref) {
   final storage = ref.watch(secureStorageProvider);
   return TokenStore.fromSecureStorage(storage);
@@ -127,6 +133,11 @@ final tokenStoreProvider = Provider<TokenStore>((ref) {
 final deviceTokenStoreProvider = Provider<DeviceTokenStore>((ref) {
   final storage = ref.watch(secureStorageProvider);
   return DeviceTokenStore.fromSecureStorage(storage);
+});
+
+final settingsLocalStoreProvider = Provider<SettingsLocalStore>((ref) {
+  final storage = ref.watch(secureStorageProvider);
+  return SettingsLocalStore(storage);
 });
 
 final sessionExpiredProvider = StateProvider<bool>((ref) => false);

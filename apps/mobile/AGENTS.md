@@ -137,6 +137,14 @@
 - Tapping a notification row must mark it as read first, then navigate when a resolvable deep link exists.
 - Push delivery is optional; the app must keep notifications UX functional without Firebase by relying on in-app list and graceful fallback behavior.
 
+## App lock rules
+- Biometric app lock is device-level only and must not be treated as account-authentication replacement.
+- Biometric lock preferences must be stored in secure storage using `biometric_enabled` and `lock_timeout_seconds`.
+- App lock must require biometric authentication on cold start when enabled, and on resume after background elapsed time exceeds configured timeout.
+- Lock screen must be a full-screen blocking overlay (no interaction with underlying routes until unlock succeeds).
+- Bottom navigation must never appear on the lock screen.
+- Lock screen must prevent back navigation while locked.
+
 ## Polish & Navigation rules
 - Main app sections must live under shell navigation with bottom tabs (`/home`, `/groups`, `/settings`); logout action belongs in Settings.
 - Use `context.push` for drill-down/detail routes and `context.go` only for root section switches or auth roots.
@@ -144,6 +152,7 @@
 - App bars must render an explicit back button (`leading: BackButton()`) when `context.canPop()` is true.
 - Shared UI under `lib/shared/ui/` is the default for layout and repeated visuals (cards, list rows, badges, empty/loading feedback, snackbars).
 - Standard content padding is `16` horizontal (`AppSpacing.md`); section spacing should stay within `12-16` (`AppSpacing.sm` to `AppSpacing.md`).
+- Settings root (`/settings`) must act as a navigation hub (profile card + menu rows); section details should open on dedicated sub-routes instead of rendering all settings sections on one page.
 
 ## Header rules
 - Feature pages must use `KitScaffold(appBar: KitAppBar(...))` instead of defining custom `AppBar` widgets.

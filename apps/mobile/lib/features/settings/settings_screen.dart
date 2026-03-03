@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,9 +12,8 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authControllerProvider);
     final user = ref.watch(currentUserProvider);
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
 
     return KitScaffold(
       child: ListView(
@@ -23,125 +21,135 @@ class SettingsScreen extends ConsumerWidget {
           KitSectionHeader(
             title: 'Settings',
             kicker: 'Account',
-            subtitle: 'Manage your profile and app session.',
-            action: IconButton(
-              tooltip: 'Notifications',
-              onPressed: () => context.push(AppRoutePaths.notifications),
-              icon: const Icon(Icons.notifications_outlined),
-            ),
+            subtitle: 'Manage your account and app preferences.',
           ),
           KitCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text('Profile', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.sm),
                 Container(
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.12),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.person_outline_rounded,
-                    color: colorScheme.primary,
-                    size: 28,
+                    Icons.person_rounded,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  user?.displayName ?? 'Equb member',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  user?.phone ?? 'No phone available',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: const [
-                    KitBadge(
-                      label: 'SECURE SESSION',
-                      icon: Icons.verified_user_outlined,
-                      tone: KitBadgeTone.info,
-                    ),
-                    KitBadge(
-                      label: 'OTP LOGIN',
-                      icon: Icons.password_outlined,
-                      tone: KitBadgeTone.success,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                KitSecondaryButton(
-                  onPressed: authState.isLoggingOut
-                      ? null
-                      : () async {
-                          final shouldLogout = await KitDialog.confirm(
-                            context: context,
-                            title: 'Logout?',
-                            message:
-                                'You will need OTP verification again next time you sign in.',
-                            confirmLabel: 'Logout',
-                            isDestructive: true,
-                          );
-                          if (shouldLogout != true) {
-                            return;
-                          }
-                          if (!context.mounted) {
-                            return;
-                          }
-                          await ref
-                              .read(authControllerProvider.notifier)
-                              .logout();
-                        },
-                  icon: Icons.logout_rounded,
-                  label: authState.isLoggingOut ? 'Logging out...' : 'Logout',
-                  isLoading: authState.isLoggingOut,
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.displayName ?? 'Equb member',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        user?.phone ?? 'No phone number',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          GestureDetector(
-            onLongPress: kDebugMode
-                ? () => context.push(AppRoutePaths.debugTheme)
-                : null,
-            child: KitCard(
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: colorScheme.secondary.withValues(alpha: 0.14),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.tune_rounded,
-                      size: 18,
-                      color: colorScheme.secondary,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      kDebugMode
-                          ? 'Build: Debug (long-press to open Theme Preview)'
-                          : 'Build: Production',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
+          KitCard(
+            child: Column(
+              children: [
+                _SettingsNavRow(
+                  title: 'Account',
+                  icon: Icons.badge_outlined,
+                  onTap: () => context.push(AppRoutePaths.settingsAccount),
+                ),
+                _SettingsNavRow(
+                  title: 'Security',
+                  icon: Icons.lock_outline_rounded,
+                  onTap: () => context.push(AppRoutePaths.settingsSecurity),
+                ),
+                _SettingsNavRow(
+                  title: 'Notifications',
+                  icon: Icons.notifications_outlined,
+                  onTap: () =>
+                      context.push(AppRoutePaths.settingsNotifications),
+                ),
+                _SettingsNavRow(
+                  title: 'Payments',
+                  icon: Icons.account_balance_wallet_outlined,
+                  onTap: () => context.push(AppRoutePaths.settingsPayments),
+                ),
+                _SettingsNavRow(
+                  title: 'Equb Preferences',
+                  icon: Icons.tune_rounded,
+                  onTap: () =>
+                      context.push(AppRoutePaths.settingsEqubPreferences),
+                  showDivider: false,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          KitCard(
+            child: Column(
+              children: [
+                _SettingsNavRow(
+                  title: 'Data & Privacy',
+                  icon: Icons.privacy_tip_outlined,
+                  onTap: () => context.push(AppRoutePaths.settingsDataPrivacy),
+                ),
+                _SettingsNavRow(
+                  title: 'Support',
+                  icon: Icons.support_agent_outlined,
+                  onTap: () => context.push(AppRoutePaths.settingsSupport),
+                ),
+                _SettingsNavRow(
+                  title: 'About',
+                  icon: Icons.info_outline_rounded,
+                  onTap: () => context.push(AppRoutePaths.settingsAbout),
+                  showDivider: false,
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _SettingsNavRow extends StatelessWidget {
+  const _SettingsNavRow({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    this.showDivider = true,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs, top: AppSpacing.xs),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      ),
+    );
+    if (!showDivider) {
+      return tile;
+    }
+    return Column(children: [tile, const Divider(height: 1)]);
   }
 }

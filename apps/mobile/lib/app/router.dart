@@ -26,6 +26,12 @@ import '../features/payouts/screens/payout_screen.dart';
 import '../features/profile/screens/complete_profile_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/screens/about_settings_screen.dart';
+import '../features/settings/screens/account_settings_screen.dart';
+import '../features/settings/screens/data_privacy_settings_screen.dart';
+import '../features/settings/screens/notifications_settings_screen.dart';
+import '../features/settings/screens/security_settings_screen.dart';
+import '../features/settings/screens/simple_settings_info_screen.dart';
 import '../features/splash/splash_screen.dart';
 
 class AppRoutePaths {
@@ -39,6 +45,14 @@ class AppRoutePaths {
   static const groups = '/groups';
   static const notifications = '/notifications';
   static const settings = '/settings';
+  static const settingsAccount = '/settings/account';
+  static const settingsSecurity = '/settings/security';
+  static const settingsNotifications = '/settings/notifications';
+  static const settingsPayments = '/settings/payments';
+  static const settingsEqubPreferences = '/settings/equb-preferences';
+  static const settingsDataPrivacy = '/settings/data-privacy';
+  static const settingsSupport = '/settings/support';
+  static const settingsAbout = '/settings/about';
   static const groupsCreate = '/groups/create';
   static const groupsJoin = '/groups/join';
   static const debugTheme = '/debug/theme';
@@ -268,6 +282,54 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: AppRoutePaths.settings,
               builder: (context, state) => const SettingsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'account',
+                  builder: (context, state) => const AccountSettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'security',
+                  builder: (context, state) => const SecuritySettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'notifications',
+                  builder: (context, state) =>
+                      const NotificationsSettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'payments',
+                  builder: (context, state) => const SimpleSettingsInfoScreen(
+                    title: 'Payments',
+                    message:
+                        'Payment methods and payout rails management will appear here.',
+                  ),
+                ),
+                GoRoute(
+                  path: 'equb-preferences',
+                  builder: (context, state) => const SimpleSettingsInfoScreen(
+                    title: 'Equb Preferences',
+                    message:
+                        'Equb-specific defaults and participation preferences will appear here.',
+                  ),
+                ),
+                GoRoute(
+                  path: 'data-privacy',
+                  builder: (context, state) =>
+                      const DataPrivacySettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'support',
+                  builder: (context, state) => const SimpleSettingsInfoScreen(
+                    title: 'Support',
+                    message:
+                        'Support resources and contact options will appear here.',
+                  ),
+                ),
+                GoRoute(
+                  path: 'about',
+                  builder: (context, state) => const AboutSettingsScreen(),
+                ),
+              ],
             ),
           ],
         ),

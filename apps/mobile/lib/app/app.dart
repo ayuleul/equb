@@ -6,6 +6,8 @@ import '../features/notifications/deeplink_mapper.dart';
 import '../features/notifications/device_token_controller.dart';
 import '../features/notifications/notification_bootstrap_service.dart';
 import '../features/notifications/notifications_list_provider.dart';
+import '../features/settings/app_lock_controller.dart';
+import '../features/settings/widgets/app_lock_overlay.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
@@ -16,16 +18,31 @@ class EqubApp extends ConsumerStatefulWidget {
   ConsumerState<EqubApp> createState() => _EqubAppState();
 }
 
-class _EqubAppState extends ConsumerState<EqubApp> {
+class _EqubAppState extends ConsumerState<EqubApp> with WidgetsBindingObserver {
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Future<void>.microtask(
       () => ref.read(authControllerProvider.notifier).bootstrap(),
     );
+    Future<void>.microtask(
+      () => ref.read(appLockControllerProvider.notifier).initialize(),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    ref.read(appLockControllerProvider.notifier).handleLifecycleChange(state);
   }
 
   @override
@@ -86,6 +103,9 @@ class _EqubAppState extends ConsumerState<EqubApp> {
       themeMode: ThemeMode.system,
       scaffoldMessengerKey: _scaffoldMessengerKey,
       routerConfig: router,
+      builder: (context, child) {
+        return AppLockOverlayHost(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 
