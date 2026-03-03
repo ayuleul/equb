@@ -137,16 +137,25 @@ class AppComponents {
         vertical: 10,
       ),
       hintStyle: textTheme.bodyMedium?.copyWith(
-        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
+        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.72),
       ),
-      labelStyle: textTheme.bodyMedium?.copyWith(
-        color: colorScheme.onSurfaceVariant,
+      labelStyle: textTheme.titleMedium?.copyWith(
+        color: colorScheme.onSurface,
+        fontWeight: FontWeight.w500,
+      ),
+      floatingLabelStyle: textTheme.titleMedium?.copyWith(
+        color: colorScheme.onSurface,
+        fontWeight: FontWeight.w500,
+      ),
+      errorStyle: textTheme.titleMedium?.copyWith(
+        color: colorScheme.error,
+        fontWeight: FontWeight.w500,
       ),
       border: border(colorScheme.outlineVariant),
       enabledBorder: border(colorScheme.outlineVariant),
       focusedBorder: OutlineInputBorder(
         borderRadius: radius,
-        borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.8),
       ),
       errorBorder: border(colorScheme.error),
       focusedErrorBorder: OutlineInputBorder(

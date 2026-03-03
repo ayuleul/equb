@@ -8,6 +8,7 @@ class KitTextField extends StatelessWidget {
     this.controller,
     this.focusNode,
     this.label,
+    this.labelTooltip,
     this.placeholder,
     this.supportText,
     this.errorText,
@@ -20,6 +21,7 @@ class KitTextField extends StatelessWidget {
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final String? label;
+  final String? labelTooltip;
   final String? placeholder;
   final String? supportText;
   final String? errorText;
@@ -30,7 +32,9 @@ class KitTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    final theme = Theme.of(context);
+    final hasError = (errorText?.isNotEmpty ?? false);
+    final input = TextField(
       controller: controller,
       focusNode: focusNode,
       onChanged: onChanged,
@@ -38,12 +42,35 @@ class KitTextField extends StatelessWidget {
       obscureText: obscureText,
       maxLines: maxLines,
       decoration: InputDecoration(
-        labelText: label,
         hintText: placeholder,
         helperText: supportText,
         errorText: errorText,
+        suffixIcon: hasError
+            ? Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.error_outline_rounded,
+                    size: 18,
+                    color: theme.colorScheme.onError,
+                  ),
+                ),
+              )
+            : null,
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 42,
+          minHeight: 42,
+        ),
       ),
     );
+
+    return _withExternalLabel(context, label, labelTooltip, input);
   }
 }
 
@@ -52,6 +79,7 @@ class KitTextArea extends StatelessWidget {
     super.key,
     this.controller,
     this.label,
+    this.labelTooltip,
     this.placeholder,
     this.supportText,
     this.errorText,
@@ -61,6 +89,7 @@ class KitTextArea extends StatelessWidget {
 
   final TextEditingController? controller;
   final String? label;
+  final String? labelTooltip;
   final String? placeholder;
   final String? supportText;
   final String? errorText;
@@ -72,6 +101,7 @@ class KitTextArea extends StatelessWidget {
     return KitTextField(
       controller: controller,
       label: label,
+      labelTooltip: labelTooltip,
       placeholder: placeholder,
       supportText: supportText,
       errorText: errorText,
@@ -88,6 +118,7 @@ class KitDropdownField<T> extends StatelessWidget {
     this.value,
     this.onChanged,
     this.label,
+    this.labelTooltip,
     this.placeholder,
     this.supportText,
     this.errorText,
@@ -97,6 +128,7 @@ class KitDropdownField<T> extends StatelessWidget {
   final T? value;
   final ValueChanged<T?>? onChanged;
   final String? label;
+  final String? labelTooltip;
   final String? placeholder;
   final String? supportText;
   final String? errorText;
@@ -104,8 +136,7 @@ class KitDropdownField<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return DropdownButtonFormField<T>(
+    final input = DropdownButtonFormField<T>(
       initialValue: value,
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_up_rounded, size: 22),
@@ -118,13 +149,13 @@ class KitDropdownField<T> extends StatelessWidget {
         color: theme.colorScheme.onSurface,
       ),
       decoration: InputDecoration(
-        labelText: label,
         hintText: placeholder,
         helperText: supportText,
         errorText: errorText,
-        floatingLabelBehavior: FloatingLabelBehavior.always,
       ),
     );
+
+    return _withExternalLabel(context, label, labelTooltip, input);
   }
 }
 
@@ -133,6 +164,7 @@ class KitNumberField extends StatelessWidget {
     super.key,
     this.controller,
     this.label,
+    this.labelTooltip,
     this.placeholder,
     this.supportText,
     this.errorText,
@@ -141,6 +173,7 @@ class KitNumberField extends StatelessWidget {
 
   final TextEditingController? controller;
   final String? label;
+  final String? labelTooltip;
   final String? placeholder;
   final String? supportText;
   final String? errorText;
@@ -151,6 +184,7 @@ class KitNumberField extends StatelessWidget {
     return KitTextField(
       controller: controller,
       label: label,
+      labelTooltip: labelTooltip,
       placeholder: placeholder,
       supportText: supportText,
       errorText: errorText,
@@ -158,4 +192,66 @@ class KitNumberField extends StatelessWidget {
       onChanged: onChanged,
     );
   }
+}
+
+Widget _withExternalLabel(
+  BuildContext context,
+  String? label,
+  String? labelTooltip,
+  Widget field,
+) {
+  final hasLabel = (label?.trim().isNotEmpty ?? false);
+  if (!hasLabel) {
+    return field;
+  }
+
+  final theme = Theme.of(context);
+  final hasTooltip = (labelTooltip?.trim().isNotEmpty ?? false);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Row(
+        children: [
+          Text(
+            label!,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(width: hasTooltip ? AppSpacing.xs : 0),
+          if (hasTooltip)
+            Tooltip(
+              message: labelTooltip!,
+              triggerMode: TooltipTriggerMode.tap,
+              showDuration: const Duration(days: 1),
+              enableTapToDismiss: true,
+              preferBelow: false,
+              constraints: const BoxConstraints(maxWidth: 260),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              textStyle: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHigh,
+                borderRadius: AppRadius.smRounded,
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.xs),
+      field,
+    ],
+  );
 }

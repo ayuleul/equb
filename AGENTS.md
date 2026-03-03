@@ -257,6 +257,9 @@
 - Default in-app back navigation UI must use the shared rounded-square chevron style (`KitBackButton` in `shared/kit/kit_app_bar.dart`) unless a screen has an explicit product exception.
 - Shared `KitAppBar` should use the profile-style hierarchy (avatar + title + optional status/subtitle) app-wide, while preserving the existing `KitBackButton` visual style.
 - Dropdown selectors must use the shared `KitDropdownField` (no direct `DropdownButtonFormField` in feature screens) so selector visuals and interaction stay consistent app-wide.
+- Text inputs should keep existing field dimensions while using the shared outlined format with a separate label above the field (no in-border/floating notch label), blue focused outline, and red error outline/message with trailing error indicator.
+- Field-level helper explanations should use a label-adjacent info tooltip icon, and the icon must render only when tooltip text is explicitly provided.
+- Label tooltips must be theme-aware (surface/text/border from `ThemeData`), width-constrained for readability, and remain visible until explicit user dismissal.
 - Group detail screen is the canonical group landing page; avoid creating parallel group profile pages unless a product requirement explicitly adds one.
 - Group detail content must render real Equb domain data (group/member fields and valid actions) and should avoid placeholder-only sections that are not backed by app data.
 - Group detail headers should be implemented via `appBar` (sticky) instead of placing header rows inside scrollable content.

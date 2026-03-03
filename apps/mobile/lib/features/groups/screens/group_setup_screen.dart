@@ -524,6 +524,8 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           controller: _graceDaysController,
           focusNode: _graceDaysFocusNode,
           label: 'Grace days',
+          labelTooltip:
+              'Days allowed after the due date before a contribution is marked late.',
           hint: '2',
           keyboardType: TextInputType.number,
           onChanged: (_) => setState(() => _errorMessage = null),

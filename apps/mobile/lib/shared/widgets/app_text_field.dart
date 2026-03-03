@@ -8,6 +8,7 @@ class AppTextField extends StatelessWidget {
     this.controller,
     this.focusNode,
     this.label,
+    this.labelTooltip,
     this.hint,
     this.keyboardType,
     this.onChanged,
@@ -17,6 +18,7 @@ class AppTextField extends StatelessWidget {
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final String? label;
+  final String? labelTooltip;
   final String? hint;
   final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
@@ -28,6 +30,7 @@ class AppTextField extends StatelessWidget {
       controller: controller,
       focusNode: focusNode,
       label: label,
+      labelTooltip: labelTooltip,
       placeholder: hint,
       keyboardType: keyboardType,
       onChanged: onChanged,
