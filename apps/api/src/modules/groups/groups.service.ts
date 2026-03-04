@@ -22,6 +22,7 @@ import {
   NotificationType,
   PayoutMode,
   Prisma,
+  StartPolicy,
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
@@ -120,6 +121,10 @@ export class GroupsService {
             paymentMethods: [GroupPaymentMethod.CASH_ACK],
             requiresMemberVerification: false,
             strictCollection: false,
+            roundSize: 2,
+            startPolicy: StartPolicy.WHEN_FULL,
+            startAt: null,
+            minToStart: null,
           },
         });
       }
@@ -168,6 +173,10 @@ export class GroupsService {
               select: {
                 groupId: true,
                 requiresMemberVerification: true,
+                roundSize: true,
+                startPolicy: true,
+                startAt: true,
+                minToStart: true,
               },
             },
             members: {
@@ -204,6 +213,10 @@ export class GroupsService {
             select: {
               groupId: true,
               requiresMemberVerification: true,
+              roundSize: true,
+              startPolicy: true,
+              startAt: true,
+              minToStart: true,
             },
           },
           members: {
@@ -240,13 +253,17 @@ export class GroupsService {
   }
 
   async getGroupRules(groupId: string): Promise<GroupRulesResponseDto> {
-    const [group, rules] = await Promise.all([
+    const [group, rules, members] = await Promise.all([
       this.prisma.equbGroup.findUnique({
         where: { id: groupId },
         select: { id: true },
       }),
       this.prisma.groupRules.findUnique({
         where: { groupId },
+      }),
+      this.prisma.equbMember.findMany({
+        where: { groupId },
+        select: { status: true },
       }),
     ]);
 
@@ -258,7 +275,12 @@ export class GroupsService {
       throw new NotFoundException('Group rules are not configured');
     }
 
-    return this.toGroupRulesResponse(rules);
+    const eligibleCount = this.countEligibleMembers(
+      members.map((member) => member.status),
+      rules.requiresMemberVerification,
+    );
+
+    return this.toGroupRulesResponse(rules, eligibleCount);
   }
 
   async updateGroupRules(
@@ -268,6 +290,8 @@ export class GroupsService {
   ): Promise<GroupRulesResponseDto> {
     const fineAmount =
       dto.fineType === GroupRuleFineType.NONE ? 0 : dto.fineAmount;
+    this.validateStartPolicyFields(dto);
+    const parsedStartAt = dto.startAt != null ? new Date(dto.startAt) : null;
 
     if (
       dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL &&
@@ -308,6 +332,10 @@ export class GroupsService {
           paymentMethods: dto.paymentMethods,
           requiresMemberVerification: dto.requiresMemberVerification,
           strictCollection: dto.strictCollection,
+          roundSize: dto.roundSize,
+          startPolicy: dto.startPolicy,
+          startAt: parsedStartAt,
+          minToStart: dto.minToStart ?? null,
         },
         update: {
           contributionAmount: dto.contributionAmount,
@@ -323,6 +351,10 @@ export class GroupsService {
           paymentMethods: dto.paymentMethods,
           requiresMemberVerification: dto.requiresMemberVerification,
           strictCollection: dto.strictCollection,
+          roundSize: dto.roundSize,
+          startPolicy: dto.startPolicy,
+          startAt: parsedStartAt,
+          minToStart: dto.minToStart ?? null,
         },
       });
 
@@ -357,11 +389,24 @@ export class GroupsService {
         paymentMethods: rules.paymentMethods,
         requiresMemberVerification: rules.requiresMemberVerification,
         strictCollection: rules.strictCollection,
+        roundSize: rules.roundSize,
+        startPolicy: rules.startPolicy,
+        startAt: rules.startAt,
+        minToStart: rules.minToStart,
       },
       groupId,
     );
 
-    return this.toGroupRulesResponse(rules);
+    const members = await this.prisma.equbMember.findMany({
+      where: { groupId },
+      select: { status: true },
+    });
+    const eligibleCount = this.countEligibleMembers(
+      members.map((member) => member.status),
+      rules.requiresMemberVerification,
+    );
+
+    return this.toGroupRulesResponse(rules, eligibleCount);
   }
 
   async createInvite(
@@ -956,6 +1001,10 @@ export class GroupsService {
               requiresMemberVerification: true,
               frequency: true,
               customIntervalDays: true,
+              roundSize: true,
+              startPolicy: true,
+              startAt: true,
+              minToStart: true,
             },
           },
         },
@@ -1018,6 +1067,26 @@ export class GroupsService {
           group.rules.requiresMemberVerification
             ? 'At least 2 verified members are required to start a cycle'
             : 'At least 2 joined members are required to start a cycle',
+        );
+      }
+
+      const requiredToStart = this.resolveRequiredToStart(group.rules);
+      const readiness = this.buildStartReadiness(
+        uniqueEligibleUserIds.length,
+        group.rules.startPolicy,
+        group.rules.startAt,
+        requiredToStart,
+        group.rules.roundSize,
+      );
+
+      if (!readiness.isReadyToStart) {
+        if (readiness.isWaitingForDate) {
+          throw new BadRequestException(
+            `Cycle start date has not arrived. Start is allowed on or after ${group.rules.startAt?.toISOString()}.`,
+          );
+        }
+        throw new BadRequestException(
+          `Not enough eligible members to start this cycle. Required: ${requiredToStart}, eligible: ${uniqueEligibleUserIds.length}.`,
         );
       }
 
@@ -1292,6 +1361,10 @@ export class GroupsService {
     rules: {
       groupId: string;
       requiresMemberVerification: boolean;
+      roundSize: number;
+      startPolicy: StartPolicy;
+      startAt: Date | null;
+      minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
   ): GroupSummaryResponseDto {
@@ -1330,6 +1403,10 @@ export class GroupsService {
     rules: {
       groupId: string;
       requiresMemberVerification: boolean;
+      roundSize: number;
+      startPolicy: StartPolicy;
+      startAt: Date | null;
+      minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
   ): GroupDetailResponseDto {
@@ -1360,9 +1437,22 @@ export class GroupsService {
     paymentMethods: GroupPaymentMethod[];
     requiresMemberVerification: boolean;
     strictCollection: boolean;
+    roundSize: number;
+    startPolicy: StartPolicy;
+    startAt: Date | null;
+    minToStart: number | null;
     createdAt: Date;
     updatedAt: Date;
-  }): GroupRulesResponseDto {
+  }, eligibleCount: number): GroupRulesResponseDto {
+    const requiredToStart = this.resolveRequiredToStart(rules);
+    const readiness = this.buildStartReadiness(
+      eligibleCount,
+      rules.startPolicy,
+      rules.startAt,
+      requiredToStart,
+      rules.roundSize,
+    );
+
     return {
       groupId: rules.groupId,
       contributionAmount: rules.contributionAmount,
@@ -1375,6 +1465,12 @@ export class GroupsService {
       paymentMethods: rules.paymentMethods,
       requiresMemberVerification: rules.requiresMemberVerification,
       strictCollection: rules.strictCollection,
+      roundSize: rules.roundSize,
+      startPolicy: rules.startPolicy,
+      startAt: rules.startAt,
+      minToStart: rules.minToStart,
+      requiredToStart,
+      readiness,
       createdAt: rules.createdAt,
       updatedAt: rules.updatedAt,
     };
@@ -1384,6 +1480,10 @@ export class GroupsService {
     rules: {
       groupId: string;
       requiresMemberVerification: boolean;
+      roundSize: number;
+      startPolicy: StartPolicy;
+      startAt: Date | null;
+      minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
   ): {
@@ -1404,11 +1504,19 @@ export class GroupsService {
       memberStatuses,
       rules.requiresMemberVerification,
     );
+    const requiredToStart = this.resolveRequiredToStart(rules);
+    const readiness = this.buildStartReadiness(
+      eligibleCount,
+      rules.startPolicy,
+      rules.startAt,
+      requiredToStart,
+      rules.roundSize,
+    );
 
     return {
       rulesetConfigured,
       canInviteMembers: rulesetConfigured,
-      canStartCycle: eligibleCount >= 2,
+      canStartCycle: readiness.isReadyToStart,
     };
   }
 
@@ -1422,6 +1530,86 @@ export class GroupsService {
 
     return memberStatuses.filter((status) => eligibleStatuses.includes(status))
       .length;
+  }
+
+  private validateStartPolicyFields(dto: UpdateGroupRulesDto): void {
+    const minToStart = dto.minToStart ?? null;
+    const startAt = dto.startAt ?? null;
+
+    if (dto.startPolicy === StartPolicy.WHEN_FULL) {
+      if (startAt != null) {
+        throw new BadRequestException(
+          'startAt must be null when startPolicy is WHEN_FULL',
+        );
+      }
+      if (minToStart != null) {
+        throw new BadRequestException(
+          'minToStart must be null when startPolicy is WHEN_FULL',
+        );
+      }
+      return;
+    }
+
+    if (dto.startPolicy === StartPolicy.ON_DATE && startAt == null) {
+      throw new BadRequestException(
+        'startAt is required when startPolicy is ON_DATE',
+      );
+    }
+
+    if (dto.startPolicy === StartPolicy.MANUAL && startAt != null) {
+      throw new BadRequestException(
+        'startAt must be null when startPolicy is MANUAL',
+      );
+    }
+
+    if (minToStart != null && minToStart > dto.roundSize) {
+      throw new BadRequestException(
+        'minToStart must be less than or equal to roundSize',
+      );
+    }
+  }
+
+  private resolveRequiredToStart(rules: {
+    roundSize: number;
+    startPolicy: StartPolicy;
+    minToStart: number | null;
+  }): number {
+    if (rules.startPolicy === StartPolicy.WHEN_FULL) {
+      return rules.roundSize;
+    }
+
+    return rules.minToStart ?? rules.roundSize;
+  }
+
+  private buildStartReadiness(
+    eligibleCount: number,
+    startPolicy: StartPolicy,
+    startAt: Date | null,
+    requiredToStart: number,
+    roundSize: number,
+  ): {
+    eligibleCount: number;
+    isReadyToStart: boolean;
+    isWaitingForMembers: boolean;
+    isWaitingForDate: boolean;
+  } {
+    const hasEnoughMembers =
+      startPolicy === StartPolicy.WHEN_FULL
+        ? eligibleCount === roundSize
+        : eligibleCount >= requiredToStart;
+    const waitingForDate =
+      startPolicy === StartPolicy.ON_DATE &&
+      hasEnoughMembers &&
+      startAt != null &&
+      new Date() < startAt;
+    const ready = hasEnoughMembers && !waitingForDate;
+
+    return {
+      eligibleCount,
+      isReadyToStart: ready,
+      isWaitingForMembers: !hasEnoughMembers,
+      isWaitingForDate: waitingForDate,
+    };
   }
 
   private toMemberResponse(member: {

@@ -2,9 +2,14 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   GroupFrequency,
+  GroupPaymentMethod,
+  GroupRuleFineType,
+  GroupRuleFrequency,
+  GroupRulePayoutMode,
   GroupStatus,
   MemberRole,
   MemberStatus,
+  StartPolicy,
 } from '@prisma/client';
 
 import { AppModule } from '../src/app.module';
@@ -68,6 +73,22 @@ type RoundRecord = {
 
 type GroupRulesRecord = {
   groupId: string;
+  contributionAmount: number;
+  frequency: GroupRuleFrequency;
+  customIntervalDays: number | null;
+  graceDays: number;
+  fineType: GroupRuleFineType;
+  fineAmount: number;
+  payoutMode: GroupRulePayoutMode;
+  paymentMethods: GroupPaymentMethod[];
+  requiresMemberVerification: boolean;
+  strictCollection: boolean;
+  roundSize: number;
+  startPolicy: StartPolicy;
+  startAt: Date | null;
+  minToStart: number | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 describe('Groups (e2e)', () => {
@@ -574,7 +595,7 @@ describe('Groups (e2e)', () => {
       ),
     },
     groupRules: {
-      create: jest.fn(({ data }: { data: { groupId: string } }) => {
+      create: jest.fn(({ data }: { data: Partial<GroupRulesRecord> & { groupId: string } }) => {
         const existing = groupRules.find(
           (item) => item.groupId === data.groupId,
         );
@@ -584,6 +605,22 @@ describe('Groups (e2e)', () => {
 
         const record: GroupRulesRecord = {
           groupId: data.groupId,
+          contributionAmount: data.contributionAmount ?? 500,
+          frequency: data.frequency ?? GroupRuleFrequency.MONTHLY,
+          customIntervalDays: data.customIntervalDays ?? null,
+          graceDays: data.graceDays ?? 0,
+          fineType: data.fineType ?? GroupRuleFineType.NONE,
+          fineAmount: data.fineAmount ?? 0,
+          payoutMode: data.payoutMode ?? GroupRulePayoutMode.LOTTERY,
+          paymentMethods: data.paymentMethods ?? [GroupPaymentMethod.CASH_ACK],
+          requiresMemberVerification: data.requiresMemberVerification ?? false,
+          strictCollection: data.strictCollection ?? false,
+          roundSize: data.roundSize ?? 2,
+          startPolicy: data.startPolicy ?? StartPolicy.WHEN_FULL,
+          startAt: data.startAt ?? null,
+          minToStart: data.minToStart ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         };
         groupRules.push(record);
         return record;
@@ -596,20 +633,28 @@ describe('Groups (e2e)', () => {
       upsert: jest.fn(
         ({
           where,
+          create,
+          update,
         }: {
           where: {
             groupId: string;
           };
+          create: GroupRulesRecord;
+          update: Partial<GroupRulesRecord>;
         }) => {
           const existing = groupRules.find(
             (item) => item.groupId === where.groupId,
           );
           if (existing) {
+            Object.assign(existing, update, { updatedAt: new Date() });
             return existing;
           }
 
           const created: GroupRulesRecord = {
+            ...create,
             groupId: where.groupId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           };
           groupRules.push(created);
           return created;

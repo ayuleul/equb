@@ -31,10 +31,13 @@ class GroupSetupScreen extends ConsumerStatefulWidget {
 
 class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   late final TextEditingController _contributionAmountController;
+  late final TextEditingController _roundSizeController;
+  late final TextEditingController _minToStartController;
   late final TextEditingController _customIntervalDaysController;
   late final TextEditingController _graceDaysController;
   late final TextEditingController _fineAmountController;
   late final FocusNode _contributionAmountFocusNode;
+  late final FocusNode _minToStartFocusNode;
   late final FocusNode _customIntervalDaysFocusNode;
   late final FocusNode _graceDaysFocusNode;
   late final FocusNode _fineAmountFocusNode;
@@ -47,6 +50,8 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   };
   var _requiresMemberVerification = false;
   var _strictCollection = false;
+  var _startPolicy = StartPolicyModel.whenFull;
+  DateTime? _startAt;
 
   var _isLoading = true;
   var _isSubmittingRules = false;
@@ -64,10 +69,14 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   void initState() {
     super.initState();
     _contributionAmountController = TextEditingController();
+    _roundSizeController = TextEditingController(text: '2');
+    _minToStartController = TextEditingController();
     _customIntervalDaysController = TextEditingController();
     _graceDaysController = TextEditingController(text: '0');
     _fineAmountController = TextEditingController(text: '0');
     _contributionAmountFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _minToStartFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
     _customIntervalDaysFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
@@ -81,10 +90,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   @override
   void dispose() {
     _contributionAmountController.dispose();
+    _roundSizeController.dispose();
+    _minToStartController.dispose();
     _customIntervalDaysController.dispose();
     _graceDaysController.dispose();
     _fineAmountController.dispose();
     _contributionAmountFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _minToStartFocusNode
       ..removeListener(_handleRulesInputFocusChanged)
       ..dispose();
     _customIntervalDaysFocusNode
@@ -102,6 +116,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   void _handleRulesInputFocusChanged() {
     final isFocused =
         _contributionAmountFocusNode.hasFocus ||
+        _minToStartFocusNode.hasFocus ||
         _customIntervalDaysFocusNode.hasFocus ||
         _graceDaysFocusNode.hasFocus ||
         _fineAmountFocusNode.hasFocus;
@@ -153,6 +168,8 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
   void _applyRules(GroupRulesModel rules) {
     _contributionAmountController.text = '${rules.contributionAmount}';
+    _roundSizeController.text = '${rules.roundSize}';
+    _minToStartController.text = rules.minToStart?.toString() ?? '';
     _customIntervalDaysController.text =
         rules.customIntervalDays?.toString() ?? '';
     _graceDaysController.text = '${rules.graceDays}';
@@ -163,12 +180,16 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _paymentMethods = rules.paymentMethods.toSet();
     _requiresMemberVerification = rules.requiresMemberVerification;
     _strictCollection = rules.strictCollection;
+    _startPolicy = rules.startPolicy;
+    _startAt = rules.startAt;
   }
 
   Future<void> _saveRulesAndContinue() async {
     final contributionAmount = int.tryParse(
       _contributionAmountController.text.trim(),
     );
+    final roundSize = int.tryParse(_roundSizeController.text.trim());
+    final minToStart = int.tryParse(_minToStartController.text.trim());
     final customIntervalDays = int.tryParse(
       _customIntervalDaysController.text.trim(),
     );
@@ -178,6 +199,13 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     if (contributionAmount == null || contributionAmount <= 0) {
       setState(() {
         _errorMessage = 'Contribution amount must be greater than 0.';
+      });
+      return;
+    }
+
+    if (roundSize == null || roundSize < 2) {
+      setState(() {
+        _errorMessage = 'Round size must be at least 2.';
       });
       return;
     }
@@ -212,6 +240,23 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       return;
     }
 
+    if (_startPolicy == StartPolicyModel.onDate && _startAt == null) {
+      setState(() {
+        _errorMessage = 'Start date is required for ON_DATE policy.';
+      });
+      return;
+    }
+
+    if (_startPolicy != StartPolicyModel.whenFull &&
+        _minToStartController.text.trim().isNotEmpty) {
+      if (minToStart == null || minToStart < 2 || minToStart > roundSize) {
+        setState(() {
+          _errorMessage = 'Minimum to start must be between 2 and round size.';
+        });
+        return;
+      }
+    }
+
     setState(() {
       _isSubmittingRules = true;
       _errorMessage = null;
@@ -237,6 +282,12 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           paymentMethods: _paymentMethods.toList(growable: false),
           requiresMemberVerification: _requiresMemberVerification,
           strictCollection: _strictCollection,
+          startPolicy: _startPolicy,
+          roundSize: roundSize,
+          startAt: _startPolicy == StartPolicyModel.onDate ? _startAt : null,
+          minToStart: _startPolicy == StartPolicyModel.whenFull
+              ? null
+              : (_minToStartController.text.trim().isEmpty ? null : minToStart),
         ),
       );
 
@@ -418,7 +469,11 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
                 state: _rulesSaved ? StepState.complete : StepState.indexed,
                 title: const Text('Rules'),
                 subtitle: const Text('Required first'),
-                content: _buildRulesStep(context),
+                content: _buildRulesStep(
+                  context,
+                  participatingMembers,
+                  verifiedMembers,
+                ),
               ),
               Step(
                 isActive: _currentStep == 1,
@@ -468,10 +523,169 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     );
   }
 
-  Widget _buildRulesStep(BuildContext context) {
+  Widget _buildRulesStep(
+    BuildContext context,
+    int participatingMembers,
+    int verifiedMembers,
+  ) {
+    final effectiveMinToStart = _startPolicy == StartPolicyModel.whenFull
+        ? null
+        : int.tryParse(_minToStartController.text.trim());
+    final requiredToStart = _startPolicy == StartPolicyModel.whenFull
+        ? int.tryParse(_roundSizeController.text.trim()) ?? 2
+        : (effectiveMinToStart ??
+              (int.tryParse(_roundSizeController.text.trim()) ?? 2));
+    final eligibleCount = _requiresMemberVerification
+        ? verifiedMembers
+        : participatingMembers;
+    final waitingForMembers = _startPolicy == StartPolicyModel.whenFull
+        ? eligibleCount != requiredToStart
+        : eligibleCount < requiredToStart;
+    final waitingForDate =
+        _startPolicy == StartPolicyModel.onDate &&
+        !waitingForMembers &&
+        _startAt != null &&
+        DateTime.now().isBefore(_startAt!);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        KitDropdownField<int>(
+          value: int.tryParse(_roundSizeController.text.trim()) ?? 2,
+          label: 'Round size',
+          items: List<DropdownMenuItem<int>>.generate(
+            29,
+            (index) => DropdownMenuItem<int>(
+              value: index + 2,
+              child: Text('${index + 2} members'),
+            ),
+          ),
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() {
+              _roundSizeController.text = '$value';
+              if (_minToStartController.text.trim().isNotEmpty) {
+                final currentMin = int.tryParse(
+                  _minToStartController.text.trim(),
+                );
+                if (currentMin != null && currentMin > value) {
+                  _minToStartController.text = '$value';
+                }
+              }
+              _errorMessage = null;
+            });
+          },
+        ),
+        const SizedBox(height: AppSpacing.md),
+        KitDropdownField<StartPolicyModel>(
+          value: _startPolicy,
+          label: 'Start policy',
+          items: const [
+            DropdownMenuItem(
+              value: StartPolicyModel.whenFull,
+              child: Text('WHEN_FULL'),
+            ),
+            DropdownMenuItem(
+              value: StartPolicyModel.onDate,
+              child: Text('ON_DATE'),
+            ),
+            DropdownMenuItem(
+              value: StartPolicyModel.manual,
+              child: Text('MANUAL'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() {
+              _startPolicy = value;
+              if (_startPolicy != StartPolicyModel.onDate) {
+                _startAt = null;
+              }
+              if (_startPolicy == StartPolicyModel.whenFull) {
+                _minToStartController.clear();
+              }
+              _errorMessage = null;
+            });
+          },
+        ),
+        if (_startPolicy == StartPolicyModel.onDate) ...[
+          const SizedBox(height: AppSpacing.md),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Start date', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _startAt == null
+                    ? 'Select a date'
+                    : MaterialLocalizations.of(
+                        context,
+                      ).formatMediumDate(_startAt!),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: () async {
+                  final now = DateTime.now();
+                  final initialDate = _startAt ?? now;
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: initialDate,
+                    firstDate: now.subtract(const Duration(days: 1)),
+                    lastDate: now.add(const Duration(days: 3650)),
+                  );
+                  if (!mounted || picked == null) {
+                    return;
+                  }
+                  setState(() {
+                    _startAt = DateTime(
+                      picked.year,
+                      picked.month,
+                      picked.day,
+                      9,
+                    );
+                    _errorMessage = null;
+                  });
+                },
+                child: const Text('Pick date'),
+              ),
+            ],
+          ),
+        ],
+        if (_startPolicy != StartPolicyModel.whenFull) ...[
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _minToStartController,
+            focusNode: _minToStartFocusNode,
+            label: 'Minimum to start (optional)',
+            labelTooltip: 'Leave blank to use round size as the minimum.',
+            hint: _roundSizeController.text.trim().isEmpty
+                ? '2'
+                : _roundSizeController.text.trim(),
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() => _errorMessage = null),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        KitBanner(
+          title: 'Start preview',
+          message: waitingForDate
+              ? 'Eligible: $eligibleCount/$requiredToStart. Waiting for the configured start date.'
+              : waitingForMembers
+              ? 'Eligible: $eligibleCount/$requiredToStart. Waiting for more members.'
+              : 'Eligible: $eligibleCount/$requiredToStart. Ready to start.',
+          tone: (!waitingForMembers && !waitingForDate)
+              ? KitBadgeTone.success
+              : KitBadgeTone.warning,
+          icon: (!waitingForMembers && !waitingForDate)
+              ? Icons.check_circle_outline
+              : Icons.info_outline_rounded,
+        ),
+        const SizedBox(height: AppSpacing.md),
         AppTextField(
           controller: _contributionAmountController,
           focusNode: _contributionAmountFocusNode,
@@ -661,7 +875,19 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     final eligibleCount = requiresVerification
         ? verifiedMembers
         : participatingMembers;
-    final missingCount = eligibleCount >= 2 ? 0 : 2 - eligibleCount;
+    final roundSize = int.tryParse(_roundSizeController.text.trim()) ?? 2;
+    final minimumFromInput = int.tryParse(_minToStartController.text.trim());
+    final requiredToStart = _startPolicy == StartPolicyModel.whenFull
+        ? roundSize
+        : (minimumFromInput ?? roundSize);
+    final missingCount = eligibleCount >= requiredToStart
+        ? 0
+        : requiredToStart - eligibleCount;
+    final waitingForDate =
+        missingCount == 0 &&
+        _startPolicy == StartPolicyModel.onDate &&
+        _startAt != null &&
+        DateTime.now().isBefore(_startAt!);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,13 +949,19 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         const SizedBox(height: AppSpacing.md),
         KitBanner(
           title: 'Cycle start gate',
-          message: missingCount == 0
-              ? 'Eligible members: $eligibleCount (ready to start cycles).'
+          message: missingCount == 0 && _startPolicy == StartPolicyModel.onDate
+              ? waitingForDate
+                    ? 'Eligible members: $eligibleCount/$requiredToStart. Waiting for start date.'
+                    : 'Eligible members: $eligibleCount/$requiredToStart (ready to start cycles).'
+              : missingCount == 0
+              ? 'Eligible members: $eligibleCount/$requiredToStart (ready to start cycles).'
               : requiresVerification
-              ? 'Need $missingCount more verified member(s). Eligible now: $eligibleCount.'
-              : 'Need $missingCount more joined member(s). Eligible now: $eligibleCount.',
-          tone: missingCount == 0 ? KitBadgeTone.success : KitBadgeTone.warning,
-          icon: missingCount == 0
+              ? 'Need $missingCount more verified member(s). Eligible now: $eligibleCount/$requiredToStart.'
+              : 'Need $missingCount more joined member(s). Eligible now: $eligibleCount/$requiredToStart.',
+          tone: (missingCount == 0 && !waitingForDate)
+              ? KitBadgeTone.success
+              : KitBadgeTone.warning,
+          icon: (missingCount == 0 && !waitingForDate)
               ? Icons.verified_outlined
               : Icons.info_outline_rounded,
         ),

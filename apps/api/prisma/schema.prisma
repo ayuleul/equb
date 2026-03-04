@@ -36,6 +36,12 @@ enum GroupPaymentMethod {
   CASH_ACK
 }
 
+enum StartPolicy {
+  WHEN_FULL
+  ON_DATE
+  MANUAL
+}
+
 enum GroupStatus {
   ACTIVE
   ARCHIVED
@@ -233,6 +239,10 @@ model GroupRules {
   contributionAmount          Int
   frequency                   GroupRuleFrequency
   customIntervalDays          Int?
+  roundSize                   Int
+  startPolicy                 StartPolicy            @default(WHEN_FULL)
+  startAt                     DateTime?
+  minToStart                  Int?
   graceDays                   Int                    @default(0)
   fineType                    GroupRuleFineType      @default(NONE)
   fineAmount                  Int                    @default(0)

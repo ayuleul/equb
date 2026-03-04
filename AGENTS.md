@@ -62,6 +62,15 @@
 ## Group membership rules
 - Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, and cycle start must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
 - Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).
+- Group start configuration is locked to four canonical fields on ruleset:
+  - `roundSize` (`>= 2`)
+  - `startPolicy` (`WHEN_FULL | ON_DATE | MANUAL`)
+  - `startAt` (required only for `ON_DATE`)
+  - `minToStart` (optional for `ON_DATE`/`MANUAL`; `null` means implicit `roundSize`)
+- Start-policy validation is locked:
+  - `WHEN_FULL` -> `startAt = null`, `minToStart = null`
+  - `ON_DATE` -> `startAt` required, optional `minToStart` in `[2, roundSize]`
+  - `MANUAL` -> `startAt = null`, optional `minToStart` in `[2, roundSize]`
 - Membership lifecycle is verification-based:
   - canonical statuses: `INVITED` -> `JOINED` -> `VERIFIED`
   - suspension/removal state: `SUSPENDED`
@@ -80,6 +89,12 @@
 ## Cycle rules
 - Only one `OPEN` cycle is allowed per group at any time.
 - Cycle start endpoint is locked to `POST /groups/:id/cycles/start`; legacy round/draw-next/payout-order and batch-generation routes are removed.
+- Cycle start gating is locked to start policy readiness:
+  - `requiredToStart = (minToStart ?? roundSize)` for `ON_DATE`/`MANUAL`, and `roundSize` for `WHEN_FULL`
+  - readiness preview fields: `requiredToStart`, `readiness.eligibleCount`, `readiness.isReadyToStart`, `readiness.isWaitingForMembers`, `readiness.isWaitingForDate`
+  - `WHEN_FULL`: start only when eligible count equals `roundSize`
+  - `ON_DATE`: start only when now >= `startAt` and eligible count >= `requiredToStart`
+  - `MANUAL`: start only when eligible count >= `requiredToStart`
 - Cycle lifecycle state machine is locked to:
   - `DUE -> COLLECTING -> READY_FOR_PAYOUT -> DISBURSED -> CLOSED`
 - Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.

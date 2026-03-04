@@ -84,6 +84,12 @@
 - Group setup flow is locked to a two-step gate:
   - Step 1: `Rules`
   - Step 2: `Invite & Verify` (member status pills + admin verify action)
+- Group setup Step 1 must expose start configuration with only these canonical controls:
+  - `Round size`
+  - `Start policy` (`WHEN_FULL`, `ON_DATE`, `MANUAL`)
+  - conditional `Start date` (only for `ON_DATE`)
+  - conditional optional `Minimum to start` (for `ON_DATE`/`MANUAL`; blank means `roundSize`)
+- Start preview text in setup must reflect backend semantics using `requiredToStart`, member eligibility count, and waiting state (members/date).
 - Group actions that depend on rules (`Invite members`, `Start cycle`) must stay disabled or redirect to setup until `rulesetConfigured` is true in group payloads.
 - Cycle-start CTAs must respect backend `canStartCycle` (includes eligibility count and verification requirements), not rules-only assumptions.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.

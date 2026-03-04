@@ -10,6 +10,7 @@ import {
   GroupStatus,
   MemberRole,
   MemberStatus,
+  StartPolicy,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -70,6 +71,20 @@ export class GroupDetailResponseDto extends GroupSummaryResponseDto {
   membership!: CurrentMembershipResponseDto;
 }
 
+export class GroupStartReadinessDto {
+  @ApiProperty()
+  eligibleCount!: number;
+
+  @ApiProperty()
+  isReadyToStart!: boolean;
+
+  @ApiProperty()
+  isWaitingForMembers!: boolean;
+
+  @ApiProperty()
+  isWaitingForDate!: boolean;
+}
+
 export class GroupRulesResponseDto {
   @ApiProperty()
   groupId!: string;
@@ -103,6 +118,24 @@ export class GroupRulesResponseDto {
 
   @ApiProperty()
   strictCollection!: boolean;
+
+  @ApiProperty()
+  roundSize!: number;
+
+  @ApiProperty({ enum: StartPolicy })
+  startPolicy!: StartPolicy;
+
+  @ApiPropertyOptional({ nullable: true })
+  startAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  minToStart!: number | null;
+
+  @ApiProperty()
+  requiredToStart!: number;
+
+  @ApiProperty({ type: () => GroupStartReadinessDto })
+  readiness!: GroupStartReadinessDto;
 
   @ApiProperty()
   createdAt!: Date;
