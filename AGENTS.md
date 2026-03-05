@@ -50,8 +50,8 @@
 - Ethiopian-style legal profile names are mandatory before main app access:
   - `firstName` (First Name)
   - `middleName` (Father's Name)
-  - `lastName` (Grandfather's Name)
-- `profileComplete` is true only when `firstName`, `middleName`, and `lastName` are all non-empty after trim/whitespace normalization.
+  - `lastName` (Grandfather's Name, optional)
+- `profileComplete` is true only when `firstName` and `middleName` are non-empty after trim/whitespace normalization; `lastName` is optional.
 - Auth flows (`verify-otp`, session bootstrap, and refresh-backed user payloads) must expose the latest name fields and `profileComplete` so clients can enforce profile gating.
 
 ## Testing rules

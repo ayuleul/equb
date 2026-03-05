@@ -73,7 +73,7 @@
   - authenticated users cannot navigate back to `/login` or `/otp`
 
 ## Profile onboarding rules
-- Ethiopian naming is mandatory: `First Name`, `Father's Name`, and `Grandfather's Name` are all required profile fields.
+- Ethiopian naming is mandatory: `First Name` and `Father's Name` are required profile fields, and `Grandfather's Name` is optional.
 - Profile completion status gates access to main tab routes (`/home`, `/groups`, `/settings`); incomplete profiles must be routed to `/onboarding/profile`.
 - Onboarding/profile-completion screens must not render bottom navigation and must be non-back-navigable until completion succeeds.
 - UI labels must be Ethiopia-friendly; never use `Middle Name` wording in user-facing screens.

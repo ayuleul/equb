@@ -411,7 +411,7 @@ describe('Auth (e2e)', () => {
     expect(response.user.profileComplete).toBe(false);
   });
 
-  it('patch /me/profile updates names and returns profileComplete=true', async () => {
+  it('patch /me/profile updates names and returns profileComplete=true without requiring lastName', async () => {
     const phone = '+251911223355';
 
     await authController.requestOtp({ phone });
@@ -431,21 +431,21 @@ describe('Auth (e2e)', () => {
       {
         firstName: '  Abebe  ',
         middleName: 'Kebede',
-        lastName: '  Bekele ',
+        lastName: '',
       },
     );
 
     expect(updated.firstName).toBe('Abebe');
     expect(updated.middleName).toBe('Kebede');
-    expect(updated.lastName).toBe('Bekele');
-    expect(updated.fullName).toBe('Abebe Kebede Bekele');
+    expect(updated.lastName).toBeNull();
+    expect(updated.fullName).toBe('Abebe Kebede');
     expect(updated.profileComplete).toBe(true);
 
     const me = await meController.getMe({
       id: authResponse.user.id,
       phone,
     });
-    expect(me.fullName).toBe('Abebe Kebede Bekele');
+    expect(me.fullName).toBe('Abebe Kebede');
     expect(me.profileComplete).toBe(true);
   });
 

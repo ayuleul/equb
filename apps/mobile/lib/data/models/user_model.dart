@@ -26,7 +26,7 @@ sealed class UserModel with _$UserModel {
       return explicit;
     }
 
-    return _hasValue(firstName) && _hasValue(middleName) && _hasValue(lastName);
+    return _hasValue(firstName) && _hasValue(middleName);
   }
 
   String get displayName {

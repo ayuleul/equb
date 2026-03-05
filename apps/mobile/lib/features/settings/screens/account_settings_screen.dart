@@ -129,8 +129,8 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 KitTextField(
                   controller: _lastNameController,
-                  label: "Grandfather's Name",
-                  placeholder: "Enter your grandfather's name",
+                  label: "Grandfather's Name (Optional)",
+                  placeholder: "Enter your grandfather's name.",
                   errorText: _lastNameError,
                   onChanged: (_) => setState(() => _lastNameError = null),
                 ),
@@ -188,7 +188,10 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
 
     final firstError = _validateName(firstName, label: 'First Name');
     final middleError = _validateName(middleName, label: "Father's Name");
-    final lastError = _validateName(lastName, label: "Grandfather's Name");
+    final lastError = _validateOptionalName(
+      lastName,
+      label: "Grandfather's Name",
+    );
     if (firstError != null || middleError != null || lastError != null) {
       setState(() {
         _firstNameError = firstError;
@@ -233,6 +236,14 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
       return '$label can contain letters and spaces only.';
     }
     return null;
+  }
+
+  String? _validateOptionalName(String value, {required String label}) {
+    if (value.isEmpty) {
+      return null;
+    }
+
+    return _validateName(value, label: label);
   }
 
   String _normalize(String value) {

@@ -5,7 +5,7 @@ abstract class ProfileApi {
   Future<Map<String, dynamic>> updateProfile({
     required String firstName,
     required String middleName,
-    required String lastName,
+    String? lastName,
   });
 }
 
@@ -23,7 +23,7 @@ class DioProfileApi implements ProfileApi {
   Future<Map<String, dynamic>> updateProfile({
     required String firstName,
     required String middleName,
-    required String lastName,
+    String? lastName,
   }) {
     return _apiClient.patchMap(
       '/me/profile',

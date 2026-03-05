@@ -11,7 +11,6 @@ export function normalizeNameWhitespace(value: string): string {
 export function isProfileComplete(profile: UserProfileNameFields): boolean {
   return (
     normalizeNameWhitespace(profile.firstName ?? '').length > 0 &&
-    normalizeNameWhitespace(profile.middleName ?? '').length > 0 &&
-    normalizeNameWhitespace(profile.lastName ?? '').length > 0
+    normalizeNameWhitespace(profile.middleName ?? '').length > 0
   );
 }

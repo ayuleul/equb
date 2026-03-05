@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -46,15 +47,15 @@ export class UpdateProfileDto {
   })
   middleName!: string;
 
-  @ApiProperty({ example: 'Bekele' })
+  @ApiProperty({ example: 'Bekele', required: false, nullable: true })
   @Transform(({ value }) => normalizeNameInput(value))
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MinLength(2)
   @MaxLength(50)
   @Matches(ETHIOPIAN_NAME_REGEX, {
     message:
       "Grandfather's Name must contain only letters and spaces (Latin or Ethiopic)",
   })
-  lastName!: string;
+  lastName?: string;
 }

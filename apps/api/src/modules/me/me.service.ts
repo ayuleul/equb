@@ -44,8 +44,11 @@ export class MeService {
   ): Promise<MeResponseDto> {
     const firstName = normalizeNameWhitespace(dto.firstName);
     const middleName = normalizeNameWhitespace(dto.middleName);
-    const lastName = normalizeNameWhitespace(dto.lastName);
-    const fullName = `${firstName} ${middleName} ${lastName}`.trim();
+    const normalizedLastName = normalizeNameWhitespace(dto.lastName ?? '');
+    const lastName = normalizedLastName.length > 0 ? normalizedLastName : null;
+    const fullName = [firstName, middleName, lastName]
+      .filter((value): value is string => value != null && value.length > 0)
+      .join(' ');
 
     const user = await this.prisma.user.update({
       where: { id: currentUser.id },
