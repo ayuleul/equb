@@ -285,12 +285,21 @@
 - Group invite actions should be exposed via the invite banner/CTA and menu actions, not as a default segmented tab.
 - Group detail segmented tab controls must remain compact-width and text-scale safe (no `RenderFlex` overflow under high accessibility text scales).
 - Group detail metadata badges and invite summary blocks must adapt to compact widths (horizontal scroll and/or stacked layout) so no `RenderFlex` overflow occurs on narrow devices.
+- Group setup should use a multi-step wizard with a horizontally scrollable step-tab row and a visually separated details panel; step navigation must remain overflow-safe on compact widths (no RenderFlex overflow in headers).
+- Group setup step tabs should use segmented controls with numeric step identifiers and explicit lock/completion cues so progression state is readable without relying on arrow indicators.
+- Group setup step tabs should present progression visually as steps (for example numbered chips with connector lines) so flow order is obvious at a glance.
+- Group setup step-tab headers must auto-scroll to keep the currently active step visible (including deep-link/re-entry states such as opening directly on step 4).
+- Group setup wizard details should support horizontal swipe between steps, with swipe state and top step-tab selection kept in sync bidirectionally.
+- Group setup must validate the current step before allowing forward navigation (next swipe/next button/tapping later steps), and show validation errors immediately when blocked.
+- Group setup should treat step-validation errors as inline form feedback; only fatal data-load failures should render full-page error states.
+- Group setup step transitions should avoid side-by-side page reveal clutter during swipe; use responsive container-level swipe detection on the details `KitCard` with fast programmatic page snaps and synchronized tab/header state.
 - Feature screens should use `KitScaffold` + `KitCard` as the default page/surface primitives so gradient background treatment, width constraints, spacing rhythm, and card styling stay consistent app-wide.
 - Root tab screens should start with a `KitSectionHeader` title/subtitle row and place top-right utility actions (for example notifications) in the header `action` slot for consistent page chrome.
 - Decorative/motif colors should come from `AppBrandDecor` theme extension (`app/theme/app_theme_extensions.dart`) rather than hardcoded values in widgets.
 - Decorative backgrounds must remain low-contrast with surfaces (subtle motif lines/glows and near-surface gradients) so content cards and form controls remain the visual focus.
 - Default expanded CTA buttons in shared kit should be width-capped (not full-bleed on wide layouts) to keep action controls compact and readable.
 - Shared kit buttons must clamp text to one line with ellipsis in icon+label rows to avoid `RenderFlex` overflow under high accessibility text scales.
+- App toast notifications should render as floating top overlays (non-pushing) to avoid blocking bottom CTAs and form actions.
 - Form screens with bottom primary CTAs (for example group setup save/finish actions) must hide those CTAs while the software keyboard is open or a text input is focused (focus-aware, not inset-only) to avoid keyboard overlap and crowding.
 - Notification bootstrap must not access `FirebaseMessaging.instance` before Firebase app initialization; push setup should degrade gracefully when Firebase config is unavailable.
 - Bottom tab navigation must be docked to the bottom edge (no floating/lift), span left-to-right, and use the app primary color for the active tab state (`app/app_shell.dart`) unless a product requirement explicitly overrides it.
