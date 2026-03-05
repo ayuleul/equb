@@ -16,6 +16,10 @@ class KitTextField extends StatelessWidget {
     this.onChanged,
     this.obscureText = false,
     this.maxLines = 1,
+    this.prefixIcon,
+    this.prefixIconConstraints,
+    this.enabled = true,
+    this.readOnly = false,
   });
 
   final TextEditingController? controller;
@@ -29,6 +33,10 @@ class KitTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool obscureText;
   final int maxLines;
+  final Widget? prefixIcon;
+  final BoxConstraints? prefixIconConstraints;
+  final bool enabled;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -37,14 +45,18 @@ class KitTextField extends StatelessWidget {
     final input = TextField(
       controller: controller,
       focusNode: focusNode,
-      onChanged: onChanged,
+      onChanged: enabled ? onChanged : null,
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,
+      enabled: enabled,
+      readOnly: readOnly,
       decoration: InputDecoration(
         hintText: placeholder,
         helperText: supportText,
         errorText: errorText,
+        prefixIcon: prefixIcon,
+        prefixIconConstraints: prefixIconConstraints,
         suffixIcon: hasError
             ? Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.sm),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../shared/kit/kit.dart';
+import '../../../shared/utils/phone_numbers.dart';
 import '../auth_controller.dart';
 import '../auth_state.dart';
 
@@ -16,26 +17,29 @@ class PhoneScreen extends ConsumerStatefulWidget {
 }
 
 class _PhoneScreenState extends ConsumerState<PhoneScreen> {
-  late final TextEditingController _phoneController;
+  late PhoneNumberValue _phoneValue;
   String? _validationError;
 
   @override
   void initState() {
     super.initState();
-    _phoneController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    super.dispose();
+    _phoneValue = PhoneNumberValue(
+      country: countryCallingCodeByIso('ET'),
+      rawInput: '',
+    );
   }
 
   Future<void> _submit() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
+    final phone = _phoneValue.normalizedPhone;
+    if (phone == null) {
       setState(() => _validationError = 'Phone number is required.');
       KitToast.error(context, 'Phone number is required.');
+      return;
+    }
+    if (phone.isEmpty) {
+      const message = 'Enter a valid phone number';
+      setState(() => _validationError = message);
+      KitToast.error(context, message);
       return;
     }
 
@@ -95,13 +99,11 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                KitTextField(
-                  controller: _phoneController,
-                  label: 'Phone number',
-                  placeholder: '+251911223344',
-                  keyboardType: TextInputType.phone,
+                KitPhoneNumberField(
+                  value: _phoneValue,
                   errorText: _validationError,
-                  onChanged: (_) {
+                  onChanged: (value) => _phoneValue = value,
+                  onClearedError: () {
                     if (_validationError != null) {
                       setState(() => _validationError = null);
                     }

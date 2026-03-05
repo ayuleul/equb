@@ -8,6 +8,7 @@ import '../../../app/bootstrap.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/api_error_mapper.dart';
+import '../../../shared/utils/phone_numbers.dart';
 import '../../auth/auth_controller.dart';
 
 class AccountSettingsScreen extends ConsumerStatefulWidget {
@@ -134,9 +135,10 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                   onChanged: (_) => setState(() => _lastNameError = null),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _ReadOnlyField(
-                  label: 'Phone number',
-                  value: user?.phone ?? '-',
+                KitPhoneNumberField(
+                  value: phoneNumberValueFromStoredPhone(user?.phone),
+                  enabled: false,
+                  onChanged: (_) {},
                 ),
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
@@ -241,40 +243,5 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _ReadOnlyField extends StatelessWidget {
-  const _ReadOnlyField({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.xs),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.mdRounded,
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-            color: theme.colorScheme.surfaceContainerHighest.withValues(
-              alpha: 0.5,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.sm,
-            ),
-            child: Text(value, style: theme.textTheme.bodyLarge),
-          ),
-        ),
-      ],
-    );
   }
 }

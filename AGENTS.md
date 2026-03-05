@@ -269,6 +269,11 @@
   - iOS simulator and macOS app: use `http://localhost:<port>` (or `127.0.0.1`)
 - Never hardcode API URLs or secrets in Flutter source.
 - Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.
+- Login phone entry must use a single themed phone field with an inline country-code selector, searchable country picker sheet, and Ethiopia (`+251`) selected by default; Ethiopian local numbers should normalize to E.164 automatically.
+- Login phone number behavior must be driven by country metadata on the selector model, not hardcoded `isoCode` checks in UI or formatter logic.
+- Ethiopian login mobile validation accepts only national numbers starting with `9` or `7` (local `09`/`07`, or international `+2519`/`+2517`).
+- Reusable editable phone-entry UIs (for example login/auth flows) must share the same `KitPhoneNumberField` and shared phone metadata/normalization utilities so picker behavior and validation stay identical across flows.
+- Phone numbers are immutable login identifiers; account/profile editing screens must display phone as read-only and `/me/profile` must not accept phone updates.
 - Default in-app back navigation UI must use the shared rounded-square chevron style (`KitBackButton` in `shared/kit/kit_app_bar.dart`) unless a screen has an explicit product exception.
 - Shared `KitAppBar` should use the profile-style hierarchy (avatar + title + optional status/subtitle) app-wide, while preserving the existing `KitBackButton` visual style.
 - Dropdown selectors must use the shared `KitDropdownField` (no direct `DropdownButtonFormField` in feature screens) so selector visuals and interaction stay consistent app-wide.

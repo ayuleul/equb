@@ -9,6 +9,7 @@ export 'kit_dialog.dart';
 export 'kit_divider.dart';
 export 'kit_empty_state.dart';
 export 'kit_error_mapper.dart';
+export 'kit_phone_field.dart';
 export 'kit_scaffold.dart';
 export 'kit_search_bar.dart';
 export 'kit_section_header.dart';
