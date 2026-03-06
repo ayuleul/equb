@@ -168,7 +168,7 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
               child: ClipRRect(
                 borderRadius: AppRadius.cardRounded,
                 child: Material(
-                  color: theme.colorScheme.surfaceContainerLow,
+                  color: theme.colorScheme.surface,
                   child: filtered.isEmpty
                       ? Center(
                           child: Padding(
@@ -185,13 +185,16 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
                       : ListView.separated(
                           itemCount: filtered.length,
                           separatorBuilder: (context, index) => Divider(
-                            height: 1,
-                            color: theme.colorScheme.outlineVariant,
+                            height: 10,
+                            color: theme.colorScheme.surface,
                           ),
                           itemBuilder: (context, index) {
                             final country = filtered[index];
                             final isSelected = country == widget.selected;
                             return ListTile(
+                              enabled: country.isoCode == "ET",
+                              dense: true,
+                              visualDensity: const VisualDensity(vertical: -4),
                               onTap: () => Navigator.of(context).pop(country),
                               tileColor: isSelected
                                   ? theme.colorScheme.primary.withValues(
