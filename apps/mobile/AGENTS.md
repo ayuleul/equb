@@ -100,6 +100,15 @@
 - Members list lives only in Group Overview; there is no standalone Members screen route.
 - Group detail is the current-cycle hub and must not render the members list.
 - Group detail should favor collapsed summaries and a single primary member CTA over dense list sections.
+- Group page is overview-only: compact past turns, one dominant current-turn card, and a contribution summary; operational detail belongs elsewhere.
+- Group page layout is locked to one unified current-turn hero card followed by `Past Turns`; do not split the current turn into separate titled cards on the main group page.
+- Current Turn must always be visually dominant over history; past turns are secondary and appear only below the unified hero card.
+- Current-turn actions must be visible directly inside the hero card when relevant; do not move core actions behind bottom sheets or modal menus.
+- Do not use internal hero-card titles like `Contribution summary`, `Admin actions`, or `Your action` inside the current-turn card; separate content with spacing and dividers instead.
+- Use clear turn CTA copy such as `See turn details` instead of weaker phrasing like `View turn details`.
+- Turn Details is the operational hub for a turn and should carry contribution, payout, auction, and dispute complexity instead of the main group page.
+- Contributions live under a specific turn; the main group page must not render the full contributions list.
+- Past turns on the group page use compact summary rows, while the current turn uses the highlighted hero card treatment.
 - Admin controls in group detail must be grouped inside a collapsed Admin actions container/action sheet.
 - Group Overview content must reuse existing group detail/members providers; do not introduce duplicate fetch pathways.
 
@@ -108,6 +117,7 @@
 - After cycle mutations (`start-cycle`, payout, close), invalidate cycle providers (`current`, `list`, relevant details) and members cache/providers before refetching.
 - Group detail current-turn summary must show due-date context and keep member payment entry as a primary `Pay now` CTA.
 - Group detail contribution summary for admins must surface overdue/late counts and link to the contributions list for triage.
+- Turn details routes should use user-facing `turn` language in navigation (`/groups/:groupId/turns/:turnId`) even when underlying providers/entities still use cycle identifiers.
 - Cycle auction affects only the current cycle final recipient (`finalPayoutUserId`); no pre-generated payout order/schedule is shown in UI.
 - Auction open/close actions are admin-only; non-admin members can only submit bids while auction is open.
 - Bid visibility in UI is locked to backend scope: admins see all bids, other members see only their own bid entries.

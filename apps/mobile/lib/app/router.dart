@@ -17,7 +17,6 @@ import '../features/groups/screens/group_overview_screen.dart';
 import '../features/groups/screens/group_setup_screen.dart';
 import '../features/groups/screens/groups_list_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
-import '../features/cycles/screens/cycle_detail_screen.dart';
 import '../features/cycles/screens/cycles_overview_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/contribution_disputes_screen.dart';
@@ -33,6 +32,7 @@ import '../features/settings/screens/notifications_settings_screen.dart';
 import '../features/settings/screens/security_settings_screen.dart';
 import '../features/settings/screens/simple_settings_info_screen.dart';
 import '../features/splash/splash_screen.dart';
+import '../features/turns/screens/turn_details_screen.dart';
 
 class AppRoutePaths {
   const AppRoutePaths._();
@@ -64,6 +64,8 @@ class AppRoutePaths {
   static String groupCycles(String groupId) => '/groups/$groupId/cycles';
   static String groupCyclesCurrent(String groupId) =>
       '/groups/$groupId/cycles/current';
+  static String groupTurnDetail(String groupId, String turnId) =>
+      '/groups/$groupId/turns/$turnId';
   static String groupCycleDetail(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId';
   static String groupCycleContributions(String groupId, String cycleId) =>
@@ -161,6 +163,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   },
                   routes: [
                     GoRoute(
+                      path: 'turns/:turnId',
+                      builder: (context, state) {
+                        final groupId = state.pathParameters['id'] ?? '';
+                        final turnId = state.pathParameters['turnId'] ?? '';
+                        return TurnDetailsScreen(
+                          groupId: groupId,
+                          turnId: turnId,
+                        );
+                      },
+                    ),
+                    GoRoute(
                       path: 'setup',
                       builder: (context, state) {
                         final groupId = state.pathParameters['id'] ?? '';
@@ -201,9 +214,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                             final groupId = state.pathParameters['id'] ?? '';
                             final cycleId =
                                 state.pathParameters['cycleId'] ?? '';
-                            return CycleDetailScreen(
+                            return TurnDetailsScreen(
                               groupId: groupId,
-                              cycleId: cycleId,
+                              turnId: cycleId,
                             );
                           },
                           routes: [

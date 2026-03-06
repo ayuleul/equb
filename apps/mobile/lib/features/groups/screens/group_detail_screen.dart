@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,16 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../app/theme/app_theme_extensions.dart';
 import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
-import '../../../data/models/group_rules_model.dart';
 import '../../../data/models/payout_model.dart';
-import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
-import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/formatters.dart';
-import '../../../shared/utils/round_status_mapper.dart';
+import '../../../shared/utils/turn_status_mapper.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../auth/auth_controller.dart';
@@ -25,9 +21,7 @@ import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
 import '../../cycles/start_cycle_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
-import '../../rounds/widgets/lottery_reveal_animation.dart';
 import '../group_detail_controller.dart';
-import '../group_rules_provider.dart';
 import '../widgets/group_more_actions_button.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -51,13 +45,12 @@ class GroupDetailScreen extends ConsumerWidget {
         actions: [
           if (group != null)
             GroupMoreActionsButton(groupName: group.name, isAdmin: isAdmin),
-          if (group == null)
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () =>
-                  ref.read(groupDetailControllerProvider).refreshAll(groupId),
-              icon: const Icon(Icons.refresh),
-            ),
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () =>
+                ref.read(groupDetailControllerProvider).refreshAll(groupId),
+            icon: const Icon(Icons.refresh),
+          ),
         ],
       ),
       child: groupAsync.when(
@@ -67,698 +60,563 @@ class GroupDetailScreen extends ConsumerWidget {
           onRetry: () =>
               ref.read(groupDetailControllerProvider).refreshAll(groupId),
         ),
-        data: (group) => _GroupRoundHub(group: group),
+        data: (group) => _GroupTurnOverview(group: group),
       ),
     );
   }
 }
 
-class _GroupRoundHub extends ConsumerWidget {
-  const _GroupRoundHub({required this.group});
+class _GroupTurnOverview extends ConsumerWidget {
+  const _GroupTurnOverview({required this.group});
 
   final GroupModel group;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
-    final isAdmin = group.membership?.role == MemberRoleModel.admin;
+    final cyclesAsync = ref.watch(cyclesListProvider(group.id));
+
+    Future<void> onRefresh() async {
+      await ref.read(groupDetailControllerProvider).refreshAll(group.id);
+      ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
+      ref.invalidate(currentCycleProvider(group.id));
+      ref.invalidate(cyclesListProvider(group.id));
+
+      final current = await ref.read(currentCycleProvider(group.id).future);
+      await ref.read(cyclesListProvider(group.id).future);
+      if (current != null) {
+        ref.invalidate(
+          cycleContributionsProvider((groupId: group.id, cycleId: current.id)),
+        );
+        ref.invalidate(cyclePayoutProvider(current.id));
+      }
+    }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await ref.read(groupDetailControllerProvider).refreshAll(group.id);
-        ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
-        final refreshedCycle = await ref.refresh(
-          currentCycleProvider(group.id).future,
-        );
-        ref.invalidate(cyclesListProvider(group.id));
-        if (refreshedCycle != null) {
-          ref.invalidate(
-            cycleContributionsProvider((
-              groupId: group.id,
-              cycleId: refreshedCycle.id,
-            )),
-          );
-          ref.invalidate(cyclePayoutProvider(refreshedCycle.id));
-        }
-      },
+      onRefresh: onRefresh,
       child: ListView(
         children: [
-          if (isAdmin && !group.rulesetConfigured) ...[
-            KitBanner(
-              title: 'Complete group setup',
-              message:
-                  'Rules must be saved before you can invite members or start the first cycle.',
-              tone: KitBadgeTone.warning,
-              icon: Icons.rule_folder_outlined,
-              ctaLabel: 'Open setup',
-              onCtaPressed: () =>
-                  context.push(AppRoutePaths.groupSetup(group.id)),
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          _CurrentTurnCard(
-            group: group,
-            currentCycleAsync: currentCycleAsync,
-            isAdmin: isAdmin,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ContributionsSummaryCard(
+          _CurrentTurnHeroCard(group: group, currentCycleAsync: currentCycleAsync),
+          const SizedBox(height: AppSpacing.lg),
+          _PastTurnsSection(
             groupId: group.id,
             currentCycleAsync: currentCycleAsync,
+            cyclesAsync: cyclesAsync,
           ),
-          const SizedBox(height: AppSpacing.md),
-          _RoundTimelineCard(
-            groupId: group.id,
-            currentCycleAsync: currentCycleAsync,
-          ),
-          if (isAdmin) ...[
-            const SizedBox(height: AppSpacing.md),
-            _AdminActionsCard(
-              group: group,
-              currentCycleAsync: currentCycleAsync,
-            ),
-          ],
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
   }
 }
 
-class _CurrentTurnCard extends ConsumerStatefulWidget {
-  const _CurrentTurnCard({
+class _CurrentTurnHeroCard extends ConsumerWidget {
+  const _CurrentTurnHeroCard({
     required this.group,
     required this.currentCycleAsync,
-    required this.isAdmin,
   });
 
   final GroupModel group;
   final AsyncValue<CycleModel?> currentCycleAsync;
-  final bool isAdmin;
 
   @override
-  ConsumerState<_CurrentTurnCard> createState() => _CurrentTurnCardState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = ref.watch(currentUserProvider)?.id;
+
+    return currentCycleAsync.when(
+      loading: () => const KitCard(child: _HeroSkeleton()),
+      error: (error, _) => KitCard(
+        child: ErrorView(
+          message: mapFriendlyError(error),
+          onRetry: () => ref.invalidate(currentCycleProvider(group.id)),
+        ),
+      ),
+      data: (cycle) {
+        if (cycle == null) {
+          return _NoCurrentTurnHeroCard(group: group);
+        }
+
+        final contributionsAsync = ref.watch(
+          cycleContributionsProvider((groupId: group.id, cycleId: cycle.id)),
+        );
+        final payoutAsync = ref.watch(cyclePayoutProvider(cycle.id));
+        final contributionList = contributionsAsync.valueOrNull;
+        final summary = contributionList?.summary;
+        final payout = payoutAsync.valueOrNull;
+        final myContribution = _findContribution(contributionList, currentUserId);
+        final status = mapTurnStatus(
+          cycle: cycle,
+          contributionSummary: summary,
+          payout: payout,
+        );
+        final actions = _resolveVisibleActions(
+          context: context,
+          group: group,
+          cycle: cycle,
+          contribution: myContribution,
+          payout: payout,
+          summary: summary,
+        );
+        final paid = _paidCount(summary);
+        final total = summary?.total ?? 0;
+        final potSize = _turnPotSize(
+          contributions: contributionList,
+          fallbackAmount: group.contributionAmount,
+          totalMembers: total,
+        );
+        final hasAuction =
+            (cycle.auctionStatus ?? AuctionStatusModel.none) !=
+            AuctionStatusModel.none;
+        final hasLate = (summary?.late ?? 0) > 0;
+
+        return KitCard(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [context.brand.heroTop, context.brand.heroBottom],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: AppRadius.cardRounded,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Turn ${cycle.cycleNo}',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      _buildStagePill(status),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Due ${formatDate(cycle.dueDate)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    _winnerCopy(cycle, payout),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Pot size: ${formatCurrency(potSize, group.currency)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  if (hasAuction || hasLate) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        if (hasAuction)
+                          const StatusPill(
+                            label: 'Auction',
+                            tone: KitBadgeTone.info,
+                          ),
+                        if (hasLate)
+                          const StatusPill(
+                            label: 'Late',
+                            tone: KitBadgeTone.warning,
+                          ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
+                  const SizedBox(height: AppSpacing.md),
+                  KitPrimaryButton(
+                    onPressed: actions.primary.onPressed,
+                    label: actions.primary.label,
+                    icon: actions.primary.icon,
+                  ),
+                  if (actions.secondary.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        for (final action in actions.secondary)
+                          KitSecondaryButton(
+                            onPressed: action.onPressed,
+                            label: action.label,
+                            icon: action.icon,
+                            expand: false,
+                          ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
+                  const SizedBox(height: AppSpacing.md),
+                  _ProgressSummaryBar(paid: paid, total: total),
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      _InlineMetric(label: 'Paid', value: '$paid / $total'),
+                      _InlineMetric(
+                        label: 'Verified',
+                        value: '${(summary?.verified ?? 0) + (summary?.confirmed ?? 0)}',
+                      ),
+                      _InlineMetric(
+                        label: 'Pending',
+                        value:
+                            '${(summary?.pending ?? 0) + (summary?.submitted ?? 0) + (summary?.paidSubmitted ?? 0)}',
+                      ),
+                      _InlineMetric(
+                        label: 'Late',
+                        value: '${summary?.late ?? 0}',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  KitTertiaryButton(
+                    onPressed: () => context.push(
+                      AppRoutePaths.groupTurnDetail(group.id, cycle.id),
+                    ),
+                    label: 'See turn details',
+                    icon: Icons.chevron_right_rounded,
+                    expand: false,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _CurrentTurnCardState extends ConsumerState<_CurrentTurnCard> {
-  bool _isDrawing = false;
-  String? _highlightCycleId;
+class _PastTurnsSection extends StatelessWidget {
+  const _PastTurnsSection({
+    required this.groupId,
+    required this.currentCycleAsync,
+    required this.cyclesAsync,
+  });
 
-  Future<void> _startCycle() async {
-    if (_isDrawing) {
-      return;
-    }
-    if (!widget.group.canStartCycle) {
-      AppSnackbars.error(
-        context,
-        'Complete setup and ensure at least 2 eligible members before starting a cycle.',
-      );
-      return;
-    }
+  final String groupId;
+  final AsyncValue<CycleModel?> currentCycleAsync;
+  final AsyncValue<List<CycleModel>> cyclesAsync;
 
-    setState(() => _isDrawing = true);
+  @override
+  Widget build(BuildContext context) {
+    final currentCycleId = currentCycleAsync.valueOrNull?.id;
 
-    final startedAt = DateTime.now();
-    final startController = ref.read(
-      startCycleControllerProvider(widget.group.id).notifier,
+    return cyclesAsync.when(
+      loading: () => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          KitSectionHeader(title: 'Past Turns'),
+          KitCard(
+            child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 3)),
+          ),
+        ],
+      ),
+      error: (error, _) => KitCard(
+        child: Text(
+          mapFriendlyError(error),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
+      data: (cycles) {
+        final pastTurns = cycles
+            .where((cycle) => cycle.id != currentCycleId)
+            .toList(growable: false)
+          ..sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
+
+        if (pastTurns.isEmpty) {
+          return const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              KitSectionHeader(title: 'Past Turns'),
+              Padding(
+                padding: EdgeInsets.only(top: AppSpacing.xs),
+                child: Text('No past turns yet'),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const KitSectionHeader(
+              title: 'Past Turns',
+              subtitle: 'Recent history for this group',
+            ),
+            KitCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (var index = 0; index < pastTurns.length; index++) ...[
+                    _PastTurnRow(groupId: groupId, cycle: pastTurns[index]),
+                    if (index != pastTurns.length - 1)
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+}
 
-    final created = await startController.startCycle();
+class _PastTurnRow extends ConsumerWidget {
+  const _PastTurnRow({required this.groupId, required this.cycle});
 
-    final elapsed = DateTime.now().difference(startedAt);
-    const minimumAnimation = Duration(milliseconds: 1200);
-    if (elapsed < minimumAnimation) {
-      await Future<void>.delayed(minimumAnimation - elapsed);
+  final String groupId;
+  final CycleModel cycle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final contributionsAsync = ref.watch(
+      cycleContributionsProvider((groupId: groupId, cycleId: cycle.id)),
+    );
+    final payoutAsync = ref.watch(cyclePayoutProvider(cycle.id));
+    final status = mapTurnStatus(
+      cycle: cycle,
+      contributionSummary: contributionsAsync.valueOrNull?.summary,
+      payout: payoutAsync.valueOrNull,
+    );
+    final winnerLabel = _turnWinnerLabel(cycle, payoutAsync.valueOrNull);
+    final hasLate = (contributionsAsync.valueOrNull?.summary.late ?? 0) > 0;
+    final hasAuction =
+        (cycle.auctionStatus ?? AuctionStatusModel.none) !=
+        AuctionStatusModel.none;
+
+    return InkWell(
+      onTap: () => context.push(AppRoutePaths.groupTurnDetail(groupId, cycle.id)),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Turn ${cycle.cycleNo}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      _buildStagePill(status),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    winnerLabel == null ? 'Winner pending' : 'Winner: $winnerLabel',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  if (hasAuction || hasLate) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        if (hasAuction) const _MiniIndicator(label: 'Auction'),
+                        if (hasLate) const _MiniIndicator(label: 'Late'),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoCurrentTurnHeroCard extends ConsumerStatefulWidget {
+  const _NoCurrentTurnHeroCard({required this.group});
+
+  final GroupModel group;
+
+  @override
+  ConsumerState<_NoCurrentTurnHeroCard> createState() =>
+      _NoCurrentTurnHeroCardState();
+}
+
+class _NoCurrentTurnHeroCardState extends ConsumerState<_NoCurrentTurnHeroCard> {
+  bool _isStarting = false;
+
+  Future<void> _startTurn() async {
+    if (_isStarting) {
+      return;
     }
 
+    setState(() => _isStarting = true);
+    final created = await ref
+        .read(startCycleControllerProvider(widget.group.id).notifier)
+        .startCycle();
     if (!mounted) {
       return;
     }
 
-    setState(() => _isDrawing = false);
-
+    setState(() => _isStarting = false);
     if (created == null) {
-      final errorMessage =
-          ref
-              .read(startCycleControllerProvider(widget.group.id))
-              .errorMessage ??
-          'Could not start a cycle right now.';
-      AppSnackbars.error(context, errorMessage);
+      final message =
+          ref.read(startCycleControllerProvider(widget.group.id)).errorMessage ??
+          'Could not start a turn right now.';
+      KitToast.error(context, message);
       return;
     }
-    final createdCycle = created;
 
-    setState(() => _highlightCycleId = createdCycle.id);
-    Timer(const Duration(milliseconds: 1200), () {
-      if (!mounted || _highlightCycleId != createdCycle.id) {
-        return;
-      }
-      setState(() => _highlightCycleId = null);
-    });
-
-    AppSnackbars.success(context, 'Cycle started. Contributions are now due.');
+    ref.read(cyclesRepositoryProvider).invalidateGroupCache(widget.group.id);
+    ref.invalidate(currentCycleProvider(widget.group.id));
+    ref.invalidate(cyclesListProvider(widget.group.id));
+    KitToast.success(context, 'Turn started. Contributions are now due.');
   }
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = widget.group.membership?.role == MemberRoleModel.admin;
+
     return KitCard(
-      child: widget.currentCycleAsync.when(
-        loading: () => const _CurrentTurnSkeleton(),
-        error: (error, _) => ErrorView(
-          message: mapFriendlyError(error),
-          onRetry: () => ref.invalidate(currentCycleProvider(widget.group.id)),
-        ),
-        data: (cycle) {
-          if (cycle == null) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  LotteryCopy.noTurnYetTitle,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  LotteryCopy.noTurnYetMessage,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (_isDrawing)
-                  Row(
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        LotteryCopy.drawingWinnerLabel,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ],
-                  )
-                else
-                  KitPrimaryButton(
-                    label: !widget.isAdmin
-                        ? 'Waiting for admin start'
-                        : widget.group.canStartCycle
-                        ? LotteryCopy.drawWinnerButton
-                        : 'Complete setup to start',
-                    icon: !widget.isAdmin
-                        ? Icons.hourglass_top
-                        : widget.group.canStartCycle
-                        ? Icons.play_arrow_rounded
-                        : Icons.rule_folder_outlined,
-                    onPressed: !widget.isAdmin
-                        ? null
-                        : widget.group.canStartCycle
-                        ? _startCycle
-                        : () => context.push(
-                            AppRoutePaths.groupSetup(widget.group.id),
-                          ),
-                  ),
-              ],
-            );
-          }
-
-          return _CurrentTurnLoaded(
-            group: widget.group,
-            cycle: cycle,
-            isAdmin: widget.isAdmin,
-            highlightWinner: _highlightCycleId == cycle.id,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CurrentTurnLoaded extends ConsumerWidget {
-  const _CurrentTurnLoaded({
-    required this.group,
-    required this.cycle,
-    required this.isAdmin,
-    required this.highlightWinner,
-  });
-
-  final GroupModel group;
-  final CycleModel cycle;
-  final bool isAdmin;
-  final bool highlightWinner;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProvider);
-    final contributionsAsync = ref.watch(
-      cycleContributionsProvider((groupId: group.id, cycleId: cycle.id)),
-    );
-    final rules = ref.watch(groupRulesProvider(group.id)).valueOrNull;
-    final payoutAsync = ref.watch(cyclePayoutProvider(cycle.id));
-    final summary = contributionsAsync.valueOrNull?.summary;
-    final payout = payoutAsync.valueOrNull;
-    final currentUserId = currentUser?.id;
-    ContributionModel? myContribution;
-    if (currentUserId != null) {
-      final items = contributionsAsync.valueOrNull?.items ?? const [];
-      for (final item in items) {
-        if (item.userId == currentUserId) {
-          myContribution = item;
-          break;
-        }
-      }
-    }
-    final status = mapRoundStatus(
-      cycle: cycle,
-      contributionSummary: summary,
-      payout: payout,
-    );
-    final primaryAction = _resolvePrimaryAction(
-      context: context,
-      groupId: group.id,
-      cycle: cycle,
-      isAdmin: isAdmin,
-      currentUserId: currentUserId,
-      payout: payout,
-      contributions: contributionsAsync.valueOrNull,
-    );
-    final winnerName = _cycleUserLabel(
-      cycle.finalPayoutUser,
-      cycle.finalPayoutUserId ?? cycle.payoutUserId,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                'Current turn',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            Text(
+              isAdmin ? 'No active turn yet' : 'No active turn right now',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
               ),
             ),
-            StatusPill.fromLabel(status.label),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              isAdmin
+                  ? 'Start the next turn when the group is ready.'
+                  : 'Check back after an admin starts the next turn.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            KitPrimaryButton(
+              onPressed: !isAdmin
+                  ? null
+                  : widget.group.canStartCycle
+                  ? _startTurn
+                  : () => context.push(AppRoutePaths.groupSetup(widget.group.id)),
+              label: !isAdmin
+                  ? 'Waiting for admin start'
+                  : widget.group.canStartCycle
+                  ? (_isStarting ? 'Starting turn...' : 'Start turn')
+                  : 'Complete setup to start',
+              icon: !isAdmin
+                  ? Icons.hourglass_top_rounded
+                  : widget.group.canStartCycle
+                  ? Icons.play_arrow_rounded
+                  : Icons.rule_folder_outlined,
+            ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Turn ${cycle.cycleNo}',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Due ${formatDate(cycle.dueDate)}',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        if (myContribution?.status == ContributionStatusModel.late) ...[
-          const SizedBox(height: AppSpacing.sm),
-          KitBanner(
-            title: 'Your contribution is late',
-            message: _lateMessage(
-              contribution: myContribution,
-              rules: rules,
-              currency: group.currency,
-            ),
-            tone: KitBadgeTone.warning,
-            icon: Icons.warning_amber_rounded,
-          ),
-        ],
-        const SizedBox(height: AppSpacing.sm),
-        LotteryRevealAnimation(
-          play: highlightWinner,
-          child: Row(
-            children: [
-              const Icon(Icons.emoji_events_outlined),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  '${LotteryCopy.winnerHeadline}: $winnerName',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        KitPrimaryButton(
-          label: primaryAction.label,
-          icon: primaryAction.icon,
-          onPressed: primaryAction.onPressed,
-        ),
-      ],
-    );
-  }
-}
-
-class _ContributionsSummaryCard extends ConsumerWidget {
-  const _ContributionsSummaryCard({
-    required this.groupId,
-    required this.currentCycleAsync,
-  });
-
-  final String groupId;
-  final AsyncValue<CycleModel?> currentCycleAsync;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return KitCard(
-      child: currentCycleAsync.when(
-        loading: () => const _SummarySkeleton(title: 'Contributions'),
-        error: (error, _) => ErrorView(
-          message: mapFriendlyError(error),
-          onRetry: () => ref.invalidate(currentCycleProvider(groupId)),
-        ),
-        data: (cycle) {
-          if (cycle == null) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Contributions',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'No open turn yet.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            );
-          }
-
-          final contributionsAsync = ref.watch(
-            cycleContributionsProvider((groupId: groupId, cycleId: cycle.id)),
-          );
-
-          return contributionsAsync.when(
-            loading: () => const _SummarySkeleton(title: 'Contributions'),
-            error: (error, _) => ErrorView(
-              message: mapFriendlyError(error),
-              onRetry: () => ref.invalidate(
-                cycleContributionsProvider((
-                  groupId: groupId,
-                  cycleId: cycle.id,
-                )),
-              ),
-            ),
-            data: (list) {
-              final paid = list.summary.submitted + list.summary.confirmed;
-              final total = list.summary.total;
-              final group = ref.watch(groupDetailProvider(groupId)).valueOrNull;
-              final isAdmin = group?.membership?.role == MemberRoleModel.admin;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Contributions',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Paid: $paid / $total',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '${list.summary.confirmed} confirmed, ${list.summary.rejected} rejected',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  if (isAdmin && list.summary.late > 0) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Overdue ${list.summary.late}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.md),
-                  KitSecondaryButton(
-                    label: 'View contributions',
-                    icon: Icons.receipt_long_outlined,
-                    onPressed: () => context.push(
-                      AppRoutePaths.groupCycleContributions(groupId, cycle.id),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
       ),
     );
   }
 }
 
-String _lateMessage({
-  required ContributionModel? contribution,
-  required GroupRulesModel? rules,
-  required String currency,
-}) {
-  if (contribution?.lateMarkedAt == null) {
-    return 'Your payment has passed due + grace period.';
-  }
-
-  if (rules == null) {
-    return 'Your payment is late. Please submit and ask admin verification.';
-  }
-
-  if (rules.fineType == GroupRuleFineTypeModel.fixedAmount &&
-      rules.fineAmount > 0) {
-    return 'Late since ${formatDate(contribution!.lateMarkedAt!)}. Fine: $currency ${rules.fineAmount}.';
-  }
-
-  return 'Late since ${formatDate(contribution!.lateMarkedAt!)}. No fixed fine configured.';
-}
-
-class _RoundTimelineCard extends ConsumerWidget {
-  const _RoundTimelineCard({
-    required this.groupId,
-    required this.currentCycleAsync,
-  });
-
-  final String groupId;
-  final AsyncValue<CycleModel?> currentCycleAsync;
+class _HeroSkeleton extends StatelessWidget {
+  const _HeroSkeleton();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cycle = currentCycleAsync.valueOrNull;
-    final contributionSummary = cycle == null
-        ? null
-        : ref
-              .watch(
-                cycleContributionsProvider((
-                  groupId: groupId,
-                  cycleId: cycle.id,
-                )),
-              )
-              .valueOrNull
-              ?.summary;
-    final payout = cycle == null
-        ? null
-        : ref.watch(cyclePayoutProvider(cycle.id)).valueOrNull;
-    final status = mapRoundStatus(
-      cycle: cycle,
-      contributionSummary: contributionSummary,
-      payout: payout,
-    );
-    final currentIndex = switch (status.stage) {
-      RoundStage.contributions => 0,
-      RoundStage.auction => 1,
-      RoundStage.payout => 2,
-      RoundStage.closed => 3,
-    };
-    const labels = ['Contributions', 'Auction', 'Payout', 'Closed'];
-
-    return KitCard(
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Turn progress',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 0; i < labels.length; i++) ...[
-                  _TimelineNode(
-                    label: labels[i],
-                    isActive: i == currentIndex,
-                    isComplete: i < currentIndex,
-                  ),
-                  if (i != labels.length - 1)
-                    Container(
-                      width: AppSpacing.lg,
-                      height: 1,
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                ],
-              ],
-            ),
-          ),
+          KitSkeletonBox(height: 28, width: 150),
+          SizedBox(height: AppSpacing.sm),
+          KitSkeletonBox(height: 20, width: 120),
+          SizedBox(height: AppSpacing.sm),
+          KitSkeletonBox(height: 22, width: 240),
+          SizedBox(height: AppSpacing.md),
+          KitSkeletonBox(height: 46, width: 220),
+          SizedBox(height: AppSpacing.md),
+          KitSkeletonBox(height: 8, width: double.infinity),
+          SizedBox(height: AppSpacing.md),
+          KitSkeletonBox(height: 18, width: 260),
         ],
       ),
     );
   }
 }
 
-class _AdminActionsCard extends ConsumerWidget {
-  const _AdminActionsCard({
-    required this.group,
-    required this.currentCycleAsync,
-  });
-
-  final GroupModel group;
-  final AsyncValue<CycleModel?> currentCycleAsync;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cycle = currentCycleAsync.valueOrNull;
-    final payout = cycle == null
-        ? null
-        : ref.watch(cyclePayoutProvider(cycle.id)).valueOrNull;
-
-    return KitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Admin actions',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Actions are grouped to keep this screen focused for members.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          KitSecondaryButton(
-            label: 'Open admin actions',
-            icon: Icons.admin_panel_settings_outlined,
-            onPressed: () => _showAdminActions(
-              context: context,
-              groupId: group.id,
-              cycle: cycle,
-              payout: payout,
-              canInviteMembers: group.canInviteMembers,
-              canStartCycle: group.canStartCycle,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimelineNode extends StatelessWidget {
-  const _TimelineNode({
-    required this.label,
-    required this.isActive,
-    required this.isComplete,
-  });
+class _InlineMetric extends StatelessWidget {
+  const _InlineMetric({required this.label, required this.value});
 
   final String label;
-  final bool isActive;
-  final bool isComplete;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = isComplete || isActive
-        ? colorScheme.primary
-        : colorScheme.surfaceContainerLow;
-    final foregroundColor = isComplete || isActive
-        ? colorScheme.onPrimary
-        : colorScheme.onSurfaceVariant;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: AppRadius.pillRounded,
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: foregroundColor,
-          fontWeight: FontWeight.w600,
-        ),
+    return Text(
+      '$label: $value',
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        fontWeight: FontWeight.w600,
       ),
     );
   }
 }
 
-class _CurrentTurnSkeleton extends StatelessWidget {
-  const _CurrentTurnSkeleton();
+class _MiniIndicator extends StatelessWidget {
+  const _MiniIndicator({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        KitSkeletonBox(height: AppSpacing.lg, width: 170),
-        SizedBox(height: AppSpacing.sm),
-        KitSkeletonBox(height: AppSpacing.xl, width: 140),
-        SizedBox(height: AppSpacing.xs),
-        KitSkeletonBox(height: AppSpacing.md, width: 220),
-        SizedBox(height: AppSpacing.xs),
-        KitSkeletonBox(height: AppSpacing.md, width: 260),
-        SizedBox(height: AppSpacing.md),
-        KitSkeletonBox(height: 46, width: 240),
-      ],
+    return StatusPill(label: label, tone: KitBadgeTone.info);
+  }
+}
+
+class _ProgressSummaryBar extends StatelessWidget {
+  const _ProgressSummaryBar({required this.paid, required this.total});
+
+  final int paid;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = total == 0 ? 0.0 : (paid / total).clamp(0, 1).toDouble();
+    return ClipRRect(
+      borderRadius: AppRadius.pillRounded,
+      child: LinearProgressIndicator(value: progress, minHeight: 10),
     );
   }
 }
 
-class _SummarySkeleton extends StatelessWidget {
-  const _SummarySkeleton({required this.title});
+class _VisibleActions {
+  const _VisibleActions({required this.primary, required this.secondary});
 
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        const KitSkeletonBox(height: AppSpacing.xl, width: 120),
-        const SizedBox(height: AppSpacing.xs),
-        const KitSkeletonBox(height: AppSpacing.md, width: 220),
-      ],
-    );
-  }
+  final _TurnAction primary;
+  final List<_TurnAction> secondary;
 }
 
-class _PrimaryAction {
-  const _PrimaryAction({
+class _TurnAction {
+  const _TurnAction({
     required this.label,
     required this.icon,
     required this.onPressed,
@@ -769,183 +627,259 @@ class _PrimaryAction {
   final VoidCallback? onPressed;
 }
 
-_PrimaryAction _resolvePrimaryAction({
+_VisibleActions _resolveVisibleActions({
   required BuildContext context,
-  required String groupId,
+  required GroupModel group,
   required CycleModel cycle,
-  required bool isAdmin,
-  required String? currentUserId,
+  required ContributionModel? contribution,
   required PayoutModel? payout,
-  required ContributionListModel? contributions,
+  required ContributionSummaryModel? summary,
 }) {
-  final cycleDetailRoute = AppRoutePaths.groupCycleDetail(groupId, cycle.id);
-  final submitRoute = AppRoutePaths.groupCycleContributionsSubmit(
-    groupId,
-    cycle.id,
-  );
-  final payoutRoute = AppRoutePaths.groupCyclePayout(groupId, cycle.id);
-  final auctionStatus = cycle.auctionStatus ?? AuctionStatusModel.none;
-  final selectedWinnerUserId = cycle.finalPayoutUserId ?? cycle.payoutUserId;
-  final isSelectedWinner =
-      currentUserId != null && currentUserId == selectedWinnerUserId;
-  final canManageAuction = isAdmin;
+  final turnRoute = AppRoutePaths.groupTurnDetail(group.id, cycle.id);
+  final submitRoute =
+      AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id);
+  final payoutRoute = AppRoutePaths.groupCyclePayout(group.id, cycle.id);
+  final contributionsRoute =
+      AppRoutePaths.groupCycleContributions(group.id, cycle.id);
+  final isAdmin = group.membership?.role == MemberRoleModel.admin;
+  final secondary = <_TurnAction>[];
+
+  if ((cycle.auctionStatus ?? AuctionStatusModel.none) == AuctionStatusModel.open) {
+    final primary = _TurnAction(
+      label: isAdmin ? 'Close auction' : 'Place bid',
+      icon: Icons.gavel_rounded,
+      onPressed: () => context.push(turnRoute),
+    );
+    if (isAdmin && (summary?.late ?? 0) > 0) {
+      secondary.add(
+        _TurnAction(
+          label: 'Verify payments',
+          icon: Icons.fact_check_outlined,
+          onPressed: () => context.push(contributionsRoute),
+        ),
+      );
+    }
+    return _VisibleActions(primary: primary, secondary: secondary);
+  }
 
   if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
-    return _PrimaryAction(
-      label: 'Select winner',
-      icon: Icons.how_to_vote_outlined,
-      onPressed: () => context.push(payoutRoute),
+    final primary = _TurnAction(
+      label: 'Draw winner',
+      icon: Icons.emoji_events_outlined,
+      onPressed: () => context.push(turnRoute),
     );
+    secondary.add(
+      _TurnAction(
+        label: 'Verify payments',
+        icon: Icons.fact_check_outlined,
+        onPressed: () => context.push(contributionsRoute),
+      ),
+    );
+    return _VisibleActions(primary: primary, secondary: secondary);
   }
 
   if (isAdmin && payout?.status == PayoutStatusModel.pending) {
-    return _PrimaryAction(
-      label: 'Manage payout',
+    final primary = _TurnAction(
+      label: 'Disburse payout',
       icon: Icons.account_balance_wallet_outlined,
       onPressed: () => context.push(payoutRoute),
     );
-  }
-
-  if (auctionStatus == AuctionStatusModel.open) {
-    if (canManageAuction) {
-      return _PrimaryAction(
-        label: 'Close auction',
-        icon: Icons.gavel_rounded,
-        onPressed: () => context.push(cycleDetailRoute),
-      );
-    }
-    return _PrimaryAction(
-      label: 'Place bid',
-      icon: Icons.local_offer_outlined,
-      onPressed: () => context.push(cycleDetailRoute),
-    );
-  }
-
-  if (isSelectedWinner && auctionStatus != AuctionStatusModel.open && isAdmin) {
-    return _PrimaryAction(
-      label: 'Auction my turn',
-      icon: Icons.gavel_rounded,
-      onPressed: () => context.push(cycleDetailRoute),
-    );
-  }
-
-  ContributionStatusModel? myStatus;
-  if (currentUserId != null && contributions != null) {
-    for (final item in contributions.items) {
-      if (item.userId == currentUserId) {
-        myStatus = item.status;
-        break;
-      }
-    }
-  }
-
-  if (myStatus == ContributionStatusModel.rejected) {
-    return _PrimaryAction(
-      label: 'Fix & resubmit',
-      icon: Icons.refresh_rounded,
-      onPressed: () => context.push(submitRoute),
-    );
-  }
-  if (myStatus == ContributionStatusModel.late) {
-    return _PrimaryAction(
-      label: 'Pay now',
-      icon: Icons.warning_amber_rounded,
-      onPressed: () => context.push(submitRoute),
-    );
-  }
-  if (myStatus == ContributionStatusModel.paidSubmitted ||
-      myStatus == ContributionStatusModel.submitted ||
-      myStatus == ContributionStatusModel.pending) {
-    return const _PrimaryAction(
-      label: 'Waiting confirmation',
-      icon: Icons.hourglass_bottom_rounded,
-      onPressed: null,
-    );
-  }
-  if (myStatus == ContributionStatusModel.verified ||
-      myStatus == ContributionStatusModel.confirmed) {
-    return _PrimaryAction(
-      label: 'View contributions',
-      icon: Icons.receipt_long_outlined,
-      onPressed: () => context.push(cycleDetailRoute),
-    );
-  }
-  if (myStatus == null || myStatus == ContributionStatusModel.unknown) {
-    return _PrimaryAction(
-      label: 'Pay now',
-      icon: Icons.upload_file_outlined,
-      onPressed: () => context.push(submitRoute),
-    );
-  }
-
-  return _PrimaryAction(
-    label: 'View current turn',
-    icon: Icons.visibility_outlined,
-    onPressed: () => context.push(cycleDetailRoute),
-  );
-}
-
-Future<void> _showAdminActions({
-  required BuildContext context,
-  required String groupId,
-  required CycleModel? cycle,
-  required PayoutModel? payout,
-  required bool canInviteMembers,
-  required bool canStartCycle,
-}) {
-  final actions = <KitActionSheetItem>[
-    if (!canInviteMembers || !canStartCycle)
-      KitActionSheetItem(
-        label: 'Open setup checklist',
-        icon: Icons.rule_folder_outlined,
-        onPressed: () => context.push(AppRoutePaths.groupSetup(groupId)),
-      ),
-    if (canInviteMembers)
-      KitActionSheetItem(
-        label: 'Invite members',
-        icon: Icons.person_add_alt_1_rounded,
-        onPressed: () => context.push(AppRoutePaths.groupInvite(groupId)),
-      ),
-    if (cycle != null &&
-        (cycle.auctionStatus ?? AuctionStatusModel.none) ==
-            AuctionStatusModel.open)
-      KitActionSheetItem(
-        label: 'View bids / Close auction',
-        icon: Icons.gavel_rounded,
-        onPressed: () =>
-            context.push(AppRoutePaths.groupCycleDetail(groupId, cycle.id)),
-      ),
-    if (cycle != null)
-      KitActionSheetItem(
-        label: 'Select winner / Disburse payout',
-        icon: Icons.account_balance_wallet_outlined,
-        onPressed: () =>
-            context.push(AppRoutePaths.groupCyclePayout(groupId, cycle.id)),
-      ),
-    if (cycle != null && payout?.status == PayoutStatusModel.confirmed)
-      KitActionSheetItem(
-        label: 'Close cycle',
+    secondary.add(
+      _TurnAction(
+        label: 'Close turn',
         icon: Icons.task_alt_rounded,
-        onPressed: () =>
-            context.push(AppRoutePaths.groupCyclePayout(groupId, cycle.id)),
+        onPressed: () => context.push(payoutRoute),
       ),
-  ];
+    );
+    return _VisibleActions(primary: primary, secondary: secondary);
+  }
 
-  return KitActionSheet.show(
-    context: context,
-    title: 'Admin actions',
-    actions: actions,
-  );
+  if (contribution == null) {
+    return _VisibleActions(
+      primary: _TurnAction(
+        label: 'Pay now',
+        icon: Icons.upload_file_outlined,
+        onPressed: () => context.push(submitRoute),
+      ),
+      secondary: secondary,
+    );
+  }
+
+  switch (contribution.status) {
+    case ContributionStatusModel.rejected:
+      return _VisibleActions(
+        primary: _TurnAction(
+          label: 'Fix & resubmit',
+          icon: Icons.refresh_rounded,
+          onPressed: () => context.push(submitRoute),
+        ),
+        secondary: secondary,
+      );
+    case ContributionStatusModel.late:
+      return _VisibleActions(
+        primary: _TurnAction(
+          label: 'Pay now',
+          icon: Icons.warning_amber_rounded,
+          onPressed: () => context.push(submitRoute),
+        ),
+        secondary: secondary,
+      );
+    case ContributionStatusModel.pending:
+      return _VisibleActions(
+        primary: _TurnAction(
+          label: 'Upload receipt',
+          icon: Icons.upload_file_outlined,
+          onPressed: () => context.push(submitRoute),
+        ),
+        secondary: secondary,
+      );
+    case ContributionStatusModel.paidSubmitted:
+    case ContributionStatusModel.submitted:
+      if (isAdmin) {
+        secondary.add(
+          _TurnAction(
+            label: 'See turn details',
+            icon: Icons.visibility_outlined,
+            onPressed: () => context.push(turnRoute),
+          ),
+        );
+        return _VisibleActions(
+          primary: _TurnAction(
+            label: 'Verify payments',
+            icon: Icons.fact_check_outlined,
+            onPressed: () => context.push(contributionsRoute),
+          ),
+          secondary: secondary,
+        );
+      }
+      return const _VisibleActions(
+        primary: _TurnAction(
+          label: 'Waiting for verification',
+          icon: Icons.hourglass_bottom_rounded,
+          onPressed: null,
+        ),
+        secondary: <_TurnAction>[],
+      );
+    case ContributionStatusModel.verified:
+    case ContributionStatusModel.confirmed:
+      if (isAdmin) {
+        return _VisibleActions(
+          primary: _TurnAction(
+            label: 'Verify payments',
+            icon: Icons.fact_check_outlined,
+            onPressed: () => context.push(contributionsRoute),
+          ),
+          secondary: secondary,
+        );
+      }
+      return _VisibleActions(
+        primary: _TurnAction(
+          label: 'See turn details',
+          icon: Icons.visibility_outlined,
+          onPressed: () => context.push(turnRoute),
+        ),
+        secondary: secondary,
+      );
+    case ContributionStatusModel.unknown:
+      return _VisibleActions(
+        primary: _TurnAction(
+          label: 'See turn details',
+          icon: Icons.visibility_outlined,
+          onPressed: () => context.push(turnRoute),
+        ),
+        secondary: secondary,
+      );
+  }
 }
 
-String _cycleUserLabel(CyclePayoutUserModel? user, String fallbackUserId) {
+ContributionModel? _findContribution(
+  ContributionListModel? list,
+  String? currentUserId,
+) {
+  if (list == null || currentUserId == null) {
+    return null;
+  }
+
+  for (final item in list.items) {
+    if (item.userId == currentUserId) {
+      return item;
+    }
+  }
+
+  return null;
+}
+
+StatusPill _buildStagePill(TurnStatusPresentation status) {
+  final tone = switch (status.stage) {
+    TurnStage.waiting => KitBadgeTone.warning,
+    TurnStage.collecting => KitBadgeTone.info,
+    TurnStage.auction => KitBadgeTone.info,
+    TurnStage.readyForPayout => KitBadgeTone.warning,
+    TurnStage.disbursed => KitBadgeTone.success,
+    TurnStage.completed => KitBadgeTone.success,
+  };
+  return StatusPill(label: status.label, tone: tone);
+}
+
+String? _turnWinnerLabel(CycleModel cycle, PayoutModel? payout) {
+  final payoutLabel = payout?.recipientLabel.trim();
+  if (payoutLabel != null && payoutLabel.isNotEmpty) {
+    return payoutLabel;
+  }
+
+  final user =
+      cycle.finalPayoutUser ?? cycle.payoutUser ?? cycle.scheduledPayoutUser;
   final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {
     return fullName;
   }
+
   final phone = user?.phone?.trim();
   if (phone != null && phone.isNotEmpty) {
     return phone;
   }
-  return fallbackUserId;
+
+  final fallbackId = cycle.finalPayoutUserId ?? cycle.payoutUserId;
+  return fallbackId.trim().isEmpty ? null : fallbackId;
+}
+
+String _winnerCopy(CycleModel cycle, PayoutModel? payout) {
+  final winnerLabel = _turnWinnerLabel(cycle, payout);
+  if (winnerLabel != null) {
+    return 'This turn\'s winner: $winnerLabel';
+  }
+  return _winnerPendingCopy(cycle);
+}
+
+String _winnerPendingCopy(CycleModel cycle) {
+  final auctionStatus = cycle.auctionStatus ?? AuctionStatusModel.none;
+  if (auctionStatus == AuctionStatusModel.open) {
+    return 'Winner is pending while the auction is still open.';
+  }
+  if (cycle.state == CycleStateModel.readyForPayout) {
+    return 'Winner is ready to be confirmed for payout.';
+  }
+  return 'Winner selection will appear here once this turn progresses.';
+}
+
+int _paidCount(ContributionSummaryModel? summary) {
+  if (summary == null) {
+    return 0;
+  }
+  return summary.submitted +
+      summary.paidSubmitted +
+      summary.verified +
+      summary.confirmed;
+}
+
+int _turnPotSize({
+  required ContributionListModel? contributions,
+  required int fallbackAmount,
+  required int totalMembers,
+}) {
+  final items = contributions?.items ?? const <ContributionModel>[];
+  if (items.isNotEmpty) {
+    return items.fold<int>(0, (sum, item) => sum + item.amount);
+  }
+  return fallbackAmount * totalMembers;
 }

@@ -7,6 +7,9 @@ import 'package:mobile/data/contributions/contributions_api.dart';
 import 'package:mobile/data/contributions/contributions_repository.dart';
 import 'package:mobile/data/cycles/cycles_api.dart';
 import 'package:mobile/data/cycles/cycles_repository.dart';
+import 'package:mobile/data/auctions/auction_api.dart';
+import 'package:mobile/data/auctions/auction_repository.dart';
+import 'package:mobile/data/auctions/bids_api.dart';
 import 'package:mobile/data/groups/groups_api.dart';
 import 'package:mobile/data/groups/groups_repository.dart';
 import 'package:mobile/data/models/confirm_payout_request.dart';
@@ -26,19 +29,55 @@ import 'package:mobile/data/payouts/payouts_repository.dart';
 import 'package:mobile/features/auth/auth_controller.dart';
 import 'package:mobile/features/groups/screens/group_detail_screen.dart';
 import 'package:mobile/features/groups/screens/group_overview_screen.dart';
+import 'package:mobile/features/turns/screens/turn_details_screen.dart';
 
 void main() {
-  testWidgets('Group detail uses current-round hub layout', (tester) async {
+  testWidgets('Group detail shows unified current turn hero above past turns', (
+    tester,
+  ) async {
     await tester.pumpWidget(_buildTestApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Current turn'), findsOneWidget);
     expect(find.text('Turn 3'), findsOneWidget);
-    expect(find.text('Contributions'), findsWidgets);
-    expect(find.text('Paid: 2 / 2'), findsOneWidget);
-    expect(find.text('Turn progress'), findsOneWidget);
-    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
-    expect(find.byKey(const ValueKey('group-tab-members')), findsNothing);
+    expect(find.text('This turn\'s winner: Test User'), findsOneWidget);
+    expect(find.text('See turn details'), findsOneWidget);
+    expect(find.text('Admin Action'), findsNothing);
+    expect(find.text('Contribution Summary'), findsNothing);
+
+    final heroY = tester.getTopLeft(find.text('Turn 3')).dy;
+
+    await tester.scrollUntilVisible(
+      find.text('Past Turns'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Past Turns'), findsOneWidget);
+    expect(find.text('Turn 2'), findsOneWidget);
+
+    final pastTurnsY = tester.getTopLeft(find.text('Past Turns')).dy;
+
+    expect(heroY, lessThan(pastTurnsY));
+    expect(pastTurnsY, greaterThan(0));
+  });
+
+  testWidgets('Past turn row pushes turn details route', (tester) async {
+    await tester.pumpWidget(_buildTestApp());
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Turn 2'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Turn 2'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TurnDetailsScreen), findsOneWidget);
+    expect(find.text('Turn Summary'), findsOneWidget);
   });
 
   testWidgets('Tapping group title pushes full-screen overview route', (
@@ -61,6 +100,10 @@ void main() {
 Widget _buildTestApp() {
   final groupsRepository = GroupsRepository(_FakeGroupsApi());
   final cyclesRepository = CyclesRepository(_FakeCyclesApi());
+  final auctionRepository = AuctionRepository(
+    auctionApi: _FakeAuctionApi(),
+    bidsApi: _FakeBidsApi(),
+  );
   final contributionsRepository = ContributionsRepository(
     _FakeContributionsApi(),
   );
@@ -85,7 +128,17 @@ Widget _buildTestApp() {
       ),
       GoRoute(
         path: '/groups/:id/cycles/:cycleId',
-        builder: (context, state) => const Scaffold(body: Text('Cycle detail')),
+        builder: (context, state) => TurnDetailsScreen(
+          groupId: state.pathParameters['id'] ?? '',
+          turnId: state.pathParameters['cycleId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/groups/:id/turns/:turnId',
+        builder: (context, state) => TurnDetailsScreen(
+          groupId: state.pathParameters['id'] ?? '',
+          turnId: state.pathParameters['turnId'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/groups/:id/cycles/:cycleId/contributions',
@@ -108,10 +161,17 @@ Widget _buildTestApp() {
     overrides: [
       groupsRepositoryProvider.overrideWithValue(groupsRepository),
       cyclesRepositoryProvider.overrideWithValue(cyclesRepository),
+      auctionRepositoryProvider.overrideWithValue(auctionRepository),
       contributionsRepositoryProvider.overrideWithValue(
         contributionsRepository,
       ),
       payoutsRepositoryProvider.overrideWithValue(payoutsRepository),
+      appBootstrapConfigProvider.overrideWithValue(
+        const AppBootstrapConfig(
+          apiBaseUrl: 'http://localhost:3000',
+          apiTimeoutMs: 15000,
+        ),
+      ),
       currentUserProvider.overrideWithValue(
         const UserModel(id: 'user-2', phone: '+251922000000'),
       ),
@@ -301,38 +361,46 @@ class _FakeGroupsApi implements GroupsApi {
 class _FakeCyclesApi implements CyclesApi {
   @override
   Future<Map<String, dynamic>> startCycle(String groupId) async {
-    return _cycle(groupId, 'cycle-generated');
+    return _cycle(groupId, 'cycle-generated', isCurrent: true);
   }
 
   @override
   Future<Map<String, dynamic>> getCycle(String groupId, String cycleId) async {
-    return _cycle(groupId, cycleId);
+    return _cycle(groupId, cycleId, isCurrent: cycleId == 'cycle-1');
   }
 
   @override
   Future<Map<String, dynamic>?> getCurrentCycle(String groupId) async {
-    return _cycle(groupId, 'cycle-1');
+    return _cycle(groupId, 'cycle-1', isCurrent: true);
   }
 
   @override
   Future<List<Map<String, dynamic>>> listCycles(String groupId) async {
-    return [_cycle(groupId, 'cycle-1')];
+    return [
+      _cycle(groupId, 'cycle-1', isCurrent: true),
+      _cycle(groupId, 'cycle-2', isCurrent: false),
+    ];
   }
 
-  Map<String, dynamic> _cycle(String groupId, String cycleId) {
+  Map<String, dynamic> _cycle(
+    String groupId,
+    String cycleId, {
+    required bool isCurrent,
+  }) {
     return {
       'id': cycleId,
       'groupId': groupId,
       'roundId': 'round-1',
-      'cycleNo': 3,
-      'dueDate': DateTime(2026, 3, 1).toIso8601String(),
+      'cycleNo': isCurrent ? 3 : 2,
+      'dueDate': DateTime(2026, isCurrent ? 3 : 2, 1).toIso8601String(),
+      'state': isCurrent ? 'COLLECTING' : 'CLOSED',
       'scheduledPayoutUserId': 'user-1',
       'finalPayoutUserId': 'user-1',
       'payoutUserId': 'user-1',
-      'auctionStatus': 'NONE',
+      'auctionStatus': isCurrent ? 'NONE' : 'CLOSED',
       'winningBidAmount': null,
       'winningBidUserId': null,
-      'status': 'OPEN',
+      'status': isCurrent ? 'OPEN' : 'CLOSED',
       'scheduledPayoutUser': {
         'id': 'user-1',
         'phone': '+251911000000',
@@ -410,6 +478,7 @@ class _FakeContributionsApi implements ContributionsApi {
     String groupId,
     String cycleId,
   ) async {
+    final isCurrent = cycleId == 'cycle-1';
     return {
       'items': [
         {
@@ -418,7 +487,7 @@ class _FakeContributionsApi implements ContributionsApi {
           'cycleId': cycleId,
           'userId': 'user-1',
           'amount': 1000,
-          'status': 'SUBMITTED',
+          'status': isCurrent ? 'SUBMITTED' : 'CONFIRMED',
           'user': {
             'id': 'user-1',
             'fullName': 'Test User',
@@ -442,9 +511,12 @@ class _FakeContributionsApi implements ContributionsApi {
       'summary': {
         'total': 2,
         'pending': 0,
-        'submitted': 1,
-        'confirmed': 1,
+        'submitted': isCurrent ? 1 : 0,
+        'confirmed': isCurrent ? 1 : 2,
         'rejected': 0,
+        'verified': 0,
+        'paidSubmitted': 0,
+        'late': 0,
       },
     };
   }
@@ -512,5 +584,73 @@ class _FakePayoutsApi implements PayoutsApi {
   @override
   Future<Map<String, dynamic>?> getPayout(String cycleId) async {
     return null;
+  }
+}
+
+class _FakeAuctionApi implements AuctionApi {
+  @override
+  Future<Map<String, dynamic>> closeAuction(String cycleId) async {
+    return {
+      'cycleId': cycleId,
+      'auctionStatus': 'CLOSED',
+      'selectedWinnerUserId': 'user-1',
+      'finalPayoutUserId': 'user-1',
+      'winningBidAmount': 200,
+      'winningBidUserId': 'user-2',
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> openAuction(String cycleId) async {
+    return {
+      'cycleId': cycleId,
+      'auctionStatus': 'OPEN',
+      'selectedWinnerUserId': 'user-1',
+      'finalPayoutUserId': 'user-1',
+      'winningBidAmount': null,
+      'winningBidUserId': null,
+    };
+  }
+}
+
+class _FakeBidsApi implements BidsApi {
+  @override
+  Future<List<Map<String, dynamic>>> listBids(String cycleId) async {
+    if (cycleId != 'cycle-2') {
+      return <Map<String, dynamic>>[];
+    }
+
+    return [
+      {
+        'id': 'bid-1',
+        'cycleId': cycleId,
+        'userId': 'user-2',
+        'amount': 200,
+        'createdAt': DateTime(2026, 2, 1, 9).toIso8601String(),
+        'updatedAt': DateTime(2026, 2, 1, 9).toIso8601String(),
+        'user': {
+          'id': 'user-2',
+          'fullName': 'Second User',
+          'phone': '+251922000000',
+        },
+      },
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitBid(String cycleId, int amount) async {
+    return {
+      'id': 'bid-new',
+      'cycleId': cycleId,
+      'userId': 'user-2',
+      'amount': amount,
+      'createdAt': DateTime(2026, 2, 1, 9).toIso8601String(),
+      'updatedAt': DateTime(2026, 2, 1, 9).toIso8601String(),
+      'user': {
+        'id': 'user-2',
+        'fullName': 'Second User',
+        'phone': '+251922000000',
+      },
+    };
   }
 }
