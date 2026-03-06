@@ -100,6 +100,17 @@
 - Members list lives only in Group Overview; there is no standalone Members screen route.
 - Group detail is the current-cycle hub and must not render the members list.
 - Group detail should favor collapsed summaries and a single primary member CTA over dense list sections.
+- Group main page has two exclusive modes:
+  - `PRE-START` before the first/open turn exists
+  - `ACTIVE` once a turn exists
+- Group main page `PRE-START` mode must replace empty-turn copy and show, in order:
+  - setup progress for exactly three rules steps: `Basics`, `Timing`, `Policy`
+  - inline `Members` invite/verify operations on the same page
+  - a start-group/start-first-turn CTA with readiness guidance
+- Group invite generation belongs to the main Group page members section and should open in a bottom sheet; do not keep or add a standalone invite screen route.
+- Invite CTAs from other group surfaces (for example Group Overview admin actions) should open the same invite bottom sheet in place rather than navigate away first.
+- Group main page `ACTIVE` mode must show turn operations only (`Current Turn` hero followed by `Past Turns`) and must not mix in setup or member-verification sections.
+- Do not show `No active turn yet` on the group main page; use positive setup/start readiness copy instead.
 - Group page is overview-only: compact past turns, one dominant current-turn card, and a contribution summary; operational detail belongs elsewhere.
 - Group page layout is locked to one unified current-turn hero card followed by `Past Turns`; do not split the current turn into separate titled cards on the main group page.
 - Current Turn must always be visually dominant over history; past turns are secondary and appear only below the unified hero card.

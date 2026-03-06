@@ -17,6 +17,7 @@ import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
 import '../group_detail_controller.dart';
+import '../widgets/group_invite_sheet.dart';
 
 class GroupOverviewScreen extends ConsumerWidget {
   const GroupOverviewScreen({super.key, required this.groupId});
@@ -409,13 +410,17 @@ class _MembersCard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const KitSectionHeader(title: 'Members'),
+              const KitSectionHeader(title: 'Members'),
         if (isAdmin) ...[
           KitPrimaryButton(
             label: 'Invite members',
             icon: Icons.person_add_alt_1_rounded,
             onPressed: canInviteMembers
-                ? () => context.push(AppRoutePaths.groupInvite(groupId))
+                ? () => showGroupInviteSheet(
+                      context: context,
+                      ref: ref,
+                      groupId: groupId,
+                    )
                 : () => context.push(AppRoutePaths.groupSetup(groupId)),
           ),
           if (!canInviteMembers)
@@ -475,7 +480,7 @@ class _MembersCard extends ConsumerWidget {
   }
 }
 
-class _OverviewAdminActionsCard extends StatelessWidget {
+class _OverviewAdminActionsCard extends ConsumerWidget {
   const _OverviewAdminActionsCard({
     required this.groupId,
     required this.hasOpenCycle,
@@ -489,7 +494,7 @@ class _OverviewAdminActionsCard extends StatelessWidget {
   final bool canStartCycle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -502,7 +507,11 @@ class _OverviewAdminActionsCard extends StatelessWidget {
                 label: 'Invite members',
                 icon: Icons.person_add_alt_1_rounded,
                 onPressed: canInviteMembers
-                    ? () => context.push(AppRoutePaths.groupInvite(groupId))
+                    ? () => showGroupInviteSheet(
+                          context: context,
+                          ref: ref,
+                          groupId: groupId,
+                        )
                     : () => context.push(AppRoutePaths.groupSetup(groupId)),
               ),
               if (!hasOpenCycle) ...[

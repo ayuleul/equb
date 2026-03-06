@@ -12,7 +12,6 @@ import '../features/auth/screens/phone_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/groups/screens/create_group_screen.dart';
 import '../features/groups/screens/group_detail_screen.dart';
-import '../features/groups/screens/group_invite_screen.dart';
 import '../features/groups/screens/group_overview_screen.dart';
 import '../features/groups/screens/group_setup_screen.dart';
 import '../features/groups/screens/groups_list_screen.dart';
@@ -58,9 +57,14 @@ class AppRoutePaths {
   static const debugTheme = '/debug/theme';
 
   static String groupDetail(String groupId) => '/groups/$groupId';
-  static String groupSetup(String groupId) => '/groups/$groupId/setup';
+  static String groupSetup(String groupId, {String? step}) {
+    final base = '/groups/$groupId/setup';
+    if (step == null || step.isEmpty) {
+      return base;
+    }
+    return '$base?step=$step';
+  }
   static String groupOverview(String groupId) => '/groups/$groupId/overview';
-  static String groupInvite(String groupId) => '/groups/$groupId/invite';
   static String groupCycles(String groupId) => '/groups/$groupId/cycles';
   static String groupCyclesCurrent(String groupId) =>
       '/groups/$groupId/cycles/current';
@@ -177,7 +181,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       path: 'setup',
                       builder: (context, state) {
                         final groupId = state.pathParameters['id'] ?? '';
-                        return GroupSetupScreen(groupId: groupId);
+                        return GroupSetupScreen(
+                          groupId: groupId,
+                          initialStepKey: state.uri.queryParameters['step'],
+                        );
                       },
                     ),
                     GoRoute(
@@ -185,13 +192,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       builder: (context, state) {
                         final groupId = state.pathParameters['id'] ?? '';
                         return GroupOverviewScreen(groupId: groupId);
-                      },
-                    ),
-                    GoRoute(
-                      path: 'invite',
-                      builder: (context, state) {
-                        final groupId = state.pathParameters['id'] ?? '';
-                        return GroupInviteScreen(groupId: groupId);
                       },
                     ),
                     GoRoute(

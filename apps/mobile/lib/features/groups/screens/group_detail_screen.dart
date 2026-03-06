@@ -9,6 +9,9 @@ import '../../../app/theme/app_theme_extensions.dart';
 import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/group_rules_model.dart';
+import '../../../data/models/member_model.dart';
+import '../../../data/models/member_status_utils.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
@@ -22,6 +25,8 @@ import '../../cycles/cycles_list_provider.dart';
 import '../../cycles/start_cycle_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
 import '../group_detail_controller.dart';
+import '../group_rules_provider.dart';
+import '../widgets/group_invite_sheet.dart';
 import '../widgets/group_more_actions_button.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -47,8 +52,10 @@ class GroupDetailScreen extends ConsumerWidget {
             GroupMoreActionsButton(groupName: group.name, isAdmin: isAdmin),
           IconButton(
             tooltip: 'Refresh',
-            onPressed: () =>
-                ref.read(groupDetailControllerProvider).refreshAll(groupId),
+            onPressed: () {
+              ref.read(groupDetailControllerProvider).refreshAll(groupId);
+              ref.invalidate(groupRulesProvider(groupId));
+            },
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -75,12 +82,15 @@ class _GroupTurnOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
     final cyclesAsync = ref.watch(cyclesListProvider(group.id));
+    final hasStarted = currentCycleAsync.valueOrNull != null ||
+        (cyclesAsync.valueOrNull?.isNotEmpty ?? false);
 
     Future<void> onRefresh() async {
       await ref.read(groupDetailControllerProvider).refreshAll(group.id);
       ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
       ref.invalidate(currentCycleProvider(group.id));
       ref.invalidate(cyclesListProvider(group.id));
+      ref.invalidate(groupRulesProvider(group.id));
 
       final current = await ref.read(currentCycleProvider(group.id).future);
       await ref.read(cyclesListProvider(group.id).future);
@@ -94,7 +104,53 @@ class _GroupTurnOverview extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView(
+      child: hasStarted
+          ? ListView(
+              children: [
+                _CurrentTurnHeroCard(
+                  group: group,
+                  currentCycleAsync: currentCycleAsync,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _PastTurnsSection(
+                  groupId: group.id,
+                  currentCycleAsync: currentCycleAsync,
+                  cyclesAsync: cyclesAsync,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+            )
+          : _PreStartGroupView(
+              group: group,
+              currentCycleAsync: currentCycleAsync,
+              cyclesAsync: cyclesAsync,
+            ),
+    );
+  }
+}
+
+enum _GroupPageMode { preStart, active }
+
+class _PreStartGroupView extends ConsumerWidget {
+  const _PreStartGroupView({
+    required this.group,
+    required this.currentCycleAsync,
+    required this.cyclesAsync,
+  });
+
+  final GroupModel group;
+  final AsyncValue<CycleModel?> currentCycleAsync;
+  final AsyncValue<List<CycleModel>> cyclesAsync;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resolvedMode = _resolveMode(
+      currentCycle: currentCycleAsync.valueOrNull,
+      cycles: cyclesAsync.valueOrNull,
+    );
+
+    if (resolvedMode == _GroupPageMode.active) {
+      return ListView(
         children: [
           _CurrentTurnHeroCard(group: group, currentCycleAsync: currentCycleAsync),
           const SizedBox(height: AppSpacing.lg),
@@ -104,6 +160,568 @@ class _GroupTurnOverview extends ConsumerWidget {
             cyclesAsync: cyclesAsync,
           ),
           const SizedBox(height: AppSpacing.lg),
+        ],
+      );
+    }
+
+    if (currentCycleAsync.isLoading && currentCycleAsync.valueOrNull == null) {
+      return ListView(
+        children: const [
+          KitCard(child: _HeroSkeleton()),
+          SizedBox(height: AppSpacing.lg),
+          KitCard(child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 4))),
+          SizedBox(height: AppSpacing.lg),
+        ],
+      );
+    }
+
+    final rulesAsync = ref.watch(groupRulesProvider(group.id));
+    final membersAsync = ref.watch(groupMembersProvider(group.id));
+
+    return ListView(
+      children: [
+        _SetupProgressCard(group: group, rulesAsync: rulesAsync),
+        const SizedBox(height: AppSpacing.lg),
+        _PreStartMembersSection(
+          group: group,
+          rulesAsync: rulesAsync,
+          membersAsync: membersAsync,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _StartGroupCard(
+          group: group,
+          rulesAsync: rulesAsync,
+          membersAsync: membersAsync,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+}
+
+_GroupPageMode _resolveMode({
+  required CycleModel? currentCycle,
+  required List<CycleModel>? cycles,
+}) {
+  if (currentCycle != null || (cycles?.isNotEmpty ?? false)) {
+    return _GroupPageMode.active;
+  }
+  return _GroupPageMode.preStart;
+}
+
+class _SetupProgressCard extends ConsumerWidget {
+  const _SetupProgressCard({required this.group, required this.rulesAsync});
+
+  final GroupModel group;
+  final AsyncValue<GroupRulesModel?> rulesAsync;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return rulesAsync.when(
+      loading: () => const KitCard(child: _HeroSkeleton()),
+      error: (error, _) => KitCard(
+        child: ErrorView(
+          message: mapFriendlyError(error),
+          onRetry: () => ref.invalidate(groupRulesProvider(group.id)),
+        ),
+      ),
+      data: (rules) {
+        final stepStates = [
+          _SetupStepState(
+            key: 'basics',
+            title: 'Basics',
+            isComplete: _isBasicsComplete(rules),
+            summary: _basicsSummary(group, rules),
+          ),
+          _SetupStepState(
+            key: 'timing',
+            title: 'Timing',
+            isComplete: _isTimingComplete(rules),
+            summary: _timingSummary(rules),
+          ),
+          _SetupStepState(
+            key: 'policy',
+            title: 'Policy',
+            isComplete: _isPolicyComplete(rules),
+            summary: _policySummary(rules),
+          ),
+        ];
+        final completedSteps = stepStates.where((step) => step.isComplete).length;
+
+        return KitCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                completedSteps == stepStates.length
+                    ? 'Setup is ready.'
+                    : 'Complete the remaining setup steps.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$completedSteps of ${stepStates.length} steps completed',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  StatusPill(
+                    label: completedSteps == stepStates.length ? 'Ready' : 'In progress',
+                    tone: completedSteps == stepStates.length
+                        ? KitBadgeTone.success
+                        : KitBadgeTone.info,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ClipRRect(
+                borderRadius: AppRadius.pillRounded,
+                child: LinearProgressIndicator(
+                  value: stepStates.isEmpty ? 0 : completedSteps / stepStates.length,
+                  minHeight: 10,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              for (var index = 0; index < stepStates.length; index++) ...[
+                _SetupStepRow(
+                  groupId: group.id,
+                  step: stepStates[index],
+                  isAdmin: group.membership?.role == MemberRoleModel.admin,
+                ),
+                if (index != stepStates.length - 1)
+                  const Divider(height: AppSpacing.lg),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SetupStepState {
+  const _SetupStepState({
+    required this.key,
+    required this.title,
+    required this.isComplete,
+    required this.summary,
+  });
+
+  final String key;
+  final String title;
+  final bool isComplete;
+  final String summary;
+}
+
+class _SetupStepRow extends StatelessWidget {
+  const _SetupStepRow({
+    required this.groupId,
+    required this.step,
+    required this.isAdmin,
+  });
+
+  final String groupId;
+  final _SetupStepState step;
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          step.isComplete ? Icons.task_alt_rounded : Icons.radio_button_unchecked,
+          color: step.isComplete
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                step.title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(step.summary, style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        if (isAdmin)
+          KitTertiaryButton(
+            onPressed: () =>
+                context.push(AppRoutePaths.groupSetup(groupId, step: step.key)),
+            label: step.isComplete ? 'Edit' : 'Open',
+            icon: Icons.chevron_right_rounded,
+            expand: false,
+          ),
+      ],
+    );
+  }
+}
+
+class _PreStartMembersSection extends ConsumerStatefulWidget {
+  const _PreStartMembersSection({
+    required this.group,
+    required this.rulesAsync,
+    required this.membersAsync,
+  });
+
+  final GroupModel group;
+  final AsyncValue<GroupRulesModel?> rulesAsync;
+  final AsyncValue<List<MemberModel>> membersAsync;
+
+  @override
+  ConsumerState<_PreStartMembersSection> createState() =>
+      _PreStartMembersSectionState();
+}
+
+class _PreStartMembersSectionState extends ConsumerState<_PreStartMembersSection> {
+  bool _isGeneratingInvite = false;
+  String? _verifyingMemberId;
+
+  Future<void> _openInviteSheet() async {
+    if (_isGeneratingInvite) {
+      return;
+    }
+    setState(() => _isGeneratingInvite = true);
+    await showGroupInviteSheet(
+      context: context,
+      ref: ref,
+      groupId: widget.group.id,
+    );
+    if (mounted) {
+      setState(() => _isGeneratingInvite = false);
+    }
+  }
+
+  Future<void> _verifyMember(MemberModel member) async {
+    if (_verifyingMemberId != null) {
+      return;
+    }
+
+    setState(() => _verifyingMemberId = member.id);
+    try {
+      await ref.read(groupsRepositoryProvider).verifyMember(widget.group.id, member.id);
+      await ref.read(groupDetailControllerProvider).refreshAll(widget.group.id);
+      if (!mounted) {
+        return;
+      }
+      KitToast.success(context, '${member.displayName} verified.');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      KitToast.error(context, mapFriendlyError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _verifyingMemberId = null);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.membersAsync.when(
+      loading: () => const KitCard(
+        child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 4)),
+      ),
+      error: (error, _) => KitCard(
+        child: ErrorView(
+          message: mapFriendlyError(error),
+          onRetry: () => ref
+              .read(groupDetailControllerProvider)
+              .refreshMembers(widget.group.id),
+        ),
+      ),
+      data: (members) {
+        final rules = widget.rulesAsync.valueOrNull;
+        final verifiedCount = members
+            .where((member) => isVerifiedMemberStatus(member.status))
+            .length;
+        final requiredCount = rules?.requiredToStart ?? (rules?.roundSize ?? 0);
+        final isAdmin = widget.group.membership?.role == MemberRoleModel.admin;
+        final joinedCount = members
+            .where((member) => isParticipatingMemberStatus(member.status))
+            .length;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            KitSectionHeader(
+              title: 'Members',
+              subtitle: requiredCount > 0
+                  ? '$verifiedCount of $requiredCount verified'
+                  : '$joinedCount members',
+            ),
+            KitCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isAdmin) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Invite and verify members here.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        KitPrimaryButton(
+                          onPressed: !widget.group.canInviteMembers
+                              ? null
+                              : _openInviteSheet,
+                          label: _isGeneratingInvite
+                              ? 'Inviting...'
+                              : 'Invite members',
+                          icon: Icons.person_add_alt_1_rounded,
+                          expand: false,
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Text(
+                      'Members will appear here as they join.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  if (isAdmin && !widget.group.canInviteMembers) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Finish setup before sending invites.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  if (members.isEmpty)
+                    const KitEmptyState(
+                      icon: Icons.people_outline_rounded,
+                      title: 'No members yet',
+                      message: 'Invite members here, then verify them when they join.',
+                    )
+                  else
+                    Column(
+                      children: [
+                        for (var index = 0; index < members.length; index++) ...[
+                          _PreStartMemberRow(
+                            member: members[index],
+                            canVerify: isAdmin &&
+                                _canVerifyMember(members[index].status),
+                            isVerifying: _verifyingMemberId == members[index].id,
+                            onVerify: () => _verifyMember(members[index]),
+                          ),
+                          if (index != members.length - 1)
+                            const Divider(height: AppSpacing.lg),
+                        ],
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PreStartMemberRow extends StatelessWidget {
+  const _PreStartMemberRow({
+    required this.member,
+    required this.canVerify,
+    required this.isVerifying,
+    required this.onVerify,
+  });
+
+  final MemberModel member;
+  final bool canVerify;
+  final bool isVerifying;
+  final VoidCallback onVerify;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        KitAvatar(name: member.displayName, size: KitAvatarSize.sm),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                member.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                _memberStatusCopy(member.status),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (canVerify) ...[
+          const SizedBox(width: AppSpacing.sm),
+          KitSecondaryButton(
+            onPressed: isVerifying ? null : onVerify,
+            label: isVerifying ? 'Verifying...' : 'Verify',
+            icon: Icons.verified_outlined,
+            expand: false,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StartGroupCard extends ConsumerStatefulWidget {
+  const _StartGroupCard({
+    required this.group,
+    required this.rulesAsync,
+    required this.membersAsync,
+  });
+
+  final GroupModel group;
+  final AsyncValue<GroupRulesModel?> rulesAsync;
+  final AsyncValue<List<MemberModel>> membersAsync;
+
+  @override
+  ConsumerState<_StartGroupCard> createState() => _StartGroupCardState();
+}
+
+class _StartGroupCardState extends ConsumerState<_StartGroupCard> {
+  bool _isStarting = false;
+
+  Future<void> _startGroup() async {
+    if (_isStarting) {
+      return;
+    }
+
+    setState(() => _isStarting = true);
+    final created = await ref
+        .read(startCycleControllerProvider(widget.group.id).notifier)
+        .startCycle();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _isStarting = false);
+    if (created == null) {
+      final message =
+          ref.read(startCycleControllerProvider(widget.group.id)).errorMessage ??
+          'Could not start the group right now.';
+      KitToast.error(context, message);
+      return;
+    }
+
+    ref.read(cyclesRepositoryProvider).invalidateGroupCache(widget.group.id);
+    ref.invalidate(currentCycleProvider(widget.group.id));
+    ref.invalidate(cyclesListProvider(widget.group.id));
+    ref.invalidate(groupRulesProvider(widget.group.id));
+    KitToast.success(context, 'Group started. Turn 1 is now active.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rules = widget.rulesAsync.valueOrNull;
+    final members = widget.membersAsync.valueOrNull ?? const <MemberModel>[];
+    final isAdmin = widget.group.membership?.role == MemberRoleModel.admin;
+    final readiness = rules?.readiness;
+    final missingCount = rules == null || readiness == null
+        ? null
+        : (rules.requiredToStart - readiness.eligibleCount)
+              .clamp(0, rules.requiredToStart)
+              .toInt();
+    final reason = _startDisabledReason(
+      isAdmin: isAdmin,
+      group: widget.group,
+      rules: rules,
+      missingCount: missingCount,
+    );
+    final verifiedCount = members
+        .where((member) => isVerifiedMemberStatus(member.status))
+        .length;
+
+    if (!isAdmin) {
+      return KitCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Waiting for start',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              widget.group.canStartCycle
+                  ? 'An admin can start the group now.'
+                  : reason,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Start the group when everything is ready',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            widget.group.canStartCycle
+                ? 'The first turn can start now.'
+                : reason,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (rules != null) ...[
+            Text(
+              '$verifiedCount verified',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          KitPrimaryButton(
+            onPressed: widget.group.canStartCycle ? _startGroup : null,
+            label: _isStarting ? 'Starting group...' : 'Start group',
+            icon: Icons.play_arrow_rounded,
+          ),
+          if (!widget.group.canStartCycle) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              reason,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -500,7 +1118,7 @@ class _NoCurrentTurnHeroCardState extends ConsumerState<_NoCurrentTurnHeroCard> 
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isAdmin ? 'No active turn yet' : 'No active turn right now',
+              isAdmin ? 'Ready for the next turn' : 'No turn is open right now',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -606,6 +1224,151 @@ class _ProgressSummaryBar extends StatelessWidget {
       child: LinearProgressIndicator(value: progress, minHeight: 10),
     );
   }
+}
+
+bool _isBasicsComplete(GroupRulesModel? rules) {
+  return rules != null && rules.contributionAmount > 0 && rules.roundSize >= 2;
+}
+
+bool _isTimingComplete(GroupRulesModel? rules) {
+  if (rules == null) {
+    return false;
+  }
+  if (rules.frequency == GroupRuleFrequencyModel.unknown ||
+      rules.startPolicy == StartPolicyModel.unknown) {
+    return false;
+  }
+  if (rules.frequency == GroupRuleFrequencyModel.customInterval &&
+      (rules.customIntervalDays ?? 0) <= 0) {
+    return false;
+  }
+  if (rules.startPolicy == StartPolicyModel.onDate && rules.startAt == null) {
+    return false;
+  }
+  return true;
+}
+
+bool _isPolicyComplete(GroupRulesModel? rules) {
+  if (rules == null) {
+    return false;
+  }
+  if (rules.payoutMode == GroupRulePayoutModeModel.unknown ||
+      rules.paymentMethods.isEmpty ||
+      rules.graceDays < 0) {
+    return false;
+  }
+  if (rules.fineType == GroupRuleFineTypeModel.fixedAmount &&
+      rules.fineAmount <= 0) {
+    return false;
+  }
+  return true;
+}
+
+String _basicsSummary(GroupModel group, GroupRulesModel? rules) {
+  if (!_isBasicsComplete(rules)) {
+    return 'Set contribution amount and round size.';
+  }
+  return '${formatCurrency(rules!.contributionAmount, group.currency)} contribution, ${rules.roundSize} members per round.';
+}
+
+String _timingSummary(GroupRulesModel? rules) {
+  if (!_isTimingComplete(rules)) {
+    return 'Choose frequency, start policy, and start timing.';
+  }
+
+  final frequency = switch (rules!.frequency) {
+    GroupRuleFrequencyModel.weekly => 'Weekly',
+    GroupRuleFrequencyModel.monthly => 'Monthly',
+    GroupRuleFrequencyModel.customInterval =>
+      'Every ${rules.customIntervalDays} days',
+    GroupRuleFrequencyModel.unknown => 'Custom',
+  };
+  final startPolicy = switch (rules.startPolicy) {
+    StartPolicyModel.whenFull => 'Starts when full',
+    StartPolicyModel.manual =>
+      'Manual start at ${rules.requiredToStart} ready members',
+    StartPolicyModel.onDate =>
+      'Starts ${rules.startAt == null ? 'on date' : formatDate(rules.startAt!)}',
+    StartPolicyModel.unknown => 'Start policy pending',
+  };
+  return '$frequency cadence. $startPolicy.';
+}
+
+String _policySummary(GroupRulesModel? rules) {
+  if (!_isPolicyComplete(rules)) {
+    return 'Set payout mode, late rules, and verification requirements.';
+  }
+
+  final payoutMode = switch (rules!.payoutMode) {
+    GroupRulePayoutModeModel.lottery => 'Lottery payout',
+    GroupRulePayoutModeModel.auction => 'Auction payout',
+    GroupRulePayoutModeModel.rotation => 'Rotation payout',
+    GroupRulePayoutModeModel.decision => 'Decision payout',
+    GroupRulePayoutModeModel.unknown => 'Custom payout',
+  };
+  final finePolicy = switch (rules.fineType) {
+    GroupRuleFineTypeModel.none => 'no late fine',
+    GroupRuleFineTypeModel.fixedAmount => 'fine ${rules.fineAmount}',
+    GroupRuleFineTypeModel.unknown => 'custom fine',
+  };
+  final verification = rules.requiresMemberVerification
+      ? 'verification required'
+      : 'joined members eligible';
+  return '$payoutMode, ${rules.graceDays} grace day(s), $finePolicy, $verification.';
+}
+
+bool _canVerifyMember(MemberStatusModel status) {
+  return status == MemberStatusModel.joined ||
+      status == MemberStatusModel.invited ||
+      status == MemberStatusModel.active;
+}
+
+String _memberStatusCopy(MemberStatusModel status) {
+  return switch (status) {
+    MemberStatusModel.invited => 'Invited',
+    MemberStatusModel.joined => 'Joined',
+    MemberStatusModel.verified => 'Verified',
+    MemberStatusModel.suspended => 'Suspended',
+    MemberStatusModel.active => 'Verified',
+    MemberStatusModel.left => 'Left',
+    MemberStatusModel.removed => 'Removed',
+    MemberStatusModel.unknown => 'Unknown',
+  };
+}
+
+String _startDisabledReason({
+  required bool isAdmin,
+  required GroupModel group,
+  required GroupRulesModel? rules,
+  required int? missingCount,
+}) {
+  if (!isAdmin) {
+    return 'An admin will start the group when everything is ready.';
+  }
+  if (!_isBasicsComplete(rules) ||
+      !_isTimingComplete(rules) ||
+      !_isPolicyComplete(rules)) {
+    return 'Complete setup first.';
+  }
+  if (rules == null) {
+    return 'Complete setup first.';
+  }
+  if (rules.readiness.isWaitingForDate) {
+    return rules.startAt == null
+        ? 'Wait until the scheduled start date.'
+        : 'Wait until ${formatDate(rules.startAt!)} to start.';
+  }
+  if (rules.readiness.isWaitingForMembers || !group.canStartCycle) {
+    final count = missingCount ?? 0;
+    if (count <= 0) {
+      return 'Invite and verify members before starting.';
+    }
+    if (rules.requiresMemberVerification) {
+      return 'Verify at least $count more member${count == 1 ? '' : 's'}.';
+    }
+    return 'Add at least $count more eligible member${count == 1 ? '' : 's'}.';
+  }
+  return 'Start the group when everything is ready.';
 }
 
 class _VisibleActions {
