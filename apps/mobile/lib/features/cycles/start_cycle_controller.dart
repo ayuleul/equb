@@ -5,8 +5,6 @@ import '../../data/cycles/cycles_repository.dart';
 import '../../data/models/cycle_model.dart';
 import '../../shared/utils/api_error_mapper.dart';
 import '../groups/group_detail_controller.dart';
-import 'current_cycle_provider.dart';
-import 'cycles_list_provider.dart';
 
 class StartCycleState {
   const StartCycleState({required this.isSubmitting, this.errorMessage});
@@ -58,11 +56,9 @@ class StartCycleController extends StateNotifier<StartCycleState> {
 
     try {
       final createdCycle = await _repository.startCycle(groupId);
-
-      _repository.invalidateGroupCache(groupId);
-      _ref.invalidate(currentCycleProvider(groupId));
-      _ref.invalidate(cyclesListProvider(groupId));
-      _ref.invalidate(groupDetailProvider(groupId));
+      await _ref
+          .read(groupDetailControllerProvider)
+          .refreshAfterCycleStart(groupId);
 
       state = state.copyWith(isSubmitting: false, clearError: true);
       return createdCycle;

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
@@ -57,12 +56,12 @@ class _GroupOverviewBody extends ConsumerWidget {
     final isAdmin = group.membership?.role == MemberRoleModel.admin;
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await ref.read(groupDetailControllerProvider).refreshAll(group.id);
-        ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
-        ref.invalidate(currentCycleProvider(group.id));
-        ref.invalidate(cyclesListProvider(group.id));
-      },
+      onRefresh: () => ref
+          .read(groupDetailControllerProvider)
+          .refreshGroupPage(
+            group.id,
+            cycleId: currentCycleAsync.valueOrNull?.id,
+          ),
       child: ListView(
         children: [
           if (isAdmin && !group.rulesetConfigured) ...[

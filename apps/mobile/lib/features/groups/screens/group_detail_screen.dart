@@ -18,7 +18,6 @@ import '../../../shared/utils/formatters.dart';
 import '../../../shared/utils/turn_status_mapper.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
-import '../../auth/auth_controller.dart';
 import '../../contributions/cycle_contributions_provider.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
@@ -52,10 +51,9 @@ class GroupDetailScreen extends ConsumerWidget {
             GroupMoreActionsButton(groupName: group.name, isAdmin: isAdmin),
           IconButton(
             tooltip: 'Refresh',
-            onPressed: () {
-              ref.read(groupDetailControllerProvider).refreshAll(groupId);
-              ref.invalidate(groupRulesProvider(groupId));
-            },
+            onPressed: () => ref
+                .read(groupDetailControllerProvider)
+                .refreshGroupPage(groupId),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -64,8 +62,9 @@ class GroupDetailScreen extends ConsumerWidget {
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
           message: mapFriendlyError(error),
-          onRetry: () =>
-              ref.read(groupDetailControllerProvider).refreshAll(groupId),
+          onRetry: () => ref
+              .read(groupDetailControllerProvider)
+              .refreshGroupPage(groupId),
         ),
         data: (group) => _GroupTurnOverview(group: group),
       ),
@@ -86,25 +85,13 @@ class _GroupTurnOverview extends ConsumerWidget {
         currentCycleAsync.valueOrNull != null ||
         (cyclesAsync.valueOrNull?.isNotEmpty ?? false);
 
-    Future<void> onRefresh() async {
-      await ref.read(groupDetailControllerProvider).refreshAll(group.id);
-      ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
-      ref.invalidate(currentCycleProvider(group.id));
-      ref.invalidate(cyclesListProvider(group.id));
-      ref.invalidate(groupRulesProvider(group.id));
-
-      final current = await ref.read(currentCycleProvider(group.id).future);
-      await ref.read(cyclesListProvider(group.id).future);
-      if (current != null) {
-        ref.invalidate(
-          cycleContributionsProvider((groupId: group.id, cycleId: current.id)),
-        );
-        ref.invalidate(cyclePayoutProvider(current.id));
-      }
-    }
-
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: () => ref
+          .read(groupDetailControllerProvider)
+          .refreshGroupPage(
+            group.id,
+            cycleId: currentCycleAsync.valueOrNull?.id,
+          ),
       child: hasStarted
           ? ListView(
               children: [
@@ -429,7 +416,9 @@ class _PreStartMembersSectionState
       await ref
           .read(groupsRepositoryProvider)
           .verifyMember(widget.group.id, member.id);
-      await ref.read(groupDetailControllerProvider).refreshAll(widget.group.id);
+      await ref
+          .read(groupDetailControllerProvider)
+          .refreshGroupPage(widget.group.id);
       if (!mounted) {
         return;
       }
@@ -656,10 +645,6 @@ class _StartGroupCardState extends ConsumerState<_StartGroupCard> {
       return;
     }
 
-    ref.read(cyclesRepositoryProvider).invalidateGroupCache(widget.group.id);
-    ref.invalidate(currentCycleProvider(widget.group.id));
-    ref.invalidate(cyclesListProvider(widget.group.id));
-    ref.invalidate(groupRulesProvider(widget.group.id));
     KitToast.success(context, 'Group started. Turn 1 is now active.');
   }
 
@@ -1099,9 +1084,6 @@ class _NoCurrentTurnHeroCardState
       return;
     }
 
-    ref.read(cyclesRepositoryProvider).invalidateGroupCache(widget.group.id);
-    ref.invalidate(currentCycleProvider(widget.group.id));
-    ref.invalidate(cyclesListProvider(widget.group.id));
     KitToast.success(context, 'Turn started. Contributions are now due.');
   }
 
@@ -1374,23 +1356,6 @@ String _startDisabledReason({
     return 'Add at least $count more eligible member${count == 1 ? '' : 's'}.';
   }
   return 'Start the group when everything is ready.';
-}
-
-ContributionModel? _findContribution(
-  ContributionListModel? list,
-  String? currentUserId,
-) {
-  if (list == null || currentUserId == null) {
-    return null;
-  }
-
-  for (final item in list.items) {
-    if (item.userId == currentUserId) {
-      return item;
-    }
-  }
-
-  return null;
 }
 
 StatusPill _buildStagePill(TurnStatusPresentation status) {

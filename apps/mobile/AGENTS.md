@@ -94,6 +94,7 @@
 - Group actions that depend on rules (`Invite members`, `Start cycle`) must stay disabled or redirect to setup until `rulesetConfigured` is true in group payloads.
 - Cycle-start CTAs must respect backend `canStartCycle` (includes eligibility count and verification requirements), not rules-only assumptions.
 - Group detail and members use repository-backed in-memory caches; manual refresh must invalidate cache and fetch fresh data.
+- Group screens should route manual refresh and post-mutation cache invalidation through `group_detail_controller.dart` helpers instead of hand-rolling provider/repository invalidation inside widgets.
 - Member identity display fallback is locked to: `fullName` -> `phone` -> `'Member'`.
 - If a group has an open cycle, joining and invite acceptance are blocked; join surfaces must explain that joining is available after the cycle closes.
 - Backend lock responses are source-of-truth; mobile must always handle `409` with reason code `GROUP_LOCKED_OPEN_CYCLE` even when UI pre-checks exist.
