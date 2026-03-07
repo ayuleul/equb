@@ -1,0 +1,282 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  AuctionStatus,
+  CycleStatus,
+  GroupRulePayoutMode,
+  MemberStatus,
+  Prisma,
+} from '@prisma/client';
+import { randomInt } from 'crypto';
+
+import {
+  PARTICIPATING_MEMBER_STATUSES,
+  VERIFIED_MEMBER_STATUSES,
+} from '../membership/member-status.util';
+
+type WinnerSelectionTx = Prisma.TransactionClient;
+
+export type WinnerSelectionResult = {
+  cycleId: string;
+  groupId: string;
+  winnerUserId: string;
+  payoutMode: GroupRulePayoutMode;
+  selectionMetadata: Prisma.JsonValue | null;
+};
+
+@Injectable()
+export class WinnerSelectionService {
+  async selectWinner(
+    tx: WinnerSelectionTx,
+    args: {
+      cycleId: string;
+      actorUserId: string;
+      requestedWinnerUserId?: string | null;
+    },
+  ): Promise<WinnerSelectionResult> {
+    const cycle = await tx.equbCycle.findUnique({
+      where: { id: args.cycleId },
+      select: {
+        id: true,
+        groupId: true,
+        status: true,
+        cycleNo: true,
+        createdAt: true,
+        scheduledPayoutUserId: true,
+        finalPayoutUserId: true,
+        selectedWinnerUserId: true,
+        winnerSelectedAt: true,
+        selectionMethod: true,
+        selectionMetadata: true,
+        auctionStatus: true,
+        winningBidAmount: true,
+        winningBidUserId: true,
+        group: {
+          select: {
+            rules: {
+              select: {
+                payoutMode: true,
+                requiresMemberVerification: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cycle) {
+      throw new NotFoundException('Cycle not found');
+    }
+
+    if (cycle.status !== CycleStatus.OPEN) {
+      throw new BadRequestException(
+        'Winner can only be selected for an open cycle',
+      );
+    }
+
+    if (!cycle.group.rules) {
+      throw new BadRequestException(
+        'Group rules are required before winner selection',
+      );
+    }
+
+    if (cycle.selectedWinnerUserId) {
+      throw new ConflictException(
+        'Winner has already been selected for this cycle',
+      );
+    }
+
+    const payoutMode = cycle.group.rules.payoutMode;
+    const eligibleStatuses = this.resolveEligibleStatuses(
+      cycle.group.rules.requiresMemberVerification,
+    );
+    const eligibleMembers = await tx.equbMember.findMany({
+      where: {
+        groupId: cycle.groupId,
+        status: {
+          in: eligibleStatuses,
+        },
+      },
+      select: {
+        userId: true,
+        payoutPosition: true,
+        createdAt: true,
+      },
+      orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    const eligibleUserIds = [
+      ...new Set(eligibleMembers.map((member) => member.userId)),
+    ];
+
+    if (eligibleUserIds.length < 2) {
+      throw new BadRequestException(
+        cycle.group.rules.requiresMemberVerification
+          ? 'At least 2 verified members are required for winner selection'
+          : 'At least 2 joined members are required for winner selection',
+      );
+    }
+
+    const selectedAt = new Date();
+    let winnerUserId: string;
+    let selectionMetadata: Prisma.InputJsonValue;
+    let winningBidAmount: number | null = null;
+    let winningBidUserId: string | null = null;
+    let auctionStatus = cycle.auctionStatus;
+
+    switch (payoutMode) {
+      case GroupRulePayoutMode.LOTTERY: {
+        const winnerIndex = randomInt(eligibleUserIds.length);
+        winnerUserId = eligibleUserIds[winnerIndex];
+        selectionMetadata = {
+          mode: GroupRulePayoutMode.LOTTERY,
+          winnerIndex,
+          poolSize: eligibleUserIds.length,
+          selectedAt: selectedAt.toISOString(),
+        };
+        break;
+      }
+      case GroupRulePayoutMode.AUCTION: {
+        if (
+          cycle.auctionStatus === AuctionStatus.NONE &&
+          cycle.winningBidUserId == null
+        ) {
+          throw new BadRequestException(
+            'Auction must be opened before selecting auction winner',
+          );
+        }
+
+        const topBid = await tx.cycleBid.findFirst({
+          where: { cycleId: cycle.id },
+          orderBy: [{ amount: 'desc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            userId: true,
+            amount: true,
+            createdAt: true,
+          },
+        });
+
+        winnerUserId = topBid?.userId ?? cycle.scheduledPayoutUserId;
+        winningBidAmount = topBid?.amount ?? null;
+        winningBidUserId = topBid?.userId ?? null;
+        auctionStatus = AuctionStatus.CLOSED;
+
+        if (cycle.auctionStatus === AuctionStatus.OPEN) {
+          await tx.cycleAuction.updateMany({
+            where: {
+              cycleId: cycle.id,
+              status: AuctionStatus.OPEN,
+            },
+            data: {
+              status: AuctionStatus.CLOSED,
+              closedAt: selectedAt,
+            },
+          });
+        }
+
+        selectionMetadata = {
+          mode: GroupRulePayoutMode.AUCTION,
+          winningBidId: topBid?.id ?? null,
+          winningBidAmount,
+          winningBidUserId,
+          fallbackWinnerUserId: topBid ? null : cycle.scheduledPayoutUserId,
+          selectedAt: selectedAt.toISOString(),
+        };
+        break;
+      }
+      case GroupRulePayoutMode.ROTATION: {
+        const priorRotationSelections = await tx.equbCycle.findMany({
+          where: {
+            groupId: cycle.groupId,
+            id: { not: cycle.id },
+            selectionMethod: GroupRulePayoutMode.ROTATION,
+            selectedWinnerUserId: {
+              in: eligibleUserIds,
+            },
+          },
+          select: {
+            selectedWinnerUserId: true,
+          },
+        });
+
+        const rotationIndex =
+          priorRotationSelections.length % eligibleUserIds.length;
+        winnerUserId = eligibleUserIds[rotationIndex];
+        selectionMetadata = {
+          mode: GroupRulePayoutMode.ROTATION,
+          rotationIndex,
+          eligibleCount: eligibleUserIds.length,
+          selectedAt: selectedAt.toISOString(),
+        };
+        break;
+      }
+      case GroupRulePayoutMode.DECISION: {
+        const requestedWinnerUserId = args.requestedWinnerUserId?.trim();
+        if (!requestedWinnerUserId) {
+          throw new BadRequestException(
+            'userId is required for DECISION payout mode',
+          );
+        }
+
+        if (!eligibleUserIds.includes(requestedWinnerUserId)) {
+          throw new BadRequestException(
+            'Selected user is not eligible for payout winner selection',
+          );
+        }
+
+        winnerUserId = requestedWinnerUserId;
+        selectionMetadata = {
+          mode: GroupRulePayoutMode.DECISION,
+          decidedByUserId: args.actorUserId,
+          selectedAt: selectedAt.toISOString(),
+        };
+        break;
+      }
+      default: {
+        throw new BadRequestException('Unsupported payout mode');
+      }
+    }
+
+    const updatedCycle = await tx.equbCycle.update({
+      where: { id: cycle.id },
+      data: {
+        finalPayoutUserId: winnerUserId,
+        selectedWinnerUserId: winnerUserId,
+        winnerSelectedAt: selectedAt,
+        selectionMethod: payoutMode,
+        selectionMetadata,
+        winningBidAmount,
+        winningBidUserId,
+        auctionStatus,
+      },
+      select: {
+        id: true,
+        groupId: true,
+        selectedWinnerUserId: true,
+        selectionMethod: true,
+        selectionMetadata: true,
+      },
+    });
+
+    return {
+      cycleId: updatedCycle.id,
+      groupId: updatedCycle.groupId,
+      winnerUserId: updatedCycle.selectedWinnerUserId!,
+      payoutMode: updatedCycle.selectionMethod!,
+      selectionMetadata: updatedCycle.selectionMetadata,
+    };
+  }
+
+  private resolveEligibleStatuses(
+    requiresMemberVerification: boolean,
+  ): MemberStatus[] {
+    return requiresMemberVerification
+      ? VERIFIED_MEMBER_STATUSES
+      : PARTICIPATING_MEMBER_STATUSES;
+  }
+}

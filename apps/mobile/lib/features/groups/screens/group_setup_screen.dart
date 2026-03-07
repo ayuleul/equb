@@ -68,6 +68,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   var _frequency = GroupRuleFrequencyModel.monthly;
   var _fineType = GroupRuleFineTypeModel.none;
   var _payoutMode = GroupRulePayoutModeModel.lottery;
+  var _winnerSelectionTiming = WinnerSelectionTimingModel.beforeCollection;
   var _paymentMethods = <GroupPaymentMethodModel>{
     GroupPaymentMethodModel.cashAck,
   };
@@ -98,9 +99,14 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       ..addListener(_handleRulesInputFocusChanged);
     _customIntervalDaysFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
-    _graceDaysFocusNode = FocusNode()..addListener(_handleRulesInputFocusChanged);
-    _fineAmountFocusNode = FocusNode()..addListener(_handleRulesInputFocusChanged);
-    _setupTabKeys = List<GlobalKey>.generate(_setupTabs.length, (_) => GlobalKey());
+    _graceDaysFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _fineAmountFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _setupTabKeys = List<GlobalKey>.generate(
+      _setupTabs.length,
+      (_) => GlobalKey(),
+    );
     _setupTabsScrollController = ScrollController();
     _currentStep = _initialStepFromKey(widget.initialStepKey);
     _loadRules();
@@ -193,6 +199,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _frequency = rules.frequency;
     _fineType = rules.fineType;
     _payoutMode = rules.payoutMode;
+    _winnerSelectionTiming = rules.winnerSelectionTiming;
     _paymentMethods = rules.paymentMethods.toSet();
     _requiresMemberVerification = rules.requiresMemberVerification;
     _strictCollection = rules.strictCollection;
@@ -232,10 +239,14 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   }
 
   bool _validateBasicsStep() {
-    final contributionAmount = int.tryParse(_contributionAmountController.text.trim());
+    final contributionAmount = int.tryParse(
+      _contributionAmountController.text.trim(),
+    );
     final roundSize = int.tryParse(_roundSizeController.text.trim());
     if (contributionAmount == null || contributionAmount <= 0) {
-      setState(() => _errorMessage = 'Contribution amount must be greater than 0.');
+      setState(
+        () => _errorMessage = 'Contribution amount must be greater than 0.',
+      );
       return false;
     }
     if (roundSize == null || roundSize < 2) {
@@ -247,21 +258,30 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
   bool _validateTimingStep() {
     final roundSize = int.tryParse(_roundSizeController.text.trim()) ?? 2;
-    final customIntervalDays = int.tryParse(_customIntervalDaysController.text.trim());
+    final customIntervalDays = int.tryParse(
+      _customIntervalDaysController.text.trim(),
+    );
     final minToStart = int.tryParse(_minToStartController.text.trim());
     if (_frequency == GroupRuleFrequencyModel.customInterval &&
         (customIntervalDays == null || customIntervalDays <= 0)) {
-      setState(() => _errorMessage = 'Custom interval days must be greater than 0.');
+      setState(
+        () => _errorMessage = 'Custom interval days must be greater than 0.',
+      );
       return false;
     }
     if (_startPolicy == StartPolicyModel.onDate && _startAt == null) {
-      setState(() => _errorMessage = 'Start date is required for ON_DATE policy.');
+      setState(
+        () => _errorMessage = 'Start date is required for ON_DATE policy.',
+      );
       return false;
     }
     if (_startPolicy != StartPolicyModel.whenFull &&
         _minToStartController.text.trim().isNotEmpty &&
         (minToStart == null || minToStart < 2 || minToStart > roundSize)) {
-      setState(() => _errorMessage = 'Minimum to start must be between 2 and round size.');
+      setState(
+        () => _errorMessage =
+            'Minimum to start must be between 2 and round size.',
+      );
       return false;
     }
     return true;
@@ -276,14 +296,30 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     }
     if (_fineType == GroupRuleFineTypeModel.fixedAmount &&
         (fineAmount == null || fineAmount <= 0)) {
-      setState(() => _errorMessage = 'Fine amount must be greater than 0 for fixed fines.');
+      setState(
+        () => _errorMessage =
+            'Fine amount must be greater than 0 for fixed fines.',
+      );
       return false;
     }
     if (_paymentMethods.isEmpty) {
       setState(() => _errorMessage = 'Select at least one payment method.');
       return false;
     }
+    if (_requiresAfterCollectionTiming(_payoutMode) &&
+        _winnerSelectionTiming != WinnerSelectionTimingModel.afterCollection) {
+      setState(() {
+        _errorMessage =
+            'Auction and decision payout modes require winner selection after collection.';
+      });
+      return false;
+    }
     return true;
+  }
+
+  bool _requiresAfterCollectionTiming(GroupRulePayoutModeModel mode) {
+    return mode == GroupRulePayoutModeModel.auction ||
+        mode == GroupRulePayoutModeModel.decision;
   }
 
   void _scrollStepTabIntoView(int index, {bool animated = true}) {
@@ -305,13 +341,19 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   }
 
   Future<void> _saveRules() async {
-    if (!_validateBasicsStep() || !_validateTimingStep() || !_validatePolicyStep()) {
+    if (!_validateBasicsStep() ||
+        !_validateTimingStep() ||
+        !_validatePolicyStep()) {
       return;
     }
 
-    final contributionAmount = int.parse(_contributionAmountController.text.trim());
+    final contributionAmount = int.parse(
+      _contributionAmountController.text.trim(),
+    );
     final roundSize = int.parse(_roundSizeController.text.trim());
-    final customIntervalDays = int.tryParse(_customIntervalDaysController.text.trim());
+    final customIntervalDays = int.tryParse(
+      _customIntervalDaysController.text.trim(),
+    );
     final graceDays = int.parse(_graceDaysController.text.trim());
     final fineAmount = int.tryParse(_fineAmountController.text.trim()) ?? 0;
     final minToStart = int.tryParse(_minToStartController.text.trim());
@@ -334,9 +376,11 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               : null,
           graceDays: graceDays,
           fineType: _fineType,
-          fineAmount:
-              _fineType == GroupRuleFineTypeModel.fixedAmount ? fineAmount : 0,
+          fineAmount: _fineType == GroupRuleFineTypeModel.fixedAmount
+              ? fineAmount
+              : 0,
           payoutMode: _payoutMode,
+          winnerSelectionTiming: _winnerSelectionTiming,
           paymentMethods: _paymentMethods.toList(growable: false),
           requiresMemberVerification: _requiresMemberVerification,
           strictCollection: _strictCollection,
@@ -528,7 +572,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               }
               setState(() {
                 _roundSizeController.text = '$value';
-                final currentMin = int.tryParse(_minToStartController.text.trim());
+                final currentMin = int.tryParse(
+                  _minToStartController.text.trim(),
+                );
                 if (currentMin != null && currentMin > value) {
                   _minToStartController.text = '$value';
                 }
@@ -539,7 +585,8 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           const SizedBox(height: AppSpacing.md),
           KitBanner(
             title: 'Basics summary',
-            message: 'Each turn collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} from up to $roundSize members.',
+            message:
+                'Each turn collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} from up to $roundSize members.',
             tone: KitBadgeTone.info,
             icon: Icons.info_outline_rounded,
           ),
@@ -622,12 +669,17 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Start date', style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'Start date',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   _startAt == null
                       ? 'Select a date'
-                      : MaterialLocalizations.of(context).formatMediumDate(_startAt!),
+                      : MaterialLocalizations.of(
+                          context,
+                        ).formatMediumDate(_startAt!),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -644,7 +696,12 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
                       return;
                     }
                     setState(() {
-                      _startAt = DateTime(picked.year, picked.month, picked.day, 9);
+                      _startAt = DateTime(
+                        picked.year,
+                        picked.month,
+                        picked.day,
+                        9,
+                      );
                       _errorMessage = null;
                     });
                   },
@@ -701,10 +758,57 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               }
               setState(() {
                 _payoutMode = value;
+                if (_requiresAfterCollectionTiming(value)) {
+                  _winnerSelectionTiming =
+                      WinnerSelectionTimingModel.afterCollection;
+                }
                 _errorMessage = null;
               });
             },
           ),
+          const SizedBox(height: AppSpacing.md),
+          KitDropdownField<WinnerSelectionTimingModel>(
+            value: _winnerSelectionTiming,
+            label: 'Winner selection timing',
+            items: const [
+              DropdownMenuItem(
+                value: WinnerSelectionTimingModel.beforeCollection,
+                child: Text('Before collection'),
+              ),
+              DropdownMenuItem(
+                value: WinnerSelectionTimingModel.afterCollection,
+                child: Text('After collection'),
+              ),
+            ],
+            onChanged: _requiresAfterCollectionTiming(_payoutMode)
+                ? null
+                : (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() {
+                      _winnerSelectionTiming = value;
+                      _errorMessage = null;
+                    });
+                  },
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _winnerSelectionTiming ==
+                    WinnerSelectionTimingModel.beforeCollection
+                ? 'Before collection: members know the winner early.'
+                : 'After collection: winner is chosen only after everyone pays.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (_requiresAfterCollectionTiming(_payoutMode)) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Auction and decision payout modes always pick the winner after collection.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           AppTextField(
             controller: _graceDaysController,
@@ -752,7 +856,10 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          Text('Payment methods', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Payment methods',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: AppSpacing.xs),
           _PaymentMethodTile(
             label: 'BANK',
@@ -813,11 +920,14 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     };
 
     final startLabel = switch (_startPolicy) {
-      StartPolicyModel.whenFull => 'Starts when all $requiredToStart seats are filled',
-      StartPolicyModel.manual => 'Starts manually once $requiredToStart members are ready',
-      StartPolicyModel.onDate => _startAt == null
-          ? 'Starts on a selected date'
-          : 'Starts on ${MaterialLocalizations.of(context).formatMediumDate(_startAt!)}',
+      StartPolicyModel.whenFull =>
+        'Starts when all $requiredToStart seats are filled',
+      StartPolicyModel.manual =>
+        'Starts manually once $requiredToStart members are ready',
+      StartPolicyModel.onDate =>
+        _startAt == null
+            ? 'Starts on a selected date'
+            : 'Starts on ${MaterialLocalizations.of(context).formatMediumDate(_startAt!)}',
       StartPolicyModel.unknown => 'Start policy pending',
     };
 
@@ -838,10 +948,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         'late fine ${_fineAmountController.text.trim().isEmpty ? '0' : _fineAmountController.text.trim()}',
       GroupRuleFineTypeModel.unknown => 'custom fine policy',
     };
+    final timingLabel = switch (_winnerSelectionTiming) {
+      WinnerSelectionTimingModel.beforeCollection => 'winner before collection',
+      WinnerSelectionTimingModel.afterCollection => 'winner after collection',
+      WinnerSelectionTimingModel.unknown => 'winner timing pending',
+    };
     final verificationLabel = _requiresMemberVerification
         ? 'verification required before start'
         : 'joined members can count toward start';
-    return '$payoutLabel, ${_graceDaysController.text.trim().isEmpty ? '0' : _graceDaysController.text.trim()} grace days, $fineLabel, $verificationLabel.';
+    return '$payoutLabel, $timingLabel, ${_graceDaysController.text.trim().isEmpty ? '0' : _graceDaysController.text.trim()} grace days, $fineLabel, $verificationLabel.';
   }
 
   void _togglePaymentMethod(GroupPaymentMethodModel method, bool isSelected) {
@@ -881,13 +996,13 @@ class _SetupTabButton extends StatelessWidget {
     final fillColor = isSelected
         ? colorScheme.primary
         : isCompleted
-            ? colorScheme.primaryContainer
-            : colorScheme.surface;
+        ? colorScheme.primaryContainer
+        : colorScheme.surface;
     final textColor = isSelected
         ? colorScheme.onPrimary
         : isCompleted
-            ? colorScheme.onPrimaryContainer
-            : colorScheme.onSurface;
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurface;
 
     return Semantics(
       button: true,

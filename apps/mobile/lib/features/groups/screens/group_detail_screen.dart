@@ -82,7 +82,8 @@ class _GroupTurnOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
     final cyclesAsync = ref.watch(cyclesListProvider(group.id));
-    final hasStarted = currentCycleAsync.valueOrNull != null ||
+    final hasStarted =
+        currentCycleAsync.valueOrNull != null ||
         (cyclesAsync.valueOrNull?.isNotEmpty ?? false);
 
     Future<void> onRefresh() async {
@@ -152,7 +153,10 @@ class _PreStartGroupView extends ConsumerWidget {
     if (resolvedMode == _GroupPageMode.active) {
       return ListView(
         children: [
-          _CurrentTurnHeroCard(group: group, currentCycleAsync: currentCycleAsync),
+          _CurrentTurnHeroCard(
+            group: group,
+            currentCycleAsync: currentCycleAsync,
+          ),
           const SizedBox(height: AppSpacing.lg),
           _PastTurnsSection(
             groupId: group.id,
@@ -169,7 +173,9 @@ class _PreStartGroupView extends ConsumerWidget {
         children: const [
           KitCard(child: _HeroSkeleton()),
           SizedBox(height: AppSpacing.lg),
-          KitCard(child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 4))),
+          KitCard(
+            child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 4)),
+          ),
           SizedBox(height: AppSpacing.lg),
         ],
       );
@@ -246,7 +252,9 @@ class _SetupProgressCard extends ConsumerWidget {
             summary: _policySummary(rules),
           ),
         ];
-        final completedSteps = stepStates.where((step) => step.isComplete).length;
+        final completedSteps = stepStates
+            .where((step) => step.isComplete)
+            .length;
 
         return KitCard(
           child: Column(
@@ -270,7 +278,9 @@ class _SetupProgressCard extends ConsumerWidget {
                     ),
                   ),
                   StatusPill(
-                    label: completedSteps == stepStates.length ? 'Ready' : 'In progress',
+                    label: completedSteps == stepStates.length
+                        ? 'Ready'
+                        : 'In progress',
                     tone: completedSteps == stepStates.length
                         ? KitBadgeTone.success
                         : KitBadgeTone.info,
@@ -281,7 +291,9 @@ class _SetupProgressCard extends ConsumerWidget {
               ClipRRect(
                 borderRadius: AppRadius.pillRounded,
                 child: LinearProgressIndicator(
-                  value: stepStates.isEmpty ? 0 : completedSteps / stepStates.length,
+                  value: stepStates.isEmpty
+                      ? 0
+                      : completedSteps / stepStates.length,
                   minHeight: 10,
                 ),
               ),
@@ -334,7 +346,9 @@ class _SetupStepRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
-          step.isComplete ? Icons.task_alt_rounded : Icons.radio_button_unchecked,
+          step.isComplete
+              ? Icons.task_alt_rounded
+              : Icons.radio_button_unchecked,
           color: step.isComplete
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -346,9 +360,9 @@ class _SetupStepRow extends StatelessWidget {
             children: [
               Text(
                 step.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(step.summary, style: Theme.of(context).textTheme.bodyMedium),
@@ -385,7 +399,8 @@ class _PreStartMembersSection extends ConsumerStatefulWidget {
       _PreStartMembersSectionState();
 }
 
-class _PreStartMembersSectionState extends ConsumerState<_PreStartMembersSection> {
+class _PreStartMembersSectionState
+    extends ConsumerState<_PreStartMembersSection> {
   bool _isGeneratingInvite = false;
   String? _verifyingMemberId;
 
@@ -411,7 +426,9 @@ class _PreStartMembersSectionState extends ConsumerState<_PreStartMembersSection
 
     setState(() => _verifyingMemberId = member.id);
     try {
-      await ref.read(groupsRepositoryProvider).verifyMember(widget.group.id, member.id);
+      await ref
+          .read(groupsRepositoryProvider)
+          .verifyMember(widget.group.id, member.id);
       await ref.read(groupDetailControllerProvider).refreshAll(widget.group.id);
       if (!mounted) {
         return;
@@ -507,17 +524,24 @@ class _PreStartMembersSectionState extends ConsumerState<_PreStartMembersSection
                     const KitEmptyState(
                       icon: Icons.people_outline_rounded,
                       title: 'No members yet',
-                      message: 'Invite members here, then verify them when they join.',
+                      message:
+                          'Invite members here, then verify them when they join.',
                     )
                   else
                     Column(
                       children: [
-                        for (var index = 0; index < members.length; index++) ...[
+                        for (
+                          var index = 0;
+                          index < members.length;
+                          index++
+                        ) ...[
                           _PreStartMemberRow(
                             member: members[index],
-                            canVerify: isAdmin &&
+                            canVerify:
+                                isAdmin &&
                                 _canVerifyMember(members[index].status),
-                            isVerifying: _verifyingMemberId == members[index].id,
+                            isVerifying:
+                                _verifyingMemberId == members[index].id,
                             onVerify: () => _verifyMember(members[index]),
                           ),
                           if (index != members.length - 1)
@@ -562,9 +586,9 @@ class _PreStartMemberRow extends StatelessWidget {
                 member.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(
@@ -624,7 +648,9 @@ class _StartGroupCardState extends ConsumerState<_StartGroupCard> {
     setState(() => _isStarting = false);
     if (created == null) {
       final message =
-          ref.read(startCycleControllerProvider(widget.group.id)).errorMessage ??
+          ref
+              .read(startCycleControllerProvider(widget.group.id))
+              .errorMessage ??
           'Could not start the group right now.';
       KitToast.error(context, message);
       return;
@@ -665,9 +691,9 @@ class _StartGroupCardState extends ConsumerState<_StartGroupCard> {
           children: [
             Text(
               'Waiting for start',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -687,9 +713,9 @@ class _StartGroupCardState extends ConsumerState<_StartGroupCard> {
         children: [
           Text(
             'Start the group when everything is ready',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -761,7 +787,10 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
         final contributionList = contributionsAsync.valueOrNull;
         final summary = contributionList?.summary;
         final payout = payoutAsync.valueOrNull;
-        final myContribution = _findContribution(contributionList, currentUserId);
+        final myContribution = _findContribution(
+          contributionList,
+          currentUserId,
+        );
         final status = mapTurnStatus(
           cycle: cycle,
           contributionSummary: summary,
@@ -774,6 +803,7 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
           contribution: myContribution,
           payout: payout,
           summary: summary,
+          currentUserId: currentUserId,
         );
         final paid = _paidCount(summary);
         final total = summary?.total ?? 0;
@@ -886,7 +916,8 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
                       _InlineMetric(label: 'Paid', value: '$paid / $total'),
                       _InlineMetric(
                         label: 'Verified',
-                        value: '${(summary?.verified ?? 0) + (summary?.confirmed ?? 0)}',
+                        value:
+                            '${(summary?.verified ?? 0) + (summary?.confirmed ?? 0)}',
                       ),
                       _InlineMetric(
                         label: 'Pending',
@@ -950,10 +981,11 @@ class _PastTurnsSection extends StatelessWidget {
         ),
       ),
       data: (cycles) {
-        final pastTurns = cycles
-            .where((cycle) => cycle.id != currentCycleId)
-            .toList(growable: false)
-          ..sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
+        final pastTurns =
+            cycles
+                .where((cycle) => cycle.id != currentCycleId)
+                .toList(growable: false)
+              ..sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
 
         if (pastTurns.isEmpty) {
           return const Column(
@@ -1018,7 +1050,8 @@ class _PastTurnRow extends ConsumerWidget {
         AuctionStatusModel.none;
 
     return InkWell(
-      onTap: () => context.push(AppRoutePaths.groupTurnDetail(groupId, cycle.id)),
+      onTap: () =>
+          context.push(AppRoutePaths.groupTurnDetail(groupId, cycle.id)),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
@@ -1031,9 +1064,8 @@ class _PastTurnRow extends ConsumerWidget {
                     children: [
                       Text(
                         'Turn ${cycle.cycleNo}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       _buildStagePill(status),
@@ -1041,7 +1073,9 @@ class _PastTurnRow extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xxs),
                   Text(
-                    winnerLabel == null ? 'Winner pending' : 'Winner: $winnerLabel',
+                    winnerLabel == null
+                        ? 'Winner pending'
+                        : 'Winner: $winnerLabel',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   if (hasAuction || hasLate) ...[
@@ -1076,7 +1110,8 @@ class _NoCurrentTurnHeroCard extends ConsumerStatefulWidget {
       _NoCurrentTurnHeroCardState();
 }
 
-class _NoCurrentTurnHeroCardState extends ConsumerState<_NoCurrentTurnHeroCard> {
+class _NoCurrentTurnHeroCardState
+    extends ConsumerState<_NoCurrentTurnHeroCard> {
   bool _isStarting = false;
 
   Future<void> _startTurn() async {
@@ -1095,7 +1130,9 @@ class _NoCurrentTurnHeroCardState extends ConsumerState<_NoCurrentTurnHeroCard> 
     setState(() => _isStarting = false);
     if (created == null) {
       final message =
-          ref.read(startCycleControllerProvider(widget.group.id)).errorMessage ??
+          ref
+              .read(startCycleControllerProvider(widget.group.id))
+              .errorMessage ??
           'Could not start a turn right now.';
       KitToast.error(context, message);
       return;
@@ -1119,9 +1156,9 @@ class _NoCurrentTurnHeroCardState extends ConsumerState<_NoCurrentTurnHeroCard> 
           children: [
             Text(
               isAdmin ? 'Ready for the next turn' : 'No turn is open right now',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -1136,7 +1173,8 @@ class _NoCurrentTurnHeroCardState extends ConsumerState<_NoCurrentTurnHeroCard> 
                   ? null
                   : widget.group.canStartCycle
                   ? _startTurn
-                  : () => context.push(AppRoutePaths.groupSetup(widget.group.id)),
+                  : () =>
+                        context.push(AppRoutePaths.groupSetup(widget.group.id)),
               label: !isAdmin
                   ? 'Waiting for admin start'
                   : widget.group.canStartCycle
@@ -1192,9 +1230,9 @@ class _InlineMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       '$label: $value',
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 }
@@ -1253,6 +1291,7 @@ bool _isPolicyComplete(GroupRulesModel? rules) {
     return false;
   }
   if (rules.payoutMode == GroupRulePayoutModeModel.unknown ||
+      rules.winnerSelectionTiming == WinnerSelectionTimingModel.unknown ||
       rules.paymentMethods.isEmpty ||
       rules.graceDays < 0) {
     return false;
@@ -1311,10 +1350,15 @@ String _policySummary(GroupRulesModel? rules) {
     GroupRuleFineTypeModel.fixedAmount => 'fine ${rules.fineAmount}',
     GroupRuleFineTypeModel.unknown => 'custom fine',
   };
+  final winnerTiming = switch (rules.winnerSelectionTiming) {
+    WinnerSelectionTimingModel.beforeCollection => 'winner before collection',
+    WinnerSelectionTimingModel.afterCollection => 'winner after collection',
+    WinnerSelectionTimingModel.unknown => 'winner timing pending',
+  };
   final verification = rules.requiresMemberVerification
       ? 'verification required'
       : 'joined members eligible';
-  return '$payoutMode, ${rules.graceDays} grace day(s), $finePolicy, $verification.';
+  return '$payoutMode, $winnerTiming, ${rules.graceDays} grace day(s), $finePolicy, $verification.';
 }
 
 bool _canVerifyMember(MemberStatusModel status) {
@@ -1397,17 +1441,23 @@ _VisibleActions _resolveVisibleActions({
   required ContributionModel? contribution,
   required PayoutModel? payout,
   required ContributionSummaryModel? summary,
+  required String? currentUserId,
 }) {
   final turnRoute = AppRoutePaths.groupTurnDetail(group.id, cycle.id);
-  final submitRoute =
-      AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id);
+  final submitRoute = AppRoutePaths.groupCycleContributionsSubmit(
+    group.id,
+    cycle.id,
+  );
   final payoutRoute = AppRoutePaths.groupCyclePayout(group.id, cycle.id);
-  final contributionsRoute =
-      AppRoutePaths.groupCycleContributions(group.id, cycle.id);
+  final contributionsRoute = AppRoutePaths.groupCycleContributions(
+    group.id,
+    cycle.id,
+  );
   final isAdmin = group.membership?.role == MemberRoleModel.admin;
   final secondary = <_TurnAction>[];
 
-  if ((cycle.auctionStatus ?? AuctionStatusModel.none) == AuctionStatusModel.open) {
+  if ((cycle.auctionStatus ?? AuctionStatusModel.none) ==
+      AuctionStatusModel.open) {
     final primary = _TurnAction(
       label: isAdmin ? 'Close auction' : 'Place bid',
       icon: Icons.gavel_rounded,
@@ -1425,7 +1475,7 @@ _VisibleActions _resolveVisibleActions({
     return _VisibleActions(primary: primary, secondary: secondary);
   }
 
-  if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
+  if (isAdmin && cycle.state == CycleStateModel.readyForWinnerSelection) {
     final primary = _TurnAction(
       label: 'Draw winner',
       icon: Icons.emoji_events_outlined,
@@ -1441,20 +1491,26 @@ _VisibleActions _resolveVisibleActions({
     return _VisibleActions(primary: primary, secondary: secondary);
   }
 
-  if (isAdmin && payout?.status == PayoutStatusModel.pending) {
+  if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
     final primary = _TurnAction(
-      label: 'Disburse payout',
+      label: 'Mark payout sent',
       icon: Icons.account_balance_wallet_outlined,
       onPressed: () => context.push(payoutRoute),
     );
-    secondary.add(
-      _TurnAction(
-        label: 'Close turn',
+    return _VisibleActions(primary: primary, secondary: secondary);
+  }
+
+  if (!isAdmin &&
+      cycle.state == CycleStateModel.payoutSent &&
+      cycle.selectedWinnerUserId == currentUserId) {
+    return _VisibleActions(
+      primary: _TurnAction(
+        label: 'Confirm receipt',
         icon: Icons.task_alt_rounded,
         onPressed: () => context.push(payoutRoute),
       ),
+      secondary: secondary,
     );
-    return _VisibleActions(primary: primary, secondary: secondary);
   }
 
   if (contribution == null) {
@@ -1576,9 +1632,10 @@ StatusPill _buildStagePill(TurnStatusPresentation status) {
   final tone = switch (status.stage) {
     TurnStage.waiting => KitBadgeTone.warning,
     TurnStage.collecting => KitBadgeTone.info,
+    TurnStage.readyForWinnerSelection => KitBadgeTone.warning,
     TurnStage.auction => KitBadgeTone.info,
     TurnStage.readyForPayout => KitBadgeTone.warning,
-    TurnStage.disbursed => KitBadgeTone.success,
+    TurnStage.payoutSent => KitBadgeTone.info,
     TurnStage.completed => KitBadgeTone.success,
   };
   return StatusPill(label: status.label, tone: tone);
@@ -1589,9 +1646,12 @@ String? _turnWinnerLabel(CycleModel cycle, PayoutModel? payout) {
   if (payoutLabel != null && payoutLabel.isNotEmpty) {
     return payoutLabel;
   }
+  if (cycle.selectedWinnerUserId == null) {
+    return null;
+  }
 
   final user =
-      cycle.finalPayoutUser ?? cycle.payoutUser ?? cycle.scheduledPayoutUser;
+      cycle.selectedWinnerUser ?? cycle.finalPayoutUser ?? cycle.payoutUser;
   final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {
     return fullName;
@@ -1602,8 +1662,11 @@ String? _turnWinnerLabel(CycleModel cycle, PayoutModel? payout) {
     return phone;
   }
 
-  final fallbackId = cycle.finalPayoutUserId ?? cycle.payoutUserId;
-  return fallbackId.trim().isEmpty ? null : fallbackId;
+  final fallbackId = cycle.selectedWinnerUserId;
+  if (fallbackId == null || fallbackId.trim().isEmpty) {
+    return null;
+  }
+  return fallbackId;
 }
 
 String _winnerCopy(CycleModel cycle, PayoutModel? payout) {
@@ -1619,8 +1682,18 @@ String _winnerPendingCopy(CycleModel cycle) {
   if (auctionStatus == AuctionStatusModel.open) {
     return 'Winner is pending while the auction is still open.';
   }
+  if (cycle.state == CycleStateModel.collecting &&
+      cycle.selectedWinnerUserId == null) {
+    return 'Winner will be drawn after collection is complete.';
+  }
+  if (cycle.state == CycleStateModel.readyForWinnerSelection) {
+    return 'Collection is complete. Draw the winner to continue.';
+  }
   if (cycle.state == CycleStateModel.readyForPayout) {
-    return 'Winner is ready to be confirmed for payout.';
+    return 'Winner selected. Mark payout sent to continue.';
+  }
+  if (cycle.state == CycleStateModel.payoutSent) {
+    return 'Payout was sent. Waiting for the winner to confirm receipt.';
   }
   return 'Winner selection will appear here once this turn progresses.';
 }

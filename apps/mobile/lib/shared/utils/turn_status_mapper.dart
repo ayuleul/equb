@@ -2,7 +2,15 @@ import '../../data/models/contribution_model.dart';
 import '../../data/models/cycle_model.dart';
 import '../../data/models/payout_model.dart';
 
-enum TurnStage { waiting, collecting, auction, readyForPayout, disbursed, completed }
+enum TurnStage {
+  waiting,
+  collecting,
+  readyForWinnerSelection,
+  auction,
+  readyForPayout,
+  payoutSent,
+  completed,
+}
 
 class TurnStatusPresentation {
   const TurnStatusPresentation({required this.label, required this.stage});
@@ -24,7 +32,7 @@ TurnStatusPresentation mapTurnStatus({
   }
 
   if (cycle.status == CycleStatusModel.closed ||
-      cycle.state == CycleStateModel.closed ||
+      cycle.state == CycleStateModel.completed ||
       payout?.status == PayoutStatusModel.confirmed) {
     return const TurnStatusPresentation(
       label: 'Completed',
@@ -32,17 +40,17 @@ TurnStatusPresentation mapTurnStatus({
     );
   }
 
-  if (cycle.state == CycleStateModel.disbursed) {
+  if (cycle.state == CycleStateModel.payoutSent) {
     return const TurnStatusPresentation(
-      label: 'Disbursed',
-      stage: TurnStage.disbursed,
+      label: 'Payout sent',
+      stage: TurnStage.payoutSent,
     );
   }
 
-  if (payout?.status == PayoutStatusModel.pending) {
+  if (cycle.state == CycleStateModel.readyForWinnerSelection) {
     return const TurnStatusPresentation(
-      label: 'Winner selected',
-      stage: TurnStage.readyForPayout,
+      label: 'Ready for winner selection',
+      stage: TurnStage.readyForWinnerSelection,
     );
   }
 
@@ -54,7 +62,7 @@ TurnStatusPresentation mapTurnStatus({
   }
 
   if (cycle.state == CycleStateModel.readyForPayout ||
-      cycle.auctionStatus == AuctionStatusModel.closed) {
+      payout?.status == PayoutStatusModel.pending) {
     return const TurnStatusPresentation(
       label: 'Ready for payout',
       stage: TurnStage.readyForPayout,
@@ -69,7 +77,8 @@ TurnStatusPresentation mapTurnStatus({
       (summary?.confirmed ?? 0);
   final total = summary?.total ?? 0;
 
-  if (cycle.state == CycleStateModel.collecting || (total > 0 && paidCount > 0)) {
+  if (cycle.state == CycleStateModel.collecting ||
+      (total > 0 && paidCount > 0)) {
     return const TurnStatusPresentation(
       label: 'Collecting contributions',
       stage: TurnStage.collecting,

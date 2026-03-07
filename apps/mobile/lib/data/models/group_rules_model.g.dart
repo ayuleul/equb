@@ -46,6 +46,11 @@ _GroupRulesModel _$GroupRulesModelFromJson(Map<String, dynamic> json) =>
         json['payoutMode'],
         unknownValue: GroupRulePayoutModeModel.unknown,
       ),
+      winnerSelectionTiming: $enumDecode(
+        _$WinnerSelectionTimingModelEnumMap,
+        json['winnerSelectionTiming'],
+        unknownValue: WinnerSelectionTimingModel.unknown,
+      ),
       paymentMethods: _paymentMethodsFromJson(json['paymentMethods']),
       requiresMemberVerification: json['requiresMemberVerification'] as bool,
       strictCollection: json['strictCollection'] as bool,
@@ -77,6 +82,8 @@ Map<String, dynamic> _$GroupRulesModelToJson(_GroupRulesModel instance) =>
       'fineType': _$GroupRuleFineTypeModelEnumMap[instance.fineType]!,
       'fineAmount': instance.fineAmount,
       'payoutMode': _$GroupRulePayoutModeModelEnumMap[instance.payoutMode]!,
+      'winnerSelectionTiming':
+          _$WinnerSelectionTimingModelEnumMap[instance.winnerSelectionTiming]!,
       'paymentMethods': _paymentMethodsToJson(instance.paymentMethods),
       'requiresMemberVerification': instance.requiresMemberVerification,
       'strictCollection': instance.strictCollection,
@@ -109,6 +116,12 @@ const _$GroupRulePayoutModeModelEnumMap = {
   GroupRulePayoutModeModel.rotation: 'ROTATION',
   GroupRulePayoutModeModel.decision: 'DECISION',
   GroupRulePayoutModeModel.unknown: 'unknown',
+};
+
+const _$WinnerSelectionTimingModelEnumMap = {
+  WinnerSelectionTimingModel.beforeCollection: 'BEFORE_COLLECTION',
+  WinnerSelectionTimingModel.afterCollection: 'AFTER_COLLECTION',
+  WinnerSelectionTimingModel.unknown: 'unknown',
 };
 
 const _$StartPolicyModelEnumMap = {

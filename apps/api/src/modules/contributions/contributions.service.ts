@@ -118,7 +118,7 @@ export class ContributionsService {
 
     if (
       cycle.status !== CycleStatus.OPEN ||
-      cycle.state === CycleState.CLOSED
+      cycle.state === CycleState.COMPLETED
     ) {
       throw new BadRequestException(
         'Contributions can only be submitted for open cycles',
@@ -1346,13 +1346,17 @@ export class ContributionsService {
     const cycleDelegate = (
       tx as Prisma.TransactionClient & {
         equbCycle?: {
-          findUnique?: (
-            args: Prisma.EqubCycleFindUniqueArgs,
-          ) => Promise<{
+          findUnique?: (args: Prisma.EqubCycleFindUniqueArgs) => Promise<{
             id: string;
             status: CycleStatus;
             state: CycleState | null;
-            group?: { rules?: { strictCollection: boolean } | null } | null;
+            selectedWinnerUserId: string | null;
+            group?: {
+              rules?: {
+                strictCollection: boolean;
+                winnerSelectionTiming: 'BEFORE_COLLECTION' | 'AFTER_COLLECTION';
+              } | null;
+            } | null;
             contributions?: Array<{ status: ContributionStatus }>;
           } | null>;
           update?: (args: Prisma.EqubCycleUpdateArgs) => Promise<unknown>;
@@ -1374,11 +1378,13 @@ export class ContributionsService {
         id: true,
         status: true,
         state: true,
+        selectedWinnerUserId: true,
         group: {
           select: {
             rules: {
               select: {
                 strictCollection: true,
+                winnerSelectionTiming: true,
               },
             },
           },
@@ -1397,6 +1403,8 @@ export class ContributionsService {
 
     const contributionItems = cycle.contributions ?? [];
     const strictCollection = cycle.group?.rules?.strictCollection ?? false;
+    const winnerSelectionTiming =
+      cycle.group?.rules?.winnerSelectionTiming ?? 'BEFORE_COLLECTION';
     const allVerified =
       contributionItems.length > 0 &&
       contributionItems.every((item) =>
@@ -1408,13 +1416,16 @@ export class ContributionsService {
 
     const readyForPayout = strictCollection ? allVerified : anyVerified;
     const targetState = readyForPayout
-      ? CycleState.READY_FOR_PAYOUT
+      ? winnerSelectionTiming === 'BEFORE_COLLECTION' ||
+        cycle.selectedWinnerUserId != null
+        ? CycleState.READY_FOR_PAYOUT
+        : CycleState.READY_FOR_WINNER_SELECTION
       : CycleState.COLLECTING;
 
     if (
       cycle.status === CycleStatus.OPEN &&
-      cycle.state !== CycleState.DISBURSED &&
-      cycle.state !== CycleState.CLOSED &&
+      cycle.state !== CycleState.PAYOUT_SENT &&
+      cycle.state !== CycleState.COMPLETED &&
       cycle.state !== targetState
     ) {
       await cycleDelegate.update?.({

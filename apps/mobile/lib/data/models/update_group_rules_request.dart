@@ -18,6 +18,8 @@ sealed class UpdateGroupRulesRequest with _$UpdateGroupRulesRequest {
     required int fineAmount,
     @JsonKey(unknownEnumValue: GroupRulePayoutModeModel.unknown)
     required GroupRulePayoutModeModel payoutMode,
+    @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)
+    required WinnerSelectionTimingModel winnerSelectionTiming,
     @JsonKey(fromJson: _paymentMethodsFromJson, toJson: _paymentMethodsToJson)
     required List<GroupPaymentMethodModel> paymentMethods,
     required bool requiresMemberVerification,

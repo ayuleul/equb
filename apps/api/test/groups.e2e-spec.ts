@@ -785,6 +785,15 @@ describe('Groups (e2e)', () => {
     }
   });
 
+  it('returns null rules payload when group exists but rules are not configured', async () => {
+    const group = await groupsController.createGroup(actorAdmin, {
+      name: 'Unset Rules Group',
+      currency: 'ETB',
+    });
+
+    await expect(groupsController.getGroupRules(group.id)).resolves.toBeNull();
+  });
+
   it('create invite and join with code sets joining member JOINED', async () => {
     const group = await groupsController.createGroup(actorAdmin, {
       name: 'Office Equb',

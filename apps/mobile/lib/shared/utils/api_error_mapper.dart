@@ -137,6 +137,32 @@ String _mapApiError(ApiError error) {
     return 'Cannot confirm payout yet. Some contributions are still unconfirmed. Review contributions first.';
   }
 
+  if (normalized.contains('winner has already been selected for this cycle')) {
+    return 'This turn already has a selected winner.';
+  }
+
+  if (normalized.contains('cycle must be ready_for_winner_selection')) {
+    return 'Collection must finish before you can draw the winner.';
+  }
+
+  if (normalized.contains(
+    'cycle must be ready_for_payout before payout send',
+  )) {
+    return 'Select the winner before marking payout as sent.';
+  }
+
+  if (normalized.contains(
+    'only the selected winner can confirm payout receipt',
+  )) {
+    return 'Only the selected winner can confirm receipt.';
+  }
+
+  if (normalized.contains(
+    'cycle must be payout_sent before receipt confirmation',
+  )) {
+    return 'The payout must be marked as sent before receipt can be confirmed.';
+  }
+
   if (normalized.contains('payout can only be created for open cycle')) {
     return 'Payout can only be created for an open cycle.';
   }
@@ -150,9 +176,9 @@ String _mapApiError(ApiError error) {
   }
 
   if (normalized.contains(
-    'cycle can only be closed after payout is confirmed',
+    'cycle can only be closed after payout receipt is confirmed',
   )) {
-    return 'Confirm payout before closing this cycle.';
+    return 'The winner must confirm receipt before the turn is completed.';
   }
 
   if (normalized.contains('cycle is already closed')) {

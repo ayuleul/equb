@@ -61,12 +61,17 @@
 
 ## Group membership rules
 - Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, and cycle start must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
+- Group rules lookup endpoint behavior is locked: `GET /groups/:id/rules` returns `200` with `null` when the group exists but no ruleset has been configured yet; only unknown groups return `404`.
 - Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).
 - Group start configuration is locked to four canonical fields on ruleset:
   - `roundSize` (`>= 2`)
   - `startPolicy` (`WHEN_FULL | ON_DATE | MANUAL`)
   - `startAt` (required only for `ON_DATE`)
   - `minToStart` (optional for `ON_DATE`/`MANUAL`; `null` means implicit `roundSize`)
+- Winner selection timing is a required ruleset field:
+  - `winnerSelectionTiming` (`BEFORE_COLLECTION | AFTER_COLLECTION`)
+  - `BEFORE_COLLECTION` is allowed only with automatic payout modes (`LOTTERY | ROTATION`)
+  - `AUCTION` and `DECISION` require `winnerSelectionTiming = AFTER_COLLECTION`
 - Start-policy validation is locked:
   - `WHEN_FULL` -> `startAt = null`, `minToStart = null`
   - `ON_DATE` -> `startAt` required, optional `minToStart` in `[2, roundSize]`
@@ -96,11 +101,19 @@
   - `ON_DATE`: start only when now >= `startAt` and eligible count >= `requiredToStart`
   - `MANUAL`: start only when eligible count >= `requiredToStart`
 - Cycle lifecycle state machine is locked to:
-  - `DUE -> COLLECTING -> READY_FOR_PAYOUT -> DISBURSED -> CLOSED`
+  - `SETUP -> COLLECTING -> READY_FOR_WINNER_SELECTION -> READY_FOR_PAYOUT -> PAYOUT_SENT -> COMPLETED`
+- Winner selection is locked to a single rule-driven moment per cycle:
+  - `BEFORE_COLLECTION` -> winner is selected during cycle start, then the cycle continues in `COLLECTING`
+  - `AFTER_COLLECTION` -> cycle reaches `READY_FOR_WINNER_SELECTION` after collection readiness, and winner selection runs exactly once from that state
+  - once `selectedWinnerUserId` is set, the cycle must reject further winner selection attempts with `409`
+- Client/UI winner labels must treat `selectedWinnerUserId` as the only source of truth for whether a winner exists; `finalPayoutUser*` may be present earlier as a recipient fallback and must not be shown as an already-selected winner.
 - Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.
 - Collection readiness rule is locked:
   - `strictCollection = true`: cycle may move to `READY_FOR_PAYOUT` only when all due contribution rows are `VERIFIED|CONFIRMED`
   - `strictCollection = false`: payout readiness may proceed when at least one contribution is verified (admin can proceed after evaluation).
+- Collection completion transition is locked:
+  - if winner was already selected (`BEFORE_COLLECTION`), `COLLECTING -> READY_FOR_PAYOUT`
+  - if winner is still pending (`AFTER_COLLECTION`), `COLLECTING -> READY_FOR_WINNER_SELECTION`
 - Collection evaluation endpoint is locked to `POST /cycles/:cycleId/evaluate` (admin), and is the manual trigger for late/fine processing in MVP.
 - Due-date progression rules:
   - `WEEKLY`: add exactly 7 days
@@ -142,19 +155,18 @@
 ## Payout rules
 - Canonical payout flow is locked to:
   - `POST /cycles/:cycleId/winner/select`
-  - `POST /cycles/:cycleId/payout/disburse`
-  - `POST /cycles/:cycleId/close` (optional `autoNext`)
+  - `POST /turns/:turnId/payout/send`
+  - `POST /turns/:turnId/payout/confirm-received`
 - Payout recipient is strict: payout `toUserId` must match `EqubCycle.finalPayoutUserId` (no override in MVP).
 - Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `VERIFIED|CONFIRMED` contribution for the cycle.
 - In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
-- Cycle closure prerequisites:
-  - `EqubCycle` must be `OPEN`
-  - a payout must exist for the cycle
-  - payout must be `CONFIRMED`
-  - cycle transition is one-way: `OPEN -> CLOSED`
+- Payout completion flow is locked:
+  - admin marks payout as sent from `READY_FOR_PAYOUT`, which creates/updates the payout record as `PENDING` and moves the cycle to `PAYOUT_SENT`
+  - only `selectedWinnerUserId` may confirm receipt from `PAYOUT_SENT`
+  - recipient confirmation moves the cycle to `COMPLETED` and closes it
 - Payout proof object key format is locked to:
   - `groups/<groupId>/cycles/<cycleId>/payouts/<uuid>_<sanitizedFileName>`
-- Cycle close with `autoNext = true` should attempt next-cycle start; if auto-next fails, cycle close remains successful and next cycle can be started manually.
+- Legacy close-cycle behavior must not bypass recipient receipt confirmation.
 
 ## Notification and jobs rules
 - Notification types are locked to:
@@ -167,9 +179,11 @@
   - `DISPUTE_MEDIATING`
   - `DISPUTE_RESOLVED`
   - `PAYOUT_CONFIRMED`
+  - `PAYOUT_SENT`
   - `DUE_REMINDER`
   - `LOTTERY_WINNER`
   - `LOTTERY_ANNOUNCEMENT`
+  - `TURN_COMPLETED`
 - Event triggers (MVP):
   - `MEMBER_JOINED` -> notify active group admins
   - `CONTRIBUTION_SUBMITTED` -> notify active group admins
@@ -177,15 +191,18 @@
   - `CONTRIBUTION_LATE` -> notify late member and configured guarantor
   - `DISPUTE_OPENED` -> notify active admins and involved contributor
   - `DISPUTE_MEDIATING` / `DISPUTE_RESOLVED` -> notify involved dispute parties
-  - `PAYOUT_CONFIRMED` -> notify active group members
+  - `PAYOUT_SENT` -> notify the selected winner
+  - `PAYOUT_CONFIRMED` -> notify active group members only when receipt confirmation completes the payout
   - `DUE_REMINDER` -> notify active members missing `PAID_SUBMITTED|SUBMITTED|VERIFIED|CONFIRMED` contribution
   - `LOTTERY_WINNER` -> notify drawn cycle winner
   - `LOTTERY_ANNOUNCEMENT` -> notify all other active group members
+  - `TURN_COMPLETED` -> notify group members/admins when the recipient confirms receipt
 - Lottery draw notifications are idempotent per user/event via `Notification.eventId` (for example `DRAW_<cycleId>_WINNER` and `DRAW_<cycleId>_ANNOUNCEMENT`).
 - Winner selection/disbursement notifications are idempotent per user/event via `Notification.eventId`:
   - winner: `SELECT_<cycleId>_WINNER`
   - announcement: `SELECT_<cycleId>_ANNOUNCEMENT`
-  - payout disbursed: `PAYOUT_DISBURSED_<cycleId>`
+  - payout sent: `PAYOUT_SENT_<cycleId>`
+  - turn completed: `TURN_COMPLETED_<cycleId>`
 - Reminder scheduler runs daily at `09:00` in `Africa/Addis_Ababa` and enqueues a reminder-scan job.
 - Reminder dedup strategy is locked to one reminder per `(userId, cycleId, type, local-date)` using `dataJson.dedupKey` and queue `jobId`.
 - FCM config method is env-based (no JSON file path):

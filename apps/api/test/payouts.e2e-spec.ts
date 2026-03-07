@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   ContributionStatus,
@@ -35,8 +35,13 @@ type CycleRecord = {
   groupId: string;
   scheduledPayoutUserId: string;
   finalPayoutUserId: string;
+  selectedWinnerUserId: string | null;
   winningBidAmount: number | null;
   winningBidUserId: string | null;
+  payoutSentAt: Date | null;
+  payoutSentByUserId: string | null;
+  payoutReceivedConfirmedAt: Date | null;
+  payoutReceivedConfirmedByUserId: string | null;
   state: CycleState;
   status: CycleStatus;
   closedAt: Date | null;
@@ -106,9 +111,14 @@ describe('Payouts (e2e)', () => {
       groupId: '00000000-0000-0000-0000-000000000101',
       scheduledPayoutUserId: '00000000-0000-0000-0000-000000000011',
       finalPayoutUserId: '00000000-0000-0000-0000-000000000022',
+      selectedWinnerUserId: '00000000-0000-0000-0000-000000000022',
       winningBidAmount: 250,
       winningBidUserId: '00000000-0000-0000-0000-000000000022',
-      state: CycleState.DUE,
+      payoutSentAt: null,
+      payoutSentByUserId: null,
+      payoutReceivedConfirmedAt: null,
+      payoutReceivedConfirmedByUserId: null,
+      state: CycleState.READY_FOR_PAYOUT,
       status: CycleStatus.OPEN,
       closedAt: null,
       closedByUserId: null,
@@ -137,6 +147,10 @@ describe('Payouts (e2e)', () => {
     id: '00000000-0000-0000-0000-000000000011',
     phone: '+251911111111',
   };
+  const winnerUser: AuthenticatedUser = {
+    id: '00000000-0000-0000-0000-000000000022',
+    phone: '+251922222222',
+  };
 
   const prismaMock = {
     equbCycle: {
@@ -146,18 +160,7 @@ describe('Payouts (e2e)', () => {
           include,
         }: {
           where: { id: string };
-          include?: {
-            group?: { select: { contributionAmount: true } };
-            payout?:
-              | true
-              | {
-                  include: {
-                    toUser: {
-                      select: { id: true; fullName: true; phone: true };
-                    };
-                  };
-                };
-          };
+          include?: Record<string, unknown>;
         }) => {
           const cycle = cycles.find((item) => item.id === where.id) ?? null;
 
@@ -165,28 +168,30 @@ describe('Payouts (e2e)', () => {
             return null;
           }
 
-          if (include?.group) {
+          if (include?.group && !include?.payout) {
             const group = groups.find((item) => item.id === cycle.groupId);
             return {
               ...cycle,
               group: {
                 contributionAmount: group?.contributionAmount ?? 0,
+                strictPayout: group?.strictPayout ?? false,
               },
             };
           }
 
-          if (include?.payout) {
+          if (include?.payout || include?.group) {
+            const group = groups.find((item) => item.id === cycle.groupId);
             const payout = payouts.find((item) => item.cycleId === cycle.id);
-
-            if (include.payout === true) {
-              return {
-                ...cycle,
-                payout: payout ?? null,
-              };
-            }
-
             return {
               ...cycle,
+              ...(include?.group
+                ? {
+                    group: {
+                      contributionAmount: group?.contributionAmount ?? 0,
+                      strictPayout: group?.strictPayout ?? false,
+                    },
+                  }
+                : {}),
               payout: payout
                 ? {
                     ...payout,
@@ -210,6 +215,10 @@ describe('Payouts (e2e)', () => {
             state: CycleState;
             closedAt: Date;
             closedByUserId: string;
+            payoutSentAt: Date | null;
+            payoutSentByUserId: string | null;
+            payoutReceivedConfirmedAt: Date | null;
+            payoutReceivedConfirmedByUserId: string | null;
           }>;
         }) => {
           const cycle = cycles.find((item) => item.id === where.id);
@@ -228,6 +237,19 @@ describe('Payouts (e2e)', () => {
           }
           if (data.closedByUserId !== undefined) {
             cycle.closedByUserId = data.closedByUserId;
+          }
+          if (data.payoutSentAt !== undefined) {
+            cycle.payoutSentAt = data.payoutSentAt;
+          }
+          if (data.payoutSentByUserId !== undefined) {
+            cycle.payoutSentByUserId = data.payoutSentByUserId;
+          }
+          if (data.payoutReceivedConfirmedAt !== undefined) {
+            cycle.payoutReceivedConfirmedAt = data.payoutReceivedConfirmedAt;
+          }
+          if (data.payoutReceivedConfirmedByUserId !== undefined) {
+            cycle.payoutReceivedConfirmedByUserId =
+              data.payoutReceivedConfirmedByUserId;
           }
 
           return cycle;
@@ -374,11 +396,16 @@ describe('Payouts (e2e)', () => {
           where,
           select,
         }: {
-          where: { groupId: string; status: MemberStatus | { in: MemberStatus[] } };
+          where: {
+            groupId: string;
+            status: MemberStatus | { in: MemberStatus[] };
+          };
           select: { userId: true };
         }) => {
           const allowedStatuses =
-            typeof where.status === 'object' && where.status != null && 'in' in where.status
+            typeof where.status === 'object' &&
+            where.status != null &&
+            'in' in where.status
               ? where.status.in
               : [where.status as MemberStatus];
           return members
@@ -394,6 +421,30 @@ describe('Payouts (e2e)', () => {
       ),
     },
     contribution: {
+      aggregate: jest.fn(
+        ({
+          where,
+        }: {
+          where: {
+            cycleId: string;
+            status: { in: ContributionStatus[] };
+          };
+        }) => {
+          const amount = contributions
+            .filter(
+              (item) =>
+                item.cycleId === where.cycleId &&
+                where.status.in.includes(item.status),
+            )
+            .reduce((sum) => sum + groups[0].contributionAmount, 0);
+
+          return {
+            _sum: {
+              amount,
+            },
+          };
+        },
+      ),
       findMany: jest.fn(
         ({
           where,
@@ -410,7 +461,9 @@ describe('Payouts (e2e)', () => {
           select: { userId: true };
         }) => {
           const allowedStatuses =
-            typeof where.status === 'object' && where.status != null && 'in' in where.status
+            typeof where.status === 'object' &&
+            where.status != null &&
+            'in' in where.status
               ? where.status.in
               : [where.status as ContributionStatus];
           return contributions
@@ -427,6 +480,10 @@ describe('Payouts (e2e)', () => {
     },
     auditLog: {
       create: jest.fn(() => ({ id: `audit_${Date.now()}` })),
+    },
+    ledgerEntry: {
+      findFirst: jest.fn(() => null),
+      create: jest.fn(() => ({ id: `ledger_${Date.now()}` })),
     },
     $transaction: jest.fn(
       (
@@ -460,17 +517,22 @@ describe('Payouts (e2e)', () => {
     groups[0].strictPayout = false;
     cycles[0].scheduledPayoutUserId = '00000000-0000-0000-0000-000000000011';
     cycles[0].finalPayoutUserId = '00000000-0000-0000-0000-000000000022';
+    cycles[0].selectedWinnerUserId = '00000000-0000-0000-0000-000000000022';
     cycles[0].winningBidAmount = 250;
     cycles[0].winningBidUserId = '00000000-0000-0000-0000-000000000022';
-    cycles[0].state = CycleState.DUE;
+    cycles[0].payoutSentAt = null;
+    cycles[0].payoutSentByUserId = null;
+    cycles[0].payoutReceivedConfirmedAt = null;
+    cycles[0].payoutReceivedConfirmedByUserId = null;
+    cycles[0].state = CycleState.READY_FOR_PAYOUT;
     cycles[0].status = CycleStatus.OPEN;
     cycles[0].closedAt = null;
     cycles[0].closedByUserId = null;
     jest.clearAllMocks();
   });
 
-  it('admin creates payout for final recipient, confirms payout in non-strict mode, then closes cycle', async () => {
-    const created = await payoutsController.createPayout(
+  it('admin sends payout and winner confirms receipt to complete the turn', async () => {
+    const sent = await payoutsController.sendTurnPayout(
       adminUser,
       '00000000-0000-0000-0000-000000000201',
       {
@@ -479,45 +541,50 @@ describe('Payouts (e2e)', () => {
       },
     );
 
-    expect(created.status).toBe(PayoutStatus.PENDING);
-    expect(created.toUserId).toBe('00000000-0000-0000-0000-000000000022');
+    expect(sent.status).toBe(PayoutStatus.PENDING);
+    expect(sent.toUserId).toBe('00000000-0000-0000-0000-000000000022');
+    expect(cycles[0].state).toBe(CycleState.PAYOUT_SENT);
 
-    const confirmed = await payoutsController.confirmPayout(
-      adminUser,
-      created.id,
-      {
-        paymentRef: 'tx-001',
-      },
+    const confirmed = await payoutsController.confirmTurnPayoutReceived(
+      winnerUser,
+      '00000000-0000-0000-0000-000000000201',
     );
 
     expect(confirmed.status).toBe(PayoutStatus.CONFIRMED);
     expect(confirmed.confirmedAt).not.toBeNull();
-
-    const closed = await payoutsController.closeCycle(
-      adminUser,
-      '00000000-0000-0000-0000-000000000201',
-      {},
-    );
-
-    expect(closed).toEqual({
-      success: true,
-      nextCycleId: null,
-      nextCycle: null,
-    });
+    expect(cycles[0].state).toBe(CycleState.COMPLETED);
     expect(cycles[0].status).toBe(CycleStatus.CLOSED);
   });
 
-  it('strict payout mode blocks confirmation when confirmed contributions are missing', async () => {
+  it('strict payout mode blocks receipt confirmation when confirmed contributions are missing', async () => {
     groups[0].strictPayout = true;
 
-    const created = await payoutsController.createPayout(
+    await payoutsController.sendTurnPayout(
       adminUser,
       '00000000-0000-0000-0000-000000000201',
       {},
     );
 
     await expect(
-      payoutsController.confirmPayout(adminUser, created.id, {}),
+      payoutsController.confirmTurnPayoutReceived(
+        winnerUser,
+        '00000000-0000-0000-0000-000000000201',
+      ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('non-winner cannot confirm payout receipt', async () => {
+    await payoutsController.sendTurnPayout(
+      adminUser,
+      '00000000-0000-0000-0000-000000000201',
+      {},
+    );
+
+    await expect(
+      payoutsController.confirmTurnPayoutReceived(
+        adminUser,
+        '00000000-0000-0000-0000-000000000201',
+      ),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

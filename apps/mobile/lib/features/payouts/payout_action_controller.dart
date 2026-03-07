@@ -9,7 +9,6 @@ import '../../app/bootstrap.dart';
 import '../../data/cycles/cycles_repository.dart';
 import '../../data/files/files_repository.dart';
 import '../../data/payouts/payouts_repository.dart';
-import '../../data/models/confirm_payout_request.dart';
 import '../../data/models/create_payout_request.dart';
 import '../../data/models/signed_upload_request.dart';
 import '../../shared/utils/api_error_mapper.dart';
@@ -346,11 +345,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     }
   }
 
-  Future<bool> confirmPayout({
-    required String payoutId,
-    String? paymentRef,
-    String? note,
-  }) async {
+  Future<bool> confirmPayoutReceived() async {
     state = state.copyWith(
       isLoading: true,
       actionType: PayoutActionType.confirming,
@@ -358,50 +353,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     );
 
     try {
-      String? proofFileKey;
-      final proof = state.proofImage;
-      if (proof != null) {
-        state = state.copyWith(
-          actionType: PayoutActionType.uploadingProof,
-          uploadProgress: 0,
-        );
-
-        final signedUpload = await _filesRepository.requestSignedUpload(
-          purpose: UploadPurposeModel.payoutProof,
-          groupId: args.groupId,
-          cycleId: args.cycleId,
-          fileName: proof.fileName,
-          contentType: proof.contentType,
-        );
-
-        await _filesRepository.uploadToSignedUrl(
-          signedUpload.uploadUrl,
-          proof.bytes,
-          proof.contentType,
-          onProgress: (progress) {
-            state = state.copyWith(
-              actionType: PayoutActionType.uploadingProof,
-              uploadProgress: progress.clamp(0, 1),
-            );
-          },
-        );
-
-        proofFileKey = signedUpload.key;
-      }
-
-      state = state.copyWith(
-        actionType: PayoutActionType.confirming,
-        uploadProgress: 1,
-      );
-
-      await _payoutsRepository.confirmPayout(
-        payoutId,
-        ConfirmPayoutRequest(
-          proofFileKey: proofFileKey,
-          paymentRef: _normalizeOptional(paymentRef),
-          note: _normalizeOptional(note),
-        ),
-      );
+      await _payoutsRepository.confirmTurnPayoutReceived(args.cycleId);
 
       _invalidateAfterMutation();
 
@@ -409,16 +361,8 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
         isLoading: false,
         actionType: PayoutActionType.none,
         clearError: true,
-        clearProgress: true,
       );
       return true;
-    } on DioException catch (error) {
-      state = state.copyWith(
-        isLoading: false,
-        actionType: PayoutActionType.none,
-        errorMessage: mapUploadErrorToMessage(error),
-      );
-      return false;
     } catch (error) {
       state = state.copyWith(
         isLoading: false,

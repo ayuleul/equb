@@ -6,7 +6,6 @@ import 'package:mobile/data/cycles/cycles_api.dart';
 import 'package:mobile/data/cycles/cycles_repository.dart';
 import 'package:mobile/data/files/files_api.dart';
 import 'package:mobile/data/files/files_repository.dart';
-import 'package:mobile/data/models/confirm_payout_request.dart';
 import 'package:mobile/data/models/create_payout_request.dart';
 import 'package:mobile/data/models/cycle_model.dart';
 import 'package:mobile/data/models/payout_model.dart';
@@ -21,7 +20,7 @@ import 'package:mobile/features/payouts/payout_action_controller.dart';
 void main() {
   group('PayoutActionController', () {
     test(
-      'confirmPayout invalidates payout/cycle providers on success',
+      'confirmPayoutReceived invalidates payout/cycle providers on success',
       () async {
         final fakePayoutsRepository = _FakePayoutsRepository();
         final fakeCyclesRepository = _FakeCyclesRepository();
@@ -55,7 +54,7 @@ void main() {
 
         final success = await container
             .read(payoutActionControllerProvider(args).notifier)
-            .confirmPayout(payoutId: 'payout-1');
+            .confirmPayoutReceived();
 
         expect(success, isTrue);
 
@@ -93,7 +92,7 @@ void main() {
 
       final success = await container
           .read(payoutActionControllerProvider(args).notifier)
-          .confirmPayout(payoutId: 'payout-1');
+          .confirmPayoutReceived();
 
       final state = container.read(payoutActionControllerProvider(args));
 
@@ -130,10 +129,7 @@ class _FakePayoutsRepository extends PayoutsRepository {
   }
 
   @override
-  Future<PayoutModel> confirmPayout(
-    String payoutId,
-    ConfirmPayoutRequest request,
-  ) async {
+  Future<PayoutModel> confirmTurnPayoutReceived(String turnId) async {
     if (strictModeFailure) {
       throw const ApiError(
         type: ApiErrorType.badRequest,
@@ -174,10 +170,22 @@ class _FakePayoutsApi implements PayoutsApi {
   }
 
   @override
-  Future<Map<String, dynamic>> confirmPayout(
-    String payoutId,
-    ConfirmPayoutRequest request,
-  ) {
+  Future<Map<String, dynamic>> sendTurnPayout(
+    String turnId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmPayout(String payoutId, dynamic request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmTurnPayoutReceived(String turnId) {
     throw UnimplementedError();
   }
 

@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import {
   AuctionStatus,
+  CycleState,
   CycleStatus,
-  GroupRulePayoutMode,
   MemberRole,
   Prisma,
 } from '@prisma/client';
@@ -74,9 +74,7 @@ export class AuctionsService {
 
     const isAdmin = await this.isActiveAdmin(cycle.groupId, currentUser.id);
     if (!isAdmin) {
-      throw new ForbiddenException(
-        'Only active admins can open auction',
-      );
+      throw new ForbiddenException('Only active admins can open auction');
     }
 
     const updatedCycle = await this.prisma.$transaction(async (tx) => {
@@ -128,6 +126,7 @@ export class AuctionsService {
         status: true,
         auctionStatus: true,
         finalPayoutUserId: true,
+        selectedWinnerUserId: true,
       },
     });
 
@@ -233,6 +232,7 @@ export class AuctionsService {
         status: true,
         auctionStatus: true,
         finalPayoutUserId: true,
+        selectedWinnerUserId: true,
       },
     });
 
@@ -252,9 +252,7 @@ export class AuctionsService {
 
     const isAdmin = await this.isActiveAdmin(cycle.groupId, currentUser.id);
     if (!isAdmin) {
-      throw new ForbiddenException(
-        'Only active admins can close auction',
-      );
+      throw new ForbiddenException('Only active admins can close auction');
     }
 
     const { updatedCycle, winner } = await this.prisma.$transaction(
@@ -279,27 +277,22 @@ export class AuctionsService {
         const updatedCycle = await tx.equbCycle.update({
           where: { id: cycle.id },
           data: {
-            finalPayoutUserId: winner ? winner.userId : cycle.finalPayoutUserId,
-            selectedWinnerUserId: winner
-              ? winner.userId
-              : cycle.finalPayoutUserId,
-            selectionMethod: GroupRulePayoutMode.AUCTION,
-            selectionMetadata: {
-              bidId: winner?.id ?? null,
-              bidCount: bids.length,
-              selectedAt: new Date().toISOString(),
-              mode: GroupRulePayoutMode.AUCTION,
-            },
+            auctionStatus: AuctionStatus.CLOSED,
             winningBidAmount: winner ? winner.amount : null,
             winningBidUserId: winner ? winner.userId : null,
-            auctionStatus: AuctionStatus.CLOSED,
+            state:
+              cycle.selectedWinnerUserId == null
+                ? CycleState.READY_FOR_WINNER_SELECTION
+                : CycleState.READY_FOR_PAYOUT,
           },
           select: {
             id: true,
             auctionStatus: true,
             finalPayoutUserId: true,
+            selectedWinnerUserId: true,
             winningBidAmount: true,
             winningBidUserId: true,
+            state: true,
           },
         });
 

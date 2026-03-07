@@ -12,6 +12,13 @@ abstract class PayoutsApi {
     String? note,
   });
 
+  Future<Map<String, dynamic>> sendTurnPayout(
+    String turnId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  });
+
   Future<Map<String, dynamic>> createPayout(
     String cycleId,
     CreatePayoutRequest request,
@@ -21,6 +28,8 @@ abstract class PayoutsApi {
     String payoutId,
     ConfirmPayoutRequest request,
   );
+
+  Future<Map<String, dynamic>> confirmTurnPayoutReceived(String turnId);
 
   Future<Map<String, dynamic>?> getPayout(String cycleId);
 
@@ -62,6 +71,26 @@ class DioPayoutsApi implements PayoutsApi {
   }
 
   @override
+  Future<Map<String, dynamic>> sendTurnPayout(
+    String turnId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  }) {
+    final data = <String, dynamic>{};
+    if (proofFileKey != null) {
+      data['proofFileKey'] = proofFileKey;
+    }
+    if (paymentRef != null) {
+      data['paymentRef'] = paymentRef;
+    }
+    if (note != null) {
+      data['note'] = note;
+    }
+    return _apiClient.postMap('/turns/$turnId/payout/send', data: data);
+  }
+
+  @override
   Future<Map<String, dynamic>> createPayout(
     String cycleId,
     CreatePayoutRequest request,
@@ -81,6 +110,11 @@ class DioPayoutsApi implements PayoutsApi {
       '/payouts/$payoutId/confirm',
       data: request.toJson(),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmTurnPayoutReceived(String turnId) {
+    return _apiClient.postMap('/turns/$turnId/payout/confirm-received');
   }
 
   @override

@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,20 +11,15 @@ import {
   ContributionStatus,
   CycleState,
   CycleStatus,
-  GroupRulePayoutMode,
   LedgerEntryType,
-  MemberStatus,
   NotificationType,
   PayoutStatus,
   Prisma,
 } from '@prisma/client';
-import { randomInt } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
-import {
-  PARTICIPATING_MEMBER_STATUSES,
-  VERIFIED_MEMBER_STATUSES,
-} from '../../common/membership/member-status.util';
+import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
+import { PARTICIPATING_MEMBER_STATUSES } from '../../common/membership/member-status.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { isPayoutProofKeyScopedTo } from '../contributions/utils/proof-key.util';
@@ -69,6 +66,7 @@ export class PayoutsService {
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
     private readonly groupsService: GroupsService,
+    private readonly winnerSelectionService: WinnerSelectionService,
   ) {}
 
   async selectWinner(
@@ -84,26 +82,7 @@ export class PayoutsService {
           groupId: true,
           status: true,
           state: true,
-          cycleNo: true,
-          createdAt: true,
-          scheduledPayoutUserId: true,
-          finalPayoutUserId: true,
           selectedWinnerUserId: true,
-          selectionMethod: true,
-          selectionMetadata: true,
-          auctionStatus: true,
-          winningBidAmount: true,
-          winningBidUserId: true,
-          group: {
-            select: {
-              rules: {
-                select: {
-                  payoutMode: true,
-                  requiresMemberVerification: true,
-                },
-              },
-            },
-          },
         },
       });
 
@@ -117,267 +96,90 @@ export class PayoutsService {
         );
       }
 
-      if (cycle.state !== CycleState.READY_FOR_PAYOUT) {
+      if (cycle.state !== CycleState.READY_FOR_WINNER_SELECTION) {
         throw new BadRequestException(
-          'Cycle must be READY_FOR_PAYOUT before selecting winner',
+          'Cycle must be READY_FOR_WINNER_SELECTION before selecting winner',
         );
       }
 
-      if (!cycle.group.rules) {
-        throw new BadRequestException(
-          'Group rules are required before winner selection',
+      if (cycle.selectedWinnerUserId) {
+        throw new ConflictException(
+          'Winner has already been selected for this cycle',
         );
       }
 
-      const payoutMode = cycle.group.rules.payoutMode;
-
-      if (
-        cycle.selectedWinnerUserId &&
-        cycle.selectionMethod === payoutMode
-      ) {
-        return {
-          cycleId: cycle.id,
-          groupId: cycle.groupId,
-          winnerUserId: cycle.selectedWinnerUserId,
-          payoutMode,
-          selectionMetadata: cycle.selectionMetadata,
-          changed: false,
-        };
-      }
-
-      const eligibleStatuses = this.resolveEligibleStatuses(
-        cycle.group.rules.requiresMemberVerification,
-      );
-      const eligibleMembers = await tx.equbMember.findMany({
-        where: {
-          groupId: cycle.groupId,
-          status: {
-            in: eligibleStatuses,
-          },
-        },
-        select: {
-          userId: true,
-          payoutPosition: true,
-          createdAt: true,
-        },
-        orderBy: [{ payoutPosition: 'asc' }, { createdAt: 'asc' }],
-      });
-
-      const eligibleUserIds = [
-        ...new Set(eligibleMembers.map((member) => member.userId)),
-      ];
-
-      if (eligibleUserIds.length < 2) {
-        throw new BadRequestException(
-          cycle.group.rules.requiresMemberVerification
-            ? 'At least 2 verified members are required for winner selection'
-            : 'At least 2 joined members are required for winner selection',
-        );
-      }
-
-      const selectedAt = new Date();
-      let winnerUserId: string;
-      let selectionMetadata: Prisma.InputJsonValue;
-      let winningBidAmount: number | null = null;
-      let winningBidUserId: string | null = null;
-      let auctionStatus = cycle.auctionStatus;
-
-      switch (payoutMode) {
-        case GroupRulePayoutMode.LOTTERY: {
-          const winnerIndex = randomInt(eligibleUserIds.length);
-          winnerUserId = eligibleUserIds[winnerIndex];
-          selectionMetadata = {
-            mode: GroupRulePayoutMode.LOTTERY,
-            winnerIndex,
-            poolSize: eligibleUserIds.length,
-            selectedAt: selectedAt.toISOString(),
-          };
-          break;
-        }
-        case GroupRulePayoutMode.AUCTION: {
-          if (
-            cycle.auctionStatus === AuctionStatus.NONE &&
-            cycle.winningBidUserId == null
-          ) {
-            throw new BadRequestException(
-              'Auction must be opened before selecting auction winner',
-            );
-          }
-
-          const topBid = await tx.cycleBid.findFirst({
-            where: { cycleId: cycle.id },
-            orderBy: [{ amount: 'desc' }, { createdAt: 'asc' }],
-            select: {
-              id: true,
-              userId: true,
-              amount: true,
-              createdAt: true,
-            },
-          });
-
-          winnerUserId = topBid?.userId ?? cycle.scheduledPayoutUserId;
-          winningBidAmount = topBid?.amount ?? null;
-          winningBidUserId = topBid?.userId ?? null;
-          auctionStatus = AuctionStatus.CLOSED;
-
-          if (cycle.auctionStatus === AuctionStatus.OPEN) {
-            await tx.cycleAuction.updateMany({
-              where: {
-                cycleId: cycle.id,
-                status: AuctionStatus.OPEN,
-              },
-              data: {
-                status: AuctionStatus.CLOSED,
-                closedAt: selectedAt,
-              },
-            });
-          }
-
-          selectionMetadata = {
-            mode: GroupRulePayoutMode.AUCTION,
-            winningBidId: topBid?.id ?? null,
-            winningBidAmount,
-            winningBidUserId,
-            fallbackWinnerUserId: topBid ? null : cycle.scheduledPayoutUserId,
-            selectedAt: selectedAt.toISOString(),
-          };
-          break;
-        }
-        case GroupRulePayoutMode.ROTATION: {
-          if (eligibleUserIds.length === 0) {
-            throw new BadRequestException('No eligible members for rotation');
-          }
-
-          const priorRotationSelections = await tx.equbCycle.findMany({
-            where: {
-              groupId: cycle.groupId,
-              id: { not: cycle.id },
-              selectionMethod: GroupRulePayoutMode.ROTATION,
-              selectedWinnerUserId: {
-                in: eligibleUserIds,
-              },
-            },
-            select: {
-              selectedWinnerUserId: true,
-            },
-          });
-
-          const rotationIndex =
-            priorRotationSelections.length % eligibleUserIds.length;
-          winnerUserId = eligibleUserIds[rotationIndex];
-          selectionMetadata = {
-            mode: GroupRulePayoutMode.ROTATION,
-            rotationIndex,
-            eligibleCount: eligibleUserIds.length,
-            selectedAt: selectedAt.toISOString(),
-          };
-          break;
-        }
-        case GroupRulePayoutMode.DECISION: {
-          const requestedWinnerUserId = dto.userId?.trim();
-          if (!requestedWinnerUserId) {
-            throw new BadRequestException(
-              'userId is required for DECISION payout mode',
-            );
-          }
-
-          if (!eligibleUserIds.includes(requestedWinnerUserId)) {
-            throw new BadRequestException(
-              'Selected user is not eligible for payout winner selection',
-            );
-          }
-
-          winnerUserId = requestedWinnerUserId;
-          selectionMetadata = {
-            mode: GroupRulePayoutMode.DECISION,
-            decidedByUserId: currentUser.id,
-            selectedAt: selectedAt.toISOString(),
-          };
-          break;
-        }
-        default: {
-          throw new BadRequestException('Unsupported payout mode');
-        }
-      }
-
-      const updatedCycle = await tx.equbCycle.update({
+      await tx.equbCycle.update({
         where: { id: cycle.id },
         data: {
-          finalPayoutUserId: winnerUserId,
-          selectedWinnerUserId: winnerUserId,
-          selectionMethod: payoutMode,
-          selectionMetadata,
-          winningBidAmount,
-          winningBidUserId,
-          auctionStatus,
-        },
-        select: {
-          id: true,
-          groupId: true,
-          selectedWinnerUserId: true,
-          selectionMethod: true,
-          selectionMetadata: true,
+          state: CycleState.SETUP,
         },
       });
 
-      return {
-        cycleId: updatedCycle.id,
-        groupId: updatedCycle.groupId,
-        winnerUserId: updatedCycle.selectedWinnerUserId!,
-        payoutMode: updatedCycle.selectionMethod!,
-        selectionMetadata: updatedCycle.selectionMetadata,
-        changed: true,
-      };
+      const result = await this.winnerSelectionService.selectWinner(tx, {
+        cycleId: cycle.id,
+        actorUserId: currentUser.id,
+        requestedWinnerUserId: dto.userId,
+      });
+
+      await tx.equbCycle.update({
+        where: { id: cycle.id },
+        data: {
+          state: CycleState.READY_FOR_PAYOUT,
+        },
+      });
+
+      return result;
     });
 
-    if (selection.changed) {
-      await this.auditService.log(
-        'WINNER_SELECTED',
-        currentUser.id,
-        {
+    await this.auditService.log(
+      'WINNER_SELECTED',
+      currentUser.id,
+      {
+        cycleId: selection.cycleId,
+        winnerUserId: selection.winnerUserId,
+        selectionMethod: selection.payoutMode,
+        selectionMetadata: selection.selectionMetadata,
+      },
+      selection.groupId,
+    );
+
+    await this.notificationsService.notifyUser(selection.winnerUserId, {
+      type: NotificationType.LOTTERY_WINNER,
+      title: 'Winner selected',
+      body: 'You were selected for this turn payout.',
+      groupId: selection.groupId,
+      eventId: `SELECT_${selection.cycleId}_WINNER`,
+      data: {
+        groupId: selection.groupId,
+        cycleId: selection.cycleId,
+        selectionMethod: selection.payoutMode,
+        route: `/groups/${selection.groupId}/cycles/${selection.cycleId}/payout`,
+      },
+    });
+
+    await this.notificationsService.notifyGroupMembers(
+      selection.groupId,
+      {
+        type: NotificationType.LOTTERY_ANNOUNCEMENT,
+        title: 'Winner announced',
+        body: 'A turn winner has been selected.',
+        groupId: selection.groupId,
+        eventId: `SELECT_${selection.cycleId}_ANNOUNCEMENT`,
+        data: {
+          groupId: selection.groupId,
           cycleId: selection.cycleId,
           winnerUserId: selection.winnerUserId,
           selectionMethod: selection.payoutMode,
-          selectionMetadata: selection.selectionMetadata,
-        },
-        selection.groupId,
-      );
-
-      await this.notificationsService.notifyUser(selection.winnerUserId, {
-        type: NotificationType.LOTTERY_WINNER,
-        title: 'Payout winner selected',
-        body: 'You are selected as this cycle payout winner.',
-        groupId: selection.groupId,
-        eventId: `SELECT_${selection.cycleId}_WINNER`,
-        data: {
-          groupId: selection.groupId,
-          cycleId: selection.cycleId,
-          selectionMethod: selection.payoutMode,
           route: `/groups/${selection.groupId}/cycles/${selection.cycleId}/payout`,
         },
-      });
+      },
+      { excludeUserId: selection.winnerUserId },
+    );
 
-      await this.notificationsService.notifyGroupMembers(
-        selection.groupId,
-        {
-          type: NotificationType.LOTTERY_ANNOUNCEMENT,
-          title: 'Payout winner announced',
-          body: 'A payout winner has been selected for this cycle.',
-          groupId: selection.groupId,
-          eventId: `SELECT_${selection.cycleId}_ANNOUNCEMENT`,
-          data: {
-            groupId: selection.groupId,
-            cycleId: selection.cycleId,
-            winnerUserId: selection.winnerUserId,
-            selectionMethod: selection.payoutMode,
-            route: `/groups/${selection.groupId}/cycles/${selection.cycleId}/payout`,
-          },
-        },
-        { excludeUserId: selection.winnerUserId },
-      );
-    }
-
-    return this.groupsService.getCycleById(selection.groupId, selection.cycleId);
+    return this.groupsService.getCycleById(
+      selection.groupId,
+      selection.cycleId,
+    );
   }
 
   async disbursePayout(
@@ -387,7 +189,6 @@ export class PayoutsService {
   ): Promise<PayoutResponseDto> {
     const result = await this.prisma.$transaction(async (tx) => {
       const txCompat = tx as TxCompatibility;
-
       const cycle = await tx.equbCycle.findUnique({
         where: { id: cycleId },
         include: {
@@ -416,22 +217,25 @@ export class PayoutsService {
 
       if (cycle.status !== CycleStatus.OPEN) {
         throw new BadRequestException(
-          'Payout can only be disbursed for an open cycle',
+          'Payout can only be sent for an open cycle',
         );
       }
 
-      if (
-        cycle.state !== CycleState.READY_FOR_PAYOUT &&
-        cycle.state !== CycleState.DISBURSED
-      ) {
+      if (cycle.state !== CycleState.READY_FOR_PAYOUT) {
         throw new BadRequestException(
-          'Cycle must be READY_FOR_PAYOUT before payout disbursement',
+          'Cycle must be READY_FOR_PAYOUT before payout send',
         );
       }
 
       if (!cycle.selectedWinnerUserId) {
         throw new BadRequestException(
-          'Winner must be selected before payout disbursement',
+          'Winner must be selected before payout send',
+        );
+      }
+
+      if (cycle.payoutSentAt != null) {
+        throw new ConflictException(
+          'Payout has already been sent for this cycle',
         );
       }
 
@@ -459,22 +263,15 @@ export class PayoutsService {
       const verifiedAmount = verifiedContribution._sum.amount ?? 0;
       const targetAmount =
         verifiedAmount > 0 ? verifiedAmount : cycle.group.contributionAmount;
+      const now = new Date();
 
-      let payout: PayoutWithUser;
-      let newlyDisbursed = false;
-
-      if (cycle.payout) {
-        if (cycle.payout.status === PayoutStatus.CONFIRMED) {
-          payout = cycle.payout;
-        } else {
-          payout = await tx.payout.update({
-            where: {
-              id: cycle.payout.id,
-            },
+      const payout = cycle.payout
+        ? await tx.payout.update({
+            where: { id: cycle.payout.id },
             data: {
               toUserId: cycle.selectedWinnerUserId,
               amount: targetAmount,
-              status: PayoutStatus.CONFIRMED,
+              status: PayoutStatus.PENDING,
               proofFileKey: dto.proofFileKey ?? cycle.payout.proofFileKey,
               paymentRef: dto.paymentRef ?? cycle.payout.paymentRef,
               note: dto.note ?? cycle.payout.note,
@@ -486,9 +283,43 @@ export class PayoutsService {
                 selectedWinnerUserId: cycle.selectedWinnerUserId,
                 selectionMethod: cycle.selectionMethod,
                 selectionMetadata: cycle.selectionMetadata,
+                payoutSentAt: now.toISOString(),
               },
-              confirmedByUserId: currentUser.id,
-              confirmedAt: new Date(),
+              createdByUserId: currentUser.id,
+              confirmedByUserId: null,
+              confirmedAt: null,
+            },
+            include: {
+              toUser: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  phone: true,
+                },
+              },
+            },
+          })
+        : await tx.payout.create({
+            data: {
+              groupId: cycle.groupId,
+              cycleId: cycle.id,
+              toUserId: cycle.selectedWinnerUserId,
+              amount: targetAmount,
+              status: PayoutStatus.PENDING,
+              proofFileKey: dto.proofFileKey ?? null,
+              paymentRef: dto.paymentRef ?? null,
+              note: dto.note ?? null,
+              metadata: {
+                scheduledPayoutUserId: cycle.scheduledPayoutUserId,
+                finalPayoutUserId: cycle.finalPayoutUserId,
+                selectedWinnerUserId: cycle.selectedWinnerUserId,
+                selectionMethod: cycle.selectionMethod,
+                selectionMetadata: cycle.selectionMetadata,
+                winningBidAmount: cycle.winningBidAmount,
+                winningBidUserId: cycle.winningBidUserId,
+                payoutSentAt: now.toISOString(),
+              },
+              createdByUserId: currentUser.id,
             },
             include: {
               toUser: {
@@ -500,116 +331,73 @@ export class PayoutsService {
               },
             },
           });
-          newlyDisbursed = true;
-        }
-      } else {
-        payout = await tx.payout.create({
-          data: {
-            groupId: cycle.groupId,
-            cycleId: cycle.id,
-            toUserId: cycle.selectedWinnerUserId,
-            amount: targetAmount,
-            status: PayoutStatus.CONFIRMED,
-            proofFileKey: dto.proofFileKey ?? null,
-            paymentRef: dto.paymentRef ?? null,
-            note: dto.note ?? null,
-            metadata: {
-              scheduledPayoutUserId: cycle.scheduledPayoutUserId,
-              finalPayoutUserId: cycle.finalPayoutUserId,
-              selectedWinnerUserId: cycle.selectedWinnerUserId,
-              selectionMethod: cycle.selectionMethod,
-              selectionMetadata: cycle.selectionMetadata,
-              winningBidAmount: cycle.winningBidAmount,
-              winningBidUserId: cycle.winningBidUserId,
-            },
-            createdByUserId: currentUser.id,
-            confirmedByUserId: currentUser.id,
-            confirmedAt: new Date(),
-          },
-          include: {
-            toUser: {
-              select: {
-                id: true,
-                fullName: true,
-                phone: true,
-              },
-            },
-          },
-        });
-        newlyDisbursed = true;
-      }
 
       await tx.equbCycle.update({
         where: { id: cycle.id },
         data: {
           finalPayoutUserId: cycle.selectedWinnerUserId,
-          state: CycleState.DISBURSED,
+          payoutSentAt: now,
+          payoutSentByUserId: currentUser.id,
+          state: CycleState.PAYOUT_SENT,
         },
       });
 
-      if (newlyDisbursed) {
-        const existingLedger = await tx.ledgerEntry.findFirst({
-          where: {
-            payoutId: payout.id,
-            type: LedgerEntryType.PAYOUT_DISBURSED,
-          },
-          select: { id: true },
-        });
+      const existingLedger = await tx.ledgerEntry.findFirst({
+        where: {
+          payoutId: payout.id,
+          type: LedgerEntryType.PAYOUT_DISBURSED,
+        },
+        select: { id: true },
+      });
 
-        if (!existingLedger) {
-          await txCompat.ledgerEntry?.create({
-            data: {
-              groupId: payout.groupId,
-              cycleId: payout.cycleId,
-              payoutId: payout.id,
-              userId: payout.toUserId,
-              type: LedgerEntryType.PAYOUT_DISBURSED,
-              amount: payout.amount,
-              note: payout.note,
-              reference: payout.paymentRef,
-              receiptFileKey: payout.proofFileKey,
-              confirmedAt: payout.confirmedAt,
-              confirmedByUserId: currentUser.id,
-            },
-          });
-        }
+      if (!existingLedger) {
+        await txCompat.ledgerEntry?.create({
+          data: {
+            groupId: payout.groupId,
+            cycleId: payout.cycleId,
+            payoutId: payout.id,
+            userId: payout.toUserId,
+            type: LedgerEntryType.PAYOUT_DISBURSED,
+            amount: payout.amount,
+            note: payout.note,
+            reference: payout.paymentRef,
+            receiptFileKey: payout.proofFileKey,
+            confirmedAt: now,
+            confirmedByUserId: currentUser.id,
+          },
+        });
       }
 
-      return {
-        payout,
-        newlyDisbursed,
-      };
+      return payout;
     });
 
-    if (result.newlyDisbursed) {
-      await this.auditService.log(
-        'PAYOUT_DISBURSED',
-        currentUser.id,
-        {
-          payoutId: result.payout.id,
-          cycleId: result.payout.cycleId,
-          toUserId: result.payout.toUserId,
-          amount: result.payout.amount,
-        },
-        result.payout.groupId,
-      );
+    await this.auditService.log(
+      'PAYOUT_SENT',
+      currentUser.id,
+      {
+        payoutId: result.id,
+        cycleId: result.cycleId,
+        toUserId: result.toUserId,
+        amount: result.amount,
+      },
+      result.groupId,
+    );
 
-      await this.notificationsService.notifyGroupMembers(result.payout.groupId, {
-        type: NotificationType.PAYOUT_CONFIRMED,
-        title: 'Payout disbursed',
-        body: 'Payout has been disbursed for this cycle.',
-        groupId: result.payout.groupId,
-        eventId: `PAYOUT_DISBURSED_${result.payout.cycleId}`,
-        data: {
-          payoutId: result.payout.id,
-          cycleId: result.payout.cycleId,
-          toUserId: result.payout.toUserId,
-          route: `/groups/${result.payout.groupId}/cycles/${result.payout.cycleId}/payout`,
-        },
-      });
-    }
+    await this.notificationsService.notifyUser(result.toUserId, {
+      type: NotificationType.PAYOUT_SENT,
+      title: 'Payout sent',
+      body: 'Your payout has been sent. Confirm receipt to complete the turn.',
+      groupId: result.groupId,
+      eventId: `PAYOUT_SENT_${result.cycleId}`,
+      data: {
+        payoutId: result.id,
+        cycleId: result.cycleId,
+        toUserId: result.toUserId,
+        route: `/groups/${result.groupId}/cycles/${result.cycleId}/payout`,
+      },
+    });
 
-    return this.toPayoutResponse(result.payout);
+    return this.toPayoutResponse(result);
   }
 
   async createPayout(
@@ -617,165 +405,48 @@ export class PayoutsService {
     cycleId: string,
     dto: CreatePayoutDto,
   ): Promise<PayoutResponseDto> {
-    const payout = await this.prisma.$transaction(async (tx) => {
-      const cycle = await tx.equbCycle.findUnique({
-        where: { id: cycleId },
-        include: {
-          group: {
-            select: {
-              contributionAmount: true,
-              rules: {
-                select: {
-                  strictCollection: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!cycle) {
-        throw new NotFoundException('Cycle not found');
-      }
-
-      if (cycle.status !== CycleStatus.OPEN) {
-        throw new BadRequestException(
-          'Payout can only be created for open cycle',
-        );
-      }
-
-      if (
-        cycle.state !== CycleState.READY_FOR_PAYOUT &&
-        cycle.state !== CycleState.DISBURSED
-      ) {
-        const strictCollection = cycle.group.rules?.strictCollection ?? false;
-
-        if (!strictCollection) {
-          await tx.equbCycle.update({
-            where: { id: cycle.id },
-            data: { state: CycleState.READY_FOR_PAYOUT },
-          });
-        } else {
-          const unresolvedWhere: Prisma.ContributionWhereInput = {
-            cycleId: cycle.id,
-            status: {
-              in: [
-                ContributionStatus.PENDING,
-                ContributionStatus.REJECTED,
-                ContributionStatus.LATE,
-                ContributionStatus.PAID_SUBMITTED,
-                ContributionStatus.SUBMITTED,
-              ],
-            },
-          };
-
-          const contributionDelegate = tx.contribution as {
-            count?: (args: Prisma.ContributionCountArgs) => Promise<number>;
-            findMany: (
-              args: Prisma.ContributionFindManyArgs,
-            ) => Promise<Array<{ id: string }>>;
-          };
-
-          const unresolvedCount =
-            contributionDelegate.count != null
-              ? await contributionDelegate.count({ where: unresolvedWhere })
-              : (
-                  await contributionDelegate.findMany({
-                    where: unresolvedWhere,
-                    select: { id: true },
-                  })
-                ).length;
-
-          if (unresolvedCount === 0) {
-            await tx.equbCycle.update({
-              where: { id: cycle.id },
-              data: { state: CycleState.READY_FOR_PAYOUT },
-            });
-          } else {
-            throw new BadRequestException(
-              'Cycle must be READY_FOR_PAYOUT before creating payout',
-            );
-          }
-        }
-      }
-
-      if (
-        dto.proofFileKey &&
-        !isPayoutProofKeyScopedTo(dto.proofFileKey, cycle.groupId, cycle.id)
-      ) {
-        throw new BadRequestException(
-          'proofFileKey does not match payout scope',
-        );
-      }
-
-      return tx.payout.create({
-        data: {
-          groupId: cycle.groupId,
-          cycleId: cycle.id,
-          toUserId: cycle.finalPayoutUserId,
-          amount: dto.amount ?? cycle.group.contributionAmount,
-          status: PayoutStatus.PENDING,
-          proofFileKey: dto.proofFileKey ?? null,
-          paymentRef: dto.paymentRef ?? null,
-          note: dto.note ?? null,
-          metadata: {
-            scheduledPayoutUserId: cycle.scheduledPayoutUserId,
-            finalPayoutUserId: cycle.finalPayoutUserId,
-            winningBidAmount: cycle.winningBidAmount,
-            winningBidUserId: cycle.winningBidUserId,
-          },
-          createdByUserId: currentUser.id,
-        },
-        include: {
-          toUser: {
-            select: {
-              id: true,
-              fullName: true,
-              phone: true,
-            },
-          },
-        },
-      });
+    return this.disbursePayout(currentUser, cycleId, {
+      proofFileKey: dto.proofFileKey,
+      paymentRef: dto.paymentRef,
+      note: dto.note,
     });
-
-    await this.auditService.log(
-      'PAYOUT_CREATED',
-      currentUser.id,
-      {
-        payoutId: payout.id,
-        cycleId,
-        toUserId: payout.toUserId,
-        amount: payout.amount,
-      },
-      payout.groupId,
-    );
-
-    return this.toPayoutResponse(payout);
   }
 
   async confirmPayout(
     currentUser: AuthenticatedUser,
     payoutId: string,
-    dto: ConfirmPayoutDto,
+    _dto: ConfirmPayoutDto,
+  ): Promise<PayoutResponseDto> {
+    const payout = await this.prisma.payout.findUnique({
+      where: { id: payoutId },
+      select: { cycleId: true },
+    });
+
+    if (!payout) {
+      throw new NotFoundException('Payout not found');
+    }
+
+    return this.confirmPayoutReceived(currentUser, payout.cycleId);
+  }
+
+  async confirmPayoutReceived(
+    currentUser: AuthenticatedUser,
+    cycleId: string,
   ): Promise<PayoutResponseDto> {
     const payout = await this.prisma.$transaction(
       async (tx): Promise<PayoutWithUser> => {
-        const txCompat = tx as TxCompatibility;
-        const existing = await tx.payout.findUnique({
-          where: { id: payoutId },
+        const cycle = await tx.equbCycle.findUnique({
+          where: { id: cycleId },
           include: {
-            toUser: {
-              select: {
-                id: true,
-                fullName: true,
-                phone: true,
-              },
-            },
-            cycle: {
-              select: {
-                id: true,
-                groupId: true,
-                status: true,
+            payout: {
+              include: {
+                toUser: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    phone: true,
+                  },
+                },
               },
             },
             group: {
@@ -786,35 +457,38 @@ export class PayoutsService {
           },
         });
 
-        if (!existing) {
-          throw new NotFoundException('Payout not found');
+        if (!cycle) {
+          throw new NotFoundException('Cycle not found');
         }
 
-        if (existing.status !== PayoutStatus.PENDING) {
-          throw new BadRequestException('Only pending payout can be confirmed');
-        }
-
-        if (existing.cycle.status !== CycleStatus.OPEN) {
-          throw new BadRequestException('Cycle must be open to confirm payout');
-        }
-
-        if (
-          dto.proofFileKey &&
-          !isPayoutProofKeyScopedTo(
-            dto.proofFileKey,
-            existing.groupId,
-            existing.cycleId,
-          )
-        ) {
+        if (cycle.status !== CycleStatus.OPEN) {
           throw new BadRequestException(
-            'proofFileKey does not match payout scope',
+            'Payout receipt can only be confirmed for an open cycle',
+          );
+        }
+
+        if (cycle.state !== CycleState.PAYOUT_SENT) {
+          throw new BadRequestException(
+            'Cycle must be PAYOUT_SENT before receipt confirmation',
+          );
+        }
+
+        if (!cycle.selectedWinnerUserId || !cycle.payout) {
+          throw new BadRequestException(
+            'Payout must be sent before receipt confirmation',
+          );
+        }
+
+        if (cycle.selectedWinnerUserId !== currentUser.id) {
+          throw new ForbiddenException(
+            'Only the selected winner can confirm payout receipt',
           );
         }
 
         const activeMemberIds = (
           await tx.equbMember.findMany({
             where: {
-              groupId: existing.groupId,
+              groupId: cycle.groupId,
               status: {
                 in: PARTICIPATING_MEMBER_STATUSES,
               },
@@ -826,7 +500,7 @@ export class PayoutsService {
         const confirmedContributionUserIds = (
           await tx.contribution.findMany({
             where: {
-              cycleId: existing.cycleId,
+              cycleId: cycle.id,
               status: {
                 in: [ContributionStatus.VERIFIED, ContributionStatus.CONFIRMED],
               },
@@ -840,21 +514,19 @@ export class PayoutsService {
           confirmedContributionUserIds,
         );
 
-        if (existing.group.strictPayout && !strictEligibility.eligible) {
+        if (cycle.group.strictPayout && !strictEligibility.eligible) {
           throw new BadRequestException(
             `Strict payout check failed. Missing confirmed contributions for ${strictEligibility.missingMemberIds.length} active member(s).`,
           );
         }
 
+        const now = new Date();
         const confirmedPayout = await tx.payout.update({
-          where: { id: payoutId },
+          where: { id: cycle.payout.id },
           data: {
             status: PayoutStatus.CONFIRMED,
-            proofFileKey: dto.proofFileKey ?? existing.proofFileKey,
-            paymentRef: dto.paymentRef ?? existing.paymentRef,
-            note: dto.note ?? existing.note,
             confirmedByUserId: currentUser.id,
-            confirmedAt: new Date(),
+            confirmedAt: now,
           },
           include: {
             toUser: {
@@ -868,34 +540,23 @@ export class PayoutsService {
         });
 
         await tx.equbCycle.update({
-          where: { id: existing.cycleId },
+          where: { id: cycle.id },
           data: {
-            state: CycleState.DISBURSED,
-          },
-        });
-
-        await txCompat.ledgerEntry?.create({
-          data: {
-            groupId: confirmedPayout.groupId,
-            cycleId: confirmedPayout.cycleId,
-            payoutId: confirmedPayout.id,
-            userId: confirmedPayout.toUserId,
-            type: LedgerEntryType.PAYOUT_DISBURSED,
-            amount: confirmedPayout.amount,
-            note: confirmedPayout.note,
-            reference: confirmedPayout.paymentRef,
-            receiptFileKey: confirmedPayout.proofFileKey,
-            confirmedAt: confirmedPayout.confirmedAt,
-            confirmedByUserId: currentUser.id,
+            payoutReceivedConfirmedAt: now,
+            payoutReceivedConfirmedByUserId: currentUser.id,
+            state: CycleState.COMPLETED,
+            status: CycleStatus.CLOSED,
+            closedAt: now,
+            closedByUserId: currentUser.id,
           },
         });
 
         await this.auditService.log(
-          'PAYOUT_CONFIRMED',
+          'PAYOUT_RECEIPT_CONFIRMED',
           currentUser.id,
           {
             payoutId: confirmedPayout.id,
-            strictPayout: existing.group.strictPayout,
+            strictPayout: cycle.group.strictPayout,
             requiredActiveMemberCount:
               strictEligibility.requiredMemberIds.length,
             confirmedContributionCount:
@@ -911,14 +572,16 @@ export class PayoutsService {
     );
 
     await this.notificationsService.notifyGroupMembers(payout.groupId, {
-      type: NotificationType.PAYOUT_CONFIRMED,
-      title: 'Payout confirmed',
-      body: 'A payout was confirmed for the current cycle.',
+      type: NotificationType.TURN_COMPLETED,
+      title: 'Turn completed',
+      body: 'The recipient confirmed payout receipt and the turn is complete.',
       groupId: payout.groupId,
+      eventId: `TURN_COMPLETED_${payout.cycleId}`,
       data: {
         payoutId: payout.id,
         cycleId: payout.cycleId,
         toUserId: payout.toUserId,
+        route: `/groups/${payout.groupId}/cycles/${payout.cycleId}/payout`,
       },
     });
 
@@ -944,41 +607,27 @@ export class PayoutsService {
         throw new NotFoundException('Cycle not found');
       }
 
-      if (cycle.status !== CycleStatus.OPEN) {
-        throw new BadRequestException('Cycle is already closed');
-      }
-
-      if (!cycle.payout || cycle.payout.status !== PayoutStatus.CONFIRMED) {
+      if (cycle.state !== CycleState.COMPLETED) {
         throw new BadRequestException(
-          'Cycle can only be closed after payout is confirmed',
+          'Cycle can only be closed after payout receipt is confirmed',
         );
       }
 
-      await tx.equbCycle.update({
-        where: {
-          id: cycleId,
-        },
-        data: {
-          status: CycleStatus.CLOSED,
-          state: CycleState.CLOSED,
-          closedAt: new Date(),
-          closedByUserId: currentUser.id,
-        },
-      });
+      if (cycle.status === CycleStatus.OPEN) {
+        await tx.equbCycle.update({
+          where: {
+            id: cycleId,
+          },
+          data: {
+            status: CycleStatus.CLOSED,
+            closedAt: cycle.closedAt ?? new Date(),
+            closedByUserId: cycle.closedByUserId ?? currentUser.id,
+          },
+        });
+      }
 
       return cycle;
     });
-
-    await this.auditService.log(
-      'CYCLE_CLOSED',
-      currentUser.id,
-      {
-        cycleId,
-        payoutId: closedCycle.payout?.id,
-        autoNext: dto.autoNext ?? false,
-      },
-      closedCycle.groupId,
-    );
 
     let nextCycle: GroupCycleResponseDto | null = null;
     if (dto.autoNext === true) {
@@ -1032,14 +681,6 @@ export class PayoutsService {
     }
 
     return this.toPayoutResponse(cycle.payout);
-  }
-
-  private resolveEligibleStatuses(
-    requiresMemberVerification: boolean,
-  ): MemberStatus[] {
-    return requiresMemberVerification
-      ? VERIFIED_MEMBER_STATUSES
-      : PARTICIPATING_MEMBER_STATUSES;
   }
 
   private toPayoutResponse(payout: PayoutWithUser): PayoutResponseDto {

@@ -12,16 +12,18 @@ enum CycleStatusModel {
 }
 
 enum CycleStateModel {
-  @JsonValue('DUE')
-  due,
+  @JsonValue('SETUP')
+  setup,
   @JsonValue('COLLECTING')
   collecting,
+  @JsonValue('READY_FOR_WINNER_SELECTION')
+  readyForWinnerSelection,
   @JsonValue('READY_FOR_PAYOUT')
   readyForPayout,
-  @JsonValue('DISBURSED')
-  disbursed,
-  @JsonValue('CLOSED')
-  closed,
+  @JsonValue('PAYOUT_SENT')
+  payoutSent,
+  @JsonValue('COMPLETED')
+  completed,
   unknown,
 }
 
@@ -59,17 +61,24 @@ sealed class CycleModel with _$CycleModel {
     @JsonKey(unknownEnumValue: CycleStateModel.unknown) CycleStateModel? state,
     String? scheduledPayoutUserId,
     String? finalPayoutUserId,
+    String? selectedWinnerUserId,
+    DateTime? winnerSelectedAt,
     required String payoutUserId,
     @JsonKey(unknownEnumValue: AuctionStatusModel.unknown)
     AuctionStatusModel? auctionStatus,
     @JsonKey(fromJson: _toNullableInt) int? winningBidAmount,
     String? winningBidUserId,
+    DateTime? payoutSentAt,
+    String? payoutSentByUserId,
+    DateTime? payoutReceivedConfirmedAt,
+    String? payoutReceivedConfirmedByUserId,
     @JsonKey(unknownEnumValue: CycleStatusModel.unknown)
     required CycleStatusModel status,
     String? createdByUserId,
     DateTime? createdAt,
     CyclePayoutUserModel? scheduledPayoutUser,
     CyclePayoutUserModel? finalPayoutUser,
+    CyclePayoutUserModel? selectedWinnerUser,
     CyclePayoutUserModel? winningBidUser,
     CyclePayoutUserModel? payoutUser,
   }) = _CycleModel;

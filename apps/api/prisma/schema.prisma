@@ -30,6 +30,11 @@ enum GroupRulePayoutMode {
   DECISION
 }
 
+enum WinnerSelectionTiming {
+  BEFORE_COLLECTION
+  AFTER_COLLECTION
+}
+
 enum GroupPaymentMethod {
   BANK
   TELEBIRR
@@ -69,11 +74,12 @@ enum CycleStatus {
 }
 
 enum CycleState {
-  DUE
+  SETUP
   COLLECTING
+  READY_FOR_WINNER_SELECTION
   READY_FOR_PAYOUT
-  DISBURSED
-  CLOSED
+  PAYOUT_SENT
+  COMPLETED
 }
 
 enum PayoutMode {
@@ -133,6 +139,8 @@ enum NotificationType {
   DUE_REMINDER
   LOTTERY_WINNER
   LOTTERY_ANNOUNCEMENT
+  PAYOUT_SENT
+  TURN_COMPLETED
 }
 
 enum NotificationStatus {
@@ -160,6 +168,8 @@ model User {
   selectedWinnerCycles EqubCycle[] @relation("CycleSelectedWinnerUser")
   winningBidCycles EqubCycle[] @relation("CycleWinningBidUser")
   createdCycles  EqubCycle[]    @relation("CycleCreator")
+  payoutSentCycles EqubCycle[]  @relation("CyclePayoutSentBy")
+  payoutReceiptConfirmedCycles EqubCycle[] @relation("CyclePayoutReceivedConfirmedBy")
   startedRounds  EqubRound[]    @relation("RoundStarter")
   revealedSeedRounds EqubRound[] @relation("RoundSeedRevealer")
   payoutSchedules PayoutSchedule[] @relation("ScheduleUser")
@@ -247,6 +257,7 @@ model GroupRules {
   fineType                    GroupRuleFineType      @default(NONE)
   fineAmount                  Int                    @default(0)
   payoutMode                  GroupRulePayoutMode
+  winnerSelectionTiming       WinnerSelectionTiming  @default(BEFORE_COLLECTION)
   paymentMethods              GroupPaymentMethod[]
   requiresMemberVerification  Boolean                @default(false)
   strictCollection            Boolean                @default(false)
@@ -337,10 +348,11 @@ model EqubCycle {
   cycleNo         Int
   dueDate         DateTime    @db.Date
   dueAt           DateTime    @db.Date
-  state           CycleState  @default(DUE)
+  state           CycleState  @default(SETUP)
   scheduledPayoutUserId String
   finalPayoutUserId String
   selectedWinnerUserId String?
+  winnerSelectedAt DateTime?
   selectionMethod GroupRulePayoutMode?
   selectionMetadata Json?
   auctionStatus AuctionStatus @default(NONE)
@@ -349,6 +361,10 @@ model EqubCycle {
   status          CycleStatus @default(OPEN)
   contributionsConfirmedCount Int @default(0)
   contributionsSubmittedCount Int @default(0)
+  payoutSentAt DateTime?
+  payoutSentByUserId String?
+  payoutReceivedConfirmedAt DateTime?
+  payoutReceivedConfirmedByUserId String?
   closedAt         DateTime?
   closedByUserId   String?
   createdByUserId String
@@ -359,6 +375,8 @@ model EqubCycle {
   finalPayoutUser User @relation("CycleFinalPayoutUser", fields: [finalPayoutUserId], references: [id], onDelete: Restrict)
   selectedWinnerUser User? @relation("CycleSelectedWinnerUser", fields: [selectedWinnerUserId], references: [id], onDelete: SetNull)
   winningBidUser User? @relation("CycleWinningBidUser", fields: [winningBidUserId], references: [id], onDelete: SetNull)
+  payoutSentByUser User? @relation("CyclePayoutSentBy", fields: [payoutSentByUserId], references: [id], onDelete: SetNull)
+  payoutReceivedConfirmedByUser User? @relation("CyclePayoutReceivedConfirmedBy", fields: [payoutReceivedConfirmedByUserId], references: [id], onDelete: SetNull)
   closedByUser    User?       @relation("CycleClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
   createdByUser   User        @relation("CycleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   contributions   Contribution[]
@@ -373,6 +391,8 @@ model EqubCycle {
   @@index([groupId, status])
   @@index([groupId, roundId])
   @@index([selectedWinnerUserId])
+  @@index([payoutSentByUserId])
+  @@index([payoutReceivedConfirmedByUserId])
 }
 
 model CycleAuction {

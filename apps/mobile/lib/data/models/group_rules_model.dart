@@ -33,6 +33,14 @@ enum GroupRulePayoutModeModel {
   unknown,
 }
 
+enum WinnerSelectionTimingModel {
+  @JsonValue('BEFORE_COLLECTION')
+  beforeCollection,
+  @JsonValue('AFTER_COLLECTION')
+  afterCollection,
+  unknown,
+}
+
 enum GroupPaymentMethodModel {
   @JsonValue('BANK')
   bank,
@@ -80,6 +88,8 @@ sealed class GroupRulesModel with _$GroupRulesModel {
     @JsonKey(fromJson: _toInt) required int fineAmount,
     @JsonKey(unknownEnumValue: GroupRulePayoutModeModel.unknown)
     required GroupRulePayoutModeModel payoutMode,
+    @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)
+    required WinnerSelectionTimingModel winnerSelectionTiming,
     @JsonKey(fromJson: _paymentMethodsFromJson, toJson: _paymentMethodsToJson)
     required List<GroupPaymentMethodModel> paymentMethods,
     required bool requiresMemberVerification,

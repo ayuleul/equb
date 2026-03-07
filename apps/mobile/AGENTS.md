@@ -89,6 +89,7 @@
   - `Start policy` (`WHEN_FULL`, `ON_DATE`, `MANUAL`)
   - conditional `Start date` (only for `ON_DATE`)
   - conditional optional `Minimum to start` (for `ON_DATE`/`MANUAL`; blank means `roundSize`)
+- Group setup policy controls must include `winnerSelectionTiming` with friendly labels `Before collection` and `After collection`; `AUCTION` and `DECISION` payout modes must force `After collection`.
 - Start preview text in setup must reflect backend semantics using `requiredToStart`, member eligibility count, and waiting state (members/date).
 - Group actions that depend on rules (`Invite members`, `Start cycle`) must stay disabled or redirect to setup until `rulesetConfigured` is true in group payloads.
 - Cycle-start CTAs must respect backend `canStartCycle` (includes eligibility count and verification requirements), not rules-only assumptions.
@@ -133,6 +134,13 @@
 - Auction open/close actions are admin-only; non-admin members can only submit bids while auction is open.
 - Bid visibility in UI is locked to backend scope: admins see all bids, other members see only their own bid entries.
 - Winner information must come from cycle winner-selection/disbursement state; no UI element may imply pre-generated future winners.
+- `selectedWinnerUserId` is the canonical winner signal in UI; do not show scheduled/final payout placeholders as the winner before selection actually happens.
+- Turn payout CTA flow is locked to:
+  - `Draw winner`
+  - `Mark payout sent`
+  - `Confirm receipt`
+  - `Turn completed`
+- Mobile must not show any `Close turn` action before the selected winner confirms payout receipt.
 - Group Overview must show cycle summary (completed cycles, last winner, current status) and must not show future-turn lists.
 
 ## Uploads & contributions rules

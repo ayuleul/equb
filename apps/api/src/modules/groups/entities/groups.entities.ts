@@ -11,6 +11,7 @@ import {
   MemberRole,
   MemberStatus,
   StartPolicy,
+  WinnerSelectionTiming,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -109,6 +110,9 @@ export class GroupRulesResponseDto {
 
   @ApiProperty({ enum: GroupRulePayoutMode })
   payoutMode!: GroupRulePayoutMode;
+
+  @ApiProperty({ enum: WinnerSelectionTiming })
+  winnerSelectionTiming!: WinnerSelectionTiming;
 
   @ApiProperty({ enum: GroupPaymentMethod, isArray: true })
   paymentMethods!: GroupPaymentMethod[];
@@ -245,6 +249,9 @@ export class GroupCycleResponseDto {
   @ApiPropertyOptional({ nullable: true })
   selectedWinnerUserId!: string | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  winnerSelectedAt!: Date | null;
+
   @ApiPropertyOptional({ enum: GroupRulePayoutMode, nullable: true })
   selectionMethod!: GroupRulePayoutMode | null;
 
@@ -262,6 +269,18 @@ export class GroupCycleResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   winningBidUserId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  payoutSentAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  payoutSentByUserId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  payoutReceivedConfirmedAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  payoutReceivedConfirmedByUserId!: string | null;
 
   @ApiProperty({ enum: CycleStatus })
   status!: CycleStatus;

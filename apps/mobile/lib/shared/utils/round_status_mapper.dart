@@ -31,8 +31,9 @@ RoundStatusPresentation mapRoundStatus({
     );
   }
 
-  if (cycle.state == CycleStateModel.readyForPayout ||
-      cycle.state == CycleStateModel.disbursed) {
+  if (cycle.state == CycleStateModel.readyForWinnerSelection ||
+      cycle.state == CycleStateModel.readyForPayout ||
+      cycle.state == CycleStateModel.payoutSent) {
     return const RoundStatusPresentation(
       label: 'Ready to payout',
       stage: RoundStage.payout,

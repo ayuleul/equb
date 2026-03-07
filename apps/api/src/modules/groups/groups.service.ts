@@ -23,10 +23,12 @@ import {
   PayoutMode,
   Prisma,
   StartPolicy,
+  WinnerSelectionTiming,
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import {
   PARTICIPATING_MEMBER_STATUSES,
   VERIFIED_MEMBER_STATUSES,
@@ -34,7 +36,10 @@ import {
   isSuspendedMemberStatus,
   normalizeMemberStatus,
 } from '../../common/membership/member-status.util';
-import { createSecureSeed, sha256Hex } from '../../common/crypto/secure-shuffle';
+import {
+  createSecureSeed,
+  sha256Hex,
+} from '../../common/crypto/secure-shuffle';
 import { DateService } from '../../common/date/date.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
@@ -69,6 +74,7 @@ export class GroupsService {
     private readonly configService: ConfigService,
     private readonly dateService: DateService,
     private readonly notificationsService: NotificationsService,
+    private readonly winnerSelectionService: WinnerSelectionService,
   ) {}
 
   async createGroup(
@@ -118,6 +124,7 @@ export class GroupsService {
             fineType: GroupRuleFineType.NONE,
             fineAmount: 0,
             payoutMode: GroupRulePayoutMode.LOTTERY,
+            winnerSelectionTiming: WinnerSelectionTiming.BEFORE_COLLECTION,
             paymentMethods: [GroupPaymentMethod.CASH_ACK],
             requiresMemberVerification: false,
             strictCollection: false,
@@ -252,7 +259,7 @@ export class GroupsService {
     );
   }
 
-  async getGroupRules(groupId: string): Promise<GroupRulesResponseDto> {
+  async getGroupRules(groupId: string): Promise<GroupRulesResponseDto | null> {
     const [group, rules, members] = await Promise.all([
       this.prisma.equbGroup.findUnique({
         where: { id: groupId },
@@ -272,7 +279,7 @@ export class GroupsService {
     }
 
     if (!rules) {
-      throw new NotFoundException('Group rules are not configured');
+      return null;
     }
 
     const eligibleCount = this.countEligibleMembers(
@@ -291,6 +298,7 @@ export class GroupsService {
     const fineAmount =
       dto.fineType === GroupRuleFineType.NONE ? 0 : dto.fineAmount;
     this.validateStartPolicyFields(dto);
+    this.validateWinnerSelectionTiming(dto);
     const parsedStartAt = dto.startAt != null ? new Date(dto.startAt) : null;
 
     if (
@@ -329,6 +337,7 @@ export class GroupsService {
           fineType: dto.fineType,
           fineAmount,
           payoutMode: dto.payoutMode,
+          winnerSelectionTiming: dto.winnerSelectionTiming,
           paymentMethods: dto.paymentMethods,
           requiresMemberVerification: dto.requiresMemberVerification,
           strictCollection: dto.strictCollection,
@@ -348,6 +357,7 @@ export class GroupsService {
           fineType: dto.fineType,
           fineAmount,
           payoutMode: dto.payoutMode,
+          winnerSelectionTiming: dto.winnerSelectionTiming,
           paymentMethods: dto.paymentMethods,
           requiresMemberVerification: dto.requiresMemberVerification,
           strictCollection: dto.strictCollection,
@@ -386,6 +396,7 @@ export class GroupsService {
         fineType: rules.fineType,
         fineAmount: rules.fineAmount,
         payoutMode: rules.payoutMode,
+        winnerSelectionTiming: rules.winnerSelectionTiming,
         paymentMethods: rules.paymentMethods,
         requiresMemberVerification: rules.requiresMemberVerification,
         strictCollection: rules.strictCollection,
@@ -1005,6 +1016,8 @@ export class GroupsService {
               startPolicy: true,
               startAt: true,
               minToStart: true,
+              payoutMode: true,
+              winnerSelectionTiming: true,
             },
           },
         },
@@ -1036,7 +1049,9 @@ export class GroupsService {
       });
 
       if (existingOpenCycle) {
-        throw new ConflictException('An open cycle already exists for this group');
+        throw new ConflictException(
+          'An open cycle already exists for this group',
+        );
       }
 
       const eligibleStatuses = group.rules.requiresMemberVerification
@@ -1113,11 +1128,13 @@ export class GroupsService {
             data: {
               groupId,
               roundNo:
-                ((await tx.equbRound.findFirst({
-                  where: { groupId },
-                  orderBy: { roundNo: 'desc' },
-                  select: { roundNo: true },
-                }))?.roundNo ?? 0) + 1,
+                ((
+                  await tx.equbRound.findFirst({
+                    where: { groupId },
+                    orderBy: { roundNo: 'desc' },
+                    select: { roundNo: true },
+                  })
+                )?.roundNo ?? 0) + 1,
               payoutMode: PayoutMode.RANDOM_DRAW,
               drawSeedHash: sha256Hex(createSecureSeed(32)),
               startedByUserId: currentUser.id,
@@ -1156,14 +1173,19 @@ export class GroupsService {
           cycleNo: (latestCycle?.cycleNo ?? 0) + 1,
           dueDate,
           dueAt: dueDate,
-          state: CycleState.DUE,
+          state: CycleState.SETUP,
           scheduledPayoutUserId: defaultRecipientUserId,
           finalPayoutUserId: defaultRecipientUserId,
           selectedWinnerUserId: null,
+          winnerSelectedAt: null,
           selectionMethod: null,
           selectionMetadata: Prisma.JsonNull,
           auctionStatus: AuctionStatus.NONE,
           status: CycleStatus.OPEN,
+          payoutSentAt: null,
+          payoutSentByUserId: null,
+          payoutReceivedConfirmedAt: null,
+          payoutReceivedConfirmedByUserId: null,
           createdByUserId: currentUser.id,
         },
         select: {
@@ -1181,6 +1203,23 @@ export class GroupsService {
           status: ContributionStatus.PENDING,
         })),
         skipDuplicates: true,
+      });
+
+      if (
+        group.rules.winnerSelectionTiming ===
+        WinnerSelectionTiming.BEFORE_COLLECTION
+      ) {
+        await this.winnerSelectionService.selectWinner(tx, {
+          cycleId: createdCycle.id,
+          actorUserId: currentUser.id,
+        });
+      }
+
+      await tx.equbCycle.update({
+        where: { id: createdCycle.id },
+        data: {
+          state: CycleState.COLLECTING,
+        },
       });
 
       return {
@@ -1425,25 +1464,29 @@ export class GroupsService {
     };
   }
 
-  private toGroupRulesResponse(rules: {
-    groupId: string;
-    contributionAmount: number;
-    frequency: GroupRuleFrequency;
-    customIntervalDays: number | null;
-    graceDays: number;
-    fineType: GroupRuleFineType;
-    fineAmount: number;
-    payoutMode: GroupRulePayoutMode;
-    paymentMethods: GroupPaymentMethod[];
-    requiresMemberVerification: boolean;
-    strictCollection: boolean;
-    roundSize: number;
-    startPolicy: StartPolicy;
-    startAt: Date | null;
-    minToStart: number | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }, eligibleCount: number): GroupRulesResponseDto {
+  private toGroupRulesResponse(
+    rules: {
+      groupId: string;
+      contributionAmount: number;
+      frequency: GroupRuleFrequency;
+      customIntervalDays: number | null;
+      graceDays: number;
+      fineType: GroupRuleFineType;
+      fineAmount: number;
+      payoutMode: GroupRulePayoutMode;
+      winnerSelectionTiming: WinnerSelectionTiming;
+      paymentMethods: GroupPaymentMethod[];
+      requiresMemberVerification: boolean;
+      strictCollection: boolean;
+      roundSize: number;
+      startPolicy: StartPolicy;
+      startAt: Date | null;
+      minToStart: number | null;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    eligibleCount: number,
+  ): GroupRulesResponseDto {
     const requiredToStart = this.resolveRequiredToStart(rules);
     const readiness = this.buildStartReadiness(
       eligibleCount,
@@ -1462,6 +1505,7 @@ export class GroupsService {
       fineType: rules.fineType,
       fineAmount: rules.fineAmount,
       payoutMode: rules.payoutMode,
+      winnerSelectionTiming: rules.winnerSelectionTiming,
       paymentMethods: rules.paymentMethods,
       requiresMemberVerification: rules.requiresMemberVerification,
       strictCollection: rules.strictCollection,
@@ -1565,6 +1609,22 @@ export class GroupsService {
     if (minToStart != null && minToStart > dto.roundSize) {
       throw new BadRequestException(
         'minToStart must be less than or equal to roundSize',
+      );
+    }
+  }
+
+  private validateWinnerSelectionTiming(dto: UpdateGroupRulesDto): void {
+    const automaticSelectionModes: GroupRulePayoutMode[] = [
+      GroupRulePayoutMode.LOTTERY,
+      GroupRulePayoutMode.ROTATION,
+    ];
+
+    if (
+      dto.winnerSelectionTiming === WinnerSelectionTiming.BEFORE_COLLECTION &&
+      !automaticSelectionModes.includes(dto.payoutMode)
+    ) {
+      throw new BadRequestException(
+        'winnerSelectionTiming BEFORE_COLLECTION is only supported for LOTTERY and ROTATION payout modes',
       );
     }
   }
@@ -1689,11 +1749,16 @@ export class GroupsService {
     scheduledPayoutUserId: string;
     finalPayoutUserId: string;
     selectedWinnerUserId: string | null;
+    winnerSelectedAt: Date | null;
     selectionMethod: GroupRulePayoutMode | null;
     selectionMetadata: Prisma.JsonValue | null;
     auctionStatus: AuctionStatus;
     winningBidAmount: number | null;
     winningBidUserId: string | null;
+    payoutSentAt: Date | null;
+    payoutSentByUserId: string | null;
+    payoutReceivedConfirmedAt: Date | null;
+    payoutReceivedConfirmedByUserId: string | null;
     status: CycleStatus;
     createdByUserId: string;
     createdAt: Date;
@@ -1729,6 +1794,7 @@ export class GroupsService {
       scheduledPayoutUserId: cycle.scheduledPayoutUserId,
       finalPayoutUserId: cycle.finalPayoutUserId,
       selectedWinnerUserId: cycle.selectedWinnerUserId,
+      winnerSelectedAt: cycle.winnerSelectedAt,
       selectionMethod: cycle.selectionMethod,
       selectionMetadata:
         cycle.selectionMetadata == null
@@ -1738,6 +1804,10 @@ export class GroupsService {
       auctionStatus: cycle.auctionStatus,
       winningBidAmount: cycle.winningBidAmount,
       winningBidUserId: cycle.winningBidUserId,
+      payoutSentAt: cycle.payoutSentAt,
+      payoutSentByUserId: cycle.payoutSentByUserId,
+      payoutReceivedConfirmedAt: cycle.payoutReceivedConfirmedAt,
+      payoutReceivedConfirmedByUserId: cycle.payoutReceivedConfirmedByUserId,
       status: cycle.status,
       createdByUserId: cycle.createdByUserId,
       createdAt: cycle.createdAt,

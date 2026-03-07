@@ -36,6 +36,10 @@ _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
   ),
   scheduledPayoutUserId: json['scheduledPayoutUserId'] as String?,
   finalPayoutUserId: json['finalPayoutUserId'] as String?,
+  selectedWinnerUserId: json['selectedWinnerUserId'] as String?,
+  winnerSelectedAt: json['winnerSelectedAt'] == null
+      ? null
+      : DateTime.parse(json['winnerSelectedAt'] as String),
   payoutUserId: json['payoutUserId'] as String,
   auctionStatus: $enumDecodeNullable(
     _$AuctionStatusModelEnumMap,
@@ -44,6 +48,15 @@ _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
   ),
   winningBidAmount: _toNullableInt(json['winningBidAmount']),
   winningBidUserId: json['winningBidUserId'] as String?,
+  payoutSentAt: json['payoutSentAt'] == null
+      ? null
+      : DateTime.parse(json['payoutSentAt'] as String),
+  payoutSentByUserId: json['payoutSentByUserId'] as String?,
+  payoutReceivedConfirmedAt: json['payoutReceivedConfirmedAt'] == null
+      ? null
+      : DateTime.parse(json['payoutReceivedConfirmedAt'] as String),
+  payoutReceivedConfirmedByUserId:
+      json['payoutReceivedConfirmedByUserId'] as String?,
   status: $enumDecode(
     _$CycleStatusModelEnumMap,
     json['status'],
@@ -63,6 +76,11 @@ _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
       : CyclePayoutUserModel.fromJson(
           json['finalPayoutUser'] as Map<String, dynamic>,
         ),
+  selectedWinnerUser: json['selectedWinnerUser'] == null
+      ? null
+      : CyclePayoutUserModel.fromJson(
+          json['selectedWinnerUser'] as Map<String, dynamic>,
+        ),
   winningBidUser: json['winningBidUser'] == null
       ? null
       : CyclePayoutUserModel.fromJson(
@@ -75,36 +93,46 @@ _CycleModel _$CycleModelFromJson(Map<String, dynamic> json) => _CycleModel(
         ),
 );
 
-Map<String, dynamic> _$CycleModelToJson(_CycleModel instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'groupId': instance.groupId,
-      'roundId': instance.roundId,
-      'cycleNo': instance.cycleNo,
-      'dueDate': instance.dueDate.toIso8601String(),
-      'dueAt': instance.dueAt?.toIso8601String(),
-      'state': _$CycleStateModelEnumMap[instance.state],
-      'scheduledPayoutUserId': instance.scheduledPayoutUserId,
-      'finalPayoutUserId': instance.finalPayoutUserId,
-      'payoutUserId': instance.payoutUserId,
-      'auctionStatus': _$AuctionStatusModelEnumMap[instance.auctionStatus],
-      'winningBidAmount': instance.winningBidAmount,
-      'winningBidUserId': instance.winningBidUserId,
-      'status': _$CycleStatusModelEnumMap[instance.status]!,
-      'createdByUserId': instance.createdByUserId,
-      'createdAt': instance.createdAt?.toIso8601String(),
-      'scheduledPayoutUser': instance.scheduledPayoutUser,
-      'finalPayoutUser': instance.finalPayoutUser,
-      'winningBidUser': instance.winningBidUser,
-      'payoutUser': instance.payoutUser,
-    };
+Map<String, dynamic> _$CycleModelToJson(
+  _CycleModel instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'groupId': instance.groupId,
+  'roundId': instance.roundId,
+  'cycleNo': instance.cycleNo,
+  'dueDate': instance.dueDate.toIso8601String(),
+  'dueAt': instance.dueAt?.toIso8601String(),
+  'state': _$CycleStateModelEnumMap[instance.state],
+  'scheduledPayoutUserId': instance.scheduledPayoutUserId,
+  'finalPayoutUserId': instance.finalPayoutUserId,
+  'selectedWinnerUserId': instance.selectedWinnerUserId,
+  'winnerSelectedAt': instance.winnerSelectedAt?.toIso8601String(),
+  'payoutUserId': instance.payoutUserId,
+  'auctionStatus': _$AuctionStatusModelEnumMap[instance.auctionStatus],
+  'winningBidAmount': instance.winningBidAmount,
+  'winningBidUserId': instance.winningBidUserId,
+  'payoutSentAt': instance.payoutSentAt?.toIso8601String(),
+  'payoutSentByUserId': instance.payoutSentByUserId,
+  'payoutReceivedConfirmedAt': instance.payoutReceivedConfirmedAt
+      ?.toIso8601String(),
+  'payoutReceivedConfirmedByUserId': instance.payoutReceivedConfirmedByUserId,
+  'status': _$CycleStatusModelEnumMap[instance.status]!,
+  'createdByUserId': instance.createdByUserId,
+  'createdAt': instance.createdAt?.toIso8601String(),
+  'scheduledPayoutUser': instance.scheduledPayoutUser,
+  'finalPayoutUser': instance.finalPayoutUser,
+  'selectedWinnerUser': instance.selectedWinnerUser,
+  'winningBidUser': instance.winningBidUser,
+  'payoutUser': instance.payoutUser,
+};
 
 const _$CycleStateModelEnumMap = {
-  CycleStateModel.due: 'DUE',
+  CycleStateModel.setup: 'SETUP',
   CycleStateModel.collecting: 'COLLECTING',
+  CycleStateModel.readyForWinnerSelection: 'READY_FOR_WINNER_SELECTION',
   CycleStateModel.readyForPayout: 'READY_FOR_PAYOUT',
-  CycleStateModel.disbursed: 'DISBURSED',
-  CycleStateModel.closed: 'CLOSED',
+  CycleStateModel.payoutSent: 'PAYOUT_SENT',
+  CycleStateModel.completed: 'COMPLETED',
   CycleStateModel.unknown: 'unknown',
 };
 

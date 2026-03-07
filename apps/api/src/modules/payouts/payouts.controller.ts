@@ -66,14 +66,13 @@ export class PayoutsController {
   @Post('cycles/:cycleId/payout/disburse')
   @UseGuards(GroupAdminGuard)
   @ApiOperation({
-    summary:
-      'Disburse payout for selected winner, create payout row, and ledger entry',
+    summary: 'Legacy alias for marking payout as sent for the selected winner',
   })
   @ApiBody({ type: DisbursePayoutDto, required: false })
   @ApiOkResponse({ type: PayoutResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
   @ApiBadRequestResponse({
-    description: 'Winner is not selected or disbursement prerequisites failed',
+    description: 'Winner is not selected or payout send prerequisites failed',
   })
   @ApiNotFoundResponse({ description: 'Cycle not found' })
   disbursePayout(
@@ -82,6 +81,24 @@ export class PayoutsController {
     @Body() dto: DisbursePayoutDto,
   ): Promise<PayoutResponseDto> {
     return this.payoutsService.disbursePayout(currentUser, cycleId, dto);
+  }
+
+  @Post('turns/:turnId/payout/send')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Mark payout as sent for the selected turn winner' })
+  @ApiBody({ type: DisbursePayoutDto, required: false })
+  @ApiOkResponse({ type: PayoutResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description: 'Turn is not ready for payout send',
+  })
+  @ApiNotFoundResponse({ description: 'Turn not found' })
+  sendTurnPayout(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('turnId', new ParseUUIDPipe()) turnId: string,
+    @Body() dto: DisbursePayoutDto,
+  ): Promise<PayoutResponseDto> {
+    return this.payoutsService.disbursePayout(currentUser, turnId, dto);
   }
 
   @Post('cycles/:cycleId/payout')
@@ -103,13 +120,15 @@ export class PayoutsController {
   }
 
   @Patch('payouts/:id/confirm')
-  @UseGuards(GroupAdminGuard)
-  @ApiOperation({ summary: 'Confirm a pending payout' })
+  @UseGuards(GroupMemberGuard)
+  @ApiOperation({
+    summary: 'Legacy alias for winner payout receipt confirmation',
+  })
   @ApiBody({ type: ConfirmPayoutDto, required: false })
   @ApiOkResponse({ type: PayoutResponseDto })
-  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiForbiddenResponse({ description: 'Selected winner membership required' })
   @ApiBadRequestResponse({
-    description: 'Payout state or strict payout checks failed',
+    description: 'Payout state or receipt-confirmation checks failed',
   })
   @ApiNotFoundResponse({ description: 'Payout not found' })
   confirmPayout(
@@ -120,16 +139,33 @@ export class PayoutsController {
     return this.payoutsService.confirmPayout(currentUser, payoutId, dto);
   }
 
+  @Post('turns/:turnId/payout/confirm-received')
+  @UseGuards(GroupMemberGuard)
+  @ApiOperation({ summary: 'Confirm payout receipt as the selected winner' })
+  @ApiOkResponse({ type: PayoutResponseDto })
+  @ApiForbiddenResponse({ description: 'Selected winner membership required' })
+  @ApiBadRequestResponse({
+    description: 'Turn is not waiting for payout receipt confirmation',
+  })
+  @ApiNotFoundResponse({ description: 'Turn not found' })
+  confirmTurnPayoutReceived(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('turnId', new ParseUUIDPipe()) turnId: string,
+  ): Promise<PayoutResponseDto> {
+    return this.payoutsService.confirmPayoutReceived(currentUser, turnId);
+  }
+
   @Post('cycles/:cycleId/close')
   @UseGuards(GroupAdminGuard)
   @ApiOperation({
-    summary: 'Close cycle after payout is disbursed and optionally auto-start next',
+    summary:
+      'Close cycle after payout is disbursed and optionally auto-start next',
   })
   @ApiBody({ type: CloseCycleDto, required: false })
   @ApiOkResponse({ type: CloseCycleResponseDto })
   @ApiForbiddenResponse({ description: 'Active admin membership required' })
   @ApiBadRequestResponse({
-    description: 'Cycle is closed or payout is not confirmed',
+    description: 'Cycle is not completed yet',
   })
   @ApiNotFoundResponse({ description: 'Cycle not found' })
   closeCycle(

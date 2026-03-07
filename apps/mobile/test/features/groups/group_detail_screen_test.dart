@@ -95,11 +95,36 @@ void main() {
     expect(find.text('Members'), findsWidgets);
     expect(find.text('Test User'), findsWidgets);
   });
+
+  testWidgets(
+    'Turn detail keeps winner pending until a winner is actually selected',
+    (tester) async {
+      await tester.pumpWidget(
+        _buildTestApp(selectedWinnerAssignedForCurrentCycle: false),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('See turn details'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TurnDetailsScreen), findsOneWidget);
+      expect(
+        find.text('Winner: Will be drawn after collection'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Winner: Test User'), findsNothing);
+    },
+  );
 }
 
-Widget _buildTestApp() {
+Widget _buildTestApp({bool selectedWinnerAssignedForCurrentCycle = true}) {
   final groupsRepository = GroupsRepository(_FakeGroupsApi());
-  final cyclesRepository = CyclesRepository(_FakeCyclesApi());
+  final cyclesRepository = CyclesRepository(
+    _FakeCyclesApi(
+      selectedWinnerAssignedForCurrentCycle:
+          selectedWinnerAssignedForCurrentCycle,
+    ),
+  );
   final auctionRepository = AuctionRepository(
     auctionApi: _FakeAuctionApi(),
     bidsApi: _FakeBidsApi(),
@@ -359,6 +384,10 @@ class _FakeGroupsApi implements GroupsApi {
 }
 
 class _FakeCyclesApi implements CyclesApi {
+  _FakeCyclesApi({this.selectedWinnerAssignedForCurrentCycle = true});
+
+  final bool selectedWinnerAssignedForCurrentCycle;
+
   @override
   Future<Map<String, dynamic>> startCycle(String groupId) async {
     return _cycle(groupId, 'cycle-generated', isCurrent: true);
@@ -396,6 +425,9 @@ class _FakeCyclesApi implements CyclesApi {
       'state': isCurrent ? 'COLLECTING' : 'CLOSED',
       'scheduledPayoutUserId': 'user-1',
       'finalPayoutUserId': 'user-1',
+      'selectedWinnerUserId': isCurrent
+          ? (selectedWinnerAssignedForCurrentCycle ? 'user-1' : null)
+          : 'user-1',
       'payoutUserId': 'user-1',
       'auctionStatus': isCurrent ? 'NONE' : 'CLOSED',
       'winningBidAmount': null,
@@ -411,6 +443,9 @@ class _FakeCyclesApi implements CyclesApi {
         'phone': '+251911000000',
         'fullName': 'Test User',
       },
+      'selectedWinnerUser': isCurrent && !selectedWinnerAssignedForCurrentCycle
+          ? null
+          : {'id': 'user-1', 'phone': '+251911000000', 'fullName': 'Test User'},
       'payoutUser': {
         'id': 'user-1',
         'phone': '+251911000000',
@@ -558,10 +593,25 @@ class _FakePayoutsApi implements PayoutsApi {
   }
 
   @override
+  Future<Map<String, dynamic>> sendTurnPayout(
+    String turnId, {
+    String? proofFileKey,
+    String? paymentRef,
+    String? note,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Map<String, dynamic>> confirmPayout(
     String payoutId,
     ConfirmPayoutRequest request,
   ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmTurnPayoutReceived(String turnId) async {
     throw UnimplementedError();
   }
 

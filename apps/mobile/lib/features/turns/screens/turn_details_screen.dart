@@ -66,7 +66,9 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
       turnDisputesProvider((groupId: widget.groupId, cycleId: widget.turnId)),
     );
     final auctionState = ref.watch(cycleAuctionActionControllerProvider(args));
-    final adminState = ref.watch(adminContributionActionsControllerProvider(args));
+    final adminState = ref.watch(
+      adminContributionActionsControllerProvider(args),
+    );
 
     ref.listen(cycleAuctionActionControllerProvider(args), (previous, next) {
       final previousError = previous?.errorMessage;
@@ -77,7 +79,10 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
         KitToast.error(context, nextError);
       }
     });
-    ref.listen(adminContributionActionsControllerProvider(args), (previous, next) {
+    ref.listen(adminContributionActionsControllerProvider(args), (
+      previous,
+      next,
+    ) {
       final previousError = previous?.errorMessage;
       final nextError = next.errorMessage;
       if (nextError != null &&
@@ -88,10 +93,9 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
     });
 
     Future<void> onRefresh() async {
-      ref.read(cyclesRepositoryProvider).invalidateCycleDetail(
-        widget.groupId,
-        widget.turnId,
-      );
+      ref
+          .read(cyclesRepositoryProvider)
+          .invalidateCycleDetail(widget.groupId, widget.turnId);
       ref.read(cyclesRepositoryProvider).invalidateGroupCache(widget.groupId);
       ref.read(payoutsRepositoryProvider).invalidatePayout(widget.turnId);
       ref.read(groupsRepositoryProvider).invalidateGroup(widget.groupId);
@@ -171,7 +175,8 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                   const SizedBox(height: AppSpacing.md),
                   const KitSectionHeader(
                     title: 'Contributions',
-                    subtitle: 'Member-by-member contribution tracking for this turn',
+                    subtitle:
+                        'Member-by-member contribution tracking for this turn',
                   ),
                   _ContributionsSection(
                     group: group,
@@ -225,7 +230,8 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                     const SizedBox(height: AppSpacing.md),
                     const KitSectionHeader(
                       title: 'Ledger Summary',
-                      subtitle: 'A concise view of collected and disbursed amounts',
+                      subtitle:
+                          'A concise view of collected and disbursed amounts',
                     ),
                     _LedgerSummarySection(
                       contributionList: contributionList,
@@ -292,7 +298,9 @@ class _TurnSummaryCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text('Due date: ${formatDate(cycle.dueDate)}'),
           const SizedBox(height: AppSpacing.xs),
-          Text('Winner: ${_winnerLabel(cycle, payout) ?? 'Pending'}'),
+          Text(
+            'Winner: ${_winnerLabel(cycle, payout) ?? (cycle.state == CycleStateModel.collecting ? 'Will be drawn after collection' : 'Pending')}',
+          ),
           const SizedBox(height: AppSpacing.xs),
           Text('Pot size: ${formatCurrency(potSize, group.currency)}'),
           const SizedBox(height: AppSpacing.sm),
@@ -356,6 +364,7 @@ class _ContributionProgressCard extends ConsumerWidget {
           payout: payout,
           contribution: myContribution,
           isAdmin: isAdmin,
+          currentUserId: currentUserId,
         );
 
         return KitCard(
@@ -446,10 +455,7 @@ class _ContributionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return contributionsAsync.when(
       loading: () => const KitCard(
-        child: SizedBox(
-          height: 320,
-          child: KitSkeletonList(itemCount: 5),
-        ),
+        child: SizedBox(height: 320, child: KitSkeletonList(itemCount: 5)),
       ),
       error: (error, _) => KitCard(
         child: Text(
@@ -463,7 +469,8 @@ class _ContributionsSection extends StatelessWidget {
             child: KitEmptyState(
               icon: Icons.receipt_long_outlined,
               title: 'No contributions yet',
-              message: 'Contribution rows will appear here as members start paying.',
+              message:
+                  'Contribution rows will appear here as members start paying.',
             ),
           );
         }
@@ -524,7 +531,9 @@ class _ContributionRow extends ConsumerWidget {
             icon: Icons.fact_check_outlined,
             onPressed: () async {
               final success = await ref
-                  .read(adminContributionActionsControllerProvider(args).notifier)
+                  .read(
+                    adminContributionActionsControllerProvider(args).notifier,
+                  )
                   .confirm(contribution.id);
               if (!context.mounted || !success) {
                 return;
@@ -549,7 +558,9 @@ class _ContributionRow extends ConsumerWidget {
                 return;
               }
               final success = await ref
-                  .read(adminContributionActionsControllerProvider(args).notifier)
+                  .read(
+                    adminContributionActionsControllerProvider(args).notifier,
+                  )
                   .reject(contribution.id, reason);
               if (!context.mounted || !success) {
                 return;
@@ -583,7 +594,8 @@ class _ContributionRow extends ConsumerWidget {
           KitActionSheetItem(
             label: 'View receipt',
             icon: Icons.receipt_long_outlined,
-            onPressed: () => _viewProof(context, ref, contribution.proofFileKey!),
+            onPressed: () =>
+                _viewProof(context, ref, contribution.proofFileKey!),
           ),
       ];
 
@@ -619,9 +631,8 @@ class _ContributionRow extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           contribution.displayName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                       StatusPill(
@@ -692,10 +703,12 @@ class _PayoutSection extends StatelessWidget {
       ),
       data: (payout) {
         final statusText = payout == null
-            ? 'Awaiting payout record'
+            ? cycle.state == CycleStateModel.readyForWinnerSelection
+                  ? 'Ready to draw winner'
+                  : 'Awaiting payout step'
             : payout.status == PayoutStatusModel.confirmed
-            ? 'Confirmed'
-            : 'Pending';
+            ? 'Receipt confirmed'
+            : 'Sent';
 
         return KitCard(
           child: Column(
@@ -708,10 +721,7 @@ class _PayoutSection extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               _SummaryLine(
                 label: 'Payout amount',
-                value: formatCurrency(
-                  payout?.amount ?? 0,
-                  group.currency,
-                ),
+                value: formatCurrency(payout?.amount ?? 0, group.currency),
               ),
               const SizedBox(height: AppSpacing.xs),
               _SummaryLine(label: 'Disbursement status', value: statusText),
@@ -722,8 +732,9 @@ class _PayoutSection extends StatelessWidget {
               ],
               const SizedBox(height: AppSpacing.md),
               KitSecondaryButton(
-                onPressed: () =>
-                    context.push(AppRoutePaths.groupCyclePayout(group.id, cycle.id)),
+                onPressed: () => context.push(
+                  AppRoutePaths.groupCyclePayout(group.id, cycle.id),
+                ),
                 label: isAdmin ? 'Manage payout' : 'View payout details',
                 icon: isAdmin
                     ? Icons.account_balance_wallet_outlined
@@ -757,15 +768,15 @@ class _AuctionSection extends ConsumerWidget {
     final bidsAsync = ref.watch(cycleBidsProvider(cycle.id));
     final args = (groupId: groupId, cycleId: cycle.id);
     final isLoading = actionState.isLoading;
-    final highestBid = bidsAsync.valueOrNull?.fold<CycleBidModel?>(
-      null,
-      (current, bid) {
-        if (current == null) {
-          return bid;
-        }
-        return bid.amount > current.amount ? bid : current;
-      },
-    );
+    final highestBid = bidsAsync.valueOrNull?.fold<CycleBidModel?>(null, (
+      current,
+      bid,
+    ) {
+      if (current == null) {
+        return bid;
+      }
+      return bid.amount > current.amount ? bid : current;
+    });
 
     return KitCard(
       child: Column(
@@ -773,14 +784,15 @@ class _AuctionSection extends ConsumerWidget {
         children: [
           _SummaryLine(
             label: 'Auction status',
-            value: _auctionStatusLabel(cycle.auctionStatus ?? AuctionStatusModel.none),
+            value: _auctionStatusLabel(
+              cycle.auctionStatus ?? AuctionStatusModel.none,
+            ),
           ),
           if (highestBid != null) ...[
             const SizedBox(height: AppSpacing.xs),
             _SummaryLine(
               label: 'Current highest bid',
-              value:
-                  '${highestBid.amount} by ${_bidderLabel(highestBid)}',
+              value: '${highestBid.amount} by ${_bidderLabel(highestBid)}',
             ),
           ],
           if ((cycle.auctionStatus ?? AuctionStatusModel.none) ==
@@ -808,7 +820,9 @@ class _AuctionSection extends ConsumerWidget {
                         }
                         final success = await ref
                             .read(
-                              cycleAuctionActionControllerProvider(args).notifier,
+                              cycleAuctionActionControllerProvider(
+                                args,
+                              ).notifier,
                             )
                             .submitBid(amount);
                         if (!context.mounted || !success) {
@@ -827,7 +841,9 @@ class _AuctionSection extends ConsumerWidget {
                     : () async {
                         final success = await ref
                             .read(
-                              cycleAuctionActionControllerProvider(args).notifier,
+                              cycleAuctionActionControllerProvider(
+                                args,
+                              ).notifier,
                             )
                             .closeAuction();
                         if (!context.mounted || !success) {
@@ -860,10 +876,7 @@ class _DisputesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return disputesAsync.when(
       loading: () => const KitCard(
-        child: SizedBox(
-          height: 220,
-          child: KitSkeletonList(itemCount: 3),
-        ),
+        child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 3)),
       ),
       error: (error, _) => KitCard(
         child: Text(
@@ -938,7 +951,8 @@ class _LedgerSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final collected = contributionList?.items
+    final collected =
+        contributionList?.items
             .where(
               (item) =>
                   item.status == ContributionStatusModel.verified ||
@@ -993,9 +1007,9 @@ class _SummaryLine extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -1063,24 +1077,39 @@ _TurnAction? _resolveTurnAction({
   required PayoutModel? payout,
   required ContributionModel? contribution,
   required bool isAdmin,
+  required String? currentUserId,
 }) {
-  if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
+  if (isAdmin && cycle.state == CycleStateModel.readyForWinnerSelection) {
     return _TurnAction(
       label: 'Draw winner',
       icon: Icons.emoji_events_outlined,
-      onPressed: () => context.push(AppRoutePaths.groupCyclePayout(group.id, cycle.id)),
+      onPressed: () =>
+          context.push(AppRoutePaths.groupCyclePayout(group.id, cycle.id)),
     );
   }
 
-  if (isAdmin && payout?.status == PayoutStatusModel.pending) {
+  if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
     return _TurnAction(
-      label: 'Disburse payout',
+      label: 'Mark payout sent',
       icon: Icons.account_balance_wallet_outlined,
-      onPressed: () => context.push(AppRoutePaths.groupCyclePayout(group.id, cycle.id)),
+      onPressed: () =>
+          context.push(AppRoutePaths.groupCyclePayout(group.id, cycle.id)),
     );
   }
 
-  if ((cycle.auctionStatus ?? AuctionStatusModel.none) == AuctionStatusModel.open) {
+  if (!isAdmin &&
+      cycle.state == CycleStateModel.payoutSent &&
+      cycle.selectedWinnerUserId == currentUserId) {
+    return _TurnAction(
+      label: 'Confirm receipt',
+      icon: Icons.task_alt_rounded,
+      onPressed: () =>
+          context.push(AppRoutePaths.groupCyclePayout(group.id, cycle.id)),
+    );
+  }
+
+  if ((cycle.auctionStatus ?? AuctionStatusModel.none) ==
+      AuctionStatusModel.open) {
     return _TurnAction(
       label: isAdmin ? 'Close auction' : 'Place bid',
       icon: Icons.gavel_rounded,
@@ -1126,15 +1155,16 @@ _TurnAction? _resolveTurnAction({
         AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
       ),
     ),
-    _ => isAdmin
-        ? _TurnAction(
-            label: 'Verify payments',
-            icon: Icons.fact_check_outlined,
-            onPressed: () => context.push(
-              AppRoutePaths.groupCycleContributions(group.id, cycle.id),
-            ),
-          )
-        : null,
+    _ =>
+      isAdmin
+          ? _TurnAction(
+              label: 'Verify payments',
+              icon: Icons.fact_check_outlined,
+              onPressed: () => context.push(
+                AppRoutePaths.groupCycleContributions(group.id, cycle.id),
+              ),
+            )
+          : null,
   };
 }
 
@@ -1142,9 +1172,10 @@ StatusPill _buildTurnStatusPill(TurnStatusPresentation status) {
   final tone = switch (status.stage) {
     TurnStage.waiting => KitBadgeTone.warning,
     TurnStage.collecting => KitBadgeTone.info,
+    TurnStage.readyForWinnerSelection => KitBadgeTone.warning,
     TurnStage.auction => KitBadgeTone.info,
     TurnStage.readyForPayout => KitBadgeTone.warning,
-    TurnStage.disbursed => KitBadgeTone.success,
+    TurnStage.payoutSent => KitBadgeTone.info,
     TurnStage.completed => KitBadgeTone.success,
   };
   return StatusPill(label: status.label, tone: tone);
@@ -1171,7 +1202,11 @@ String? _winnerLabel(CycleModel cycle, PayoutModel? payout) {
   if (payoutLabel != null && payoutLabel.isNotEmpty) {
     return payoutLabel;
   }
-  final user = cycle.finalPayoutUser ?? cycle.payoutUser ?? cycle.scheduledPayoutUser;
+  if (cycle.selectedWinnerUserId == null) {
+    return null;
+  }
+  final user =
+      cycle.selectedWinnerUser ?? cycle.finalPayoutUser ?? cycle.payoutUser;
   final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {
     return fullName;
@@ -1180,8 +1215,11 @@ String? _winnerLabel(CycleModel cycle, PayoutModel? payout) {
   if (phone != null && phone.isNotEmpty) {
     return phone;
   }
-  final fallback = cycle.finalPayoutUserId ?? cycle.payoutUserId;
-  return fallback.isEmpty ? null : fallback;
+  final fallback = cycle.selectedWinnerUserId;
+  if (fallback == null || fallback.isEmpty) {
+    return null;
+  }
+  return fallback;
 }
 
 String _contributionStatusLabel(ContributionStatusModel status) {
@@ -1294,8 +1332,9 @@ int _turnPotSize(
 
 bool _shouldShowPayoutSection(CycleModel cycle, PayoutModel? payout) {
   return payout != null ||
+      cycle.state == CycleStateModel.readyForWinnerSelection ||
       cycle.state == CycleStateModel.readyForPayout ||
-      cycle.state == CycleStateModel.disbursed ||
+      cycle.state == CycleStateModel.payoutSent ||
       cycle.status == CycleStatusModel.closed;
 }
 

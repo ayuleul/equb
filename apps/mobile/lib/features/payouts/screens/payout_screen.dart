@@ -37,7 +37,6 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
   late final TextEditingController _disbursePaymentRefController;
   late final TextEditingController _disburseNoteController;
   String? _decisionWinnerUserId;
-  bool _autoNext = true;
 
   @override
   void initState() {
@@ -169,6 +168,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                         cycle: cycleData,
                         payout: payout,
                         isAdmin: isAdmin,
+                        currentUserId: currentUser?.id,
                         actionState: actionState,
                         rules: rulesAsync.valueOrNull,
                         members: members ?? const [],
@@ -181,12 +181,6 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
                         disbursePaymentRefController:
                             _disbursePaymentRefController,
                         disburseNoteController: _disburseNoteController,
-                        autoNext: _autoNext,
-                        onAutoNextChanged: (value) {
-                          setState(() {
-                            _autoNext = value;
-                          });
-                        },
                       ),
                     ],
                   ),
@@ -258,8 +252,8 @@ class _PayoutStatusCard extends StatelessWidget {
     }
 
     final statusLabel = switch (payout!.status) {
-      PayoutStatusModel.pending => 'PENDING',
-      PayoutStatusModel.confirmed => 'CONFIRMED',
+      PayoutStatusModel.pending => 'SENT',
+      PayoutStatusModel.confirmed => 'RECEIVED',
       PayoutStatusModel.unknown => 'UNKNOWN',
     };
 
@@ -296,7 +290,7 @@ class _PayoutStatusCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
-                'Confirmed: ${formatFriendlyDate(payout!.confirmedAt!)}',
+                'Receipt confirmed: ${formatFriendlyDate(payout!.confirmedAt!)}',
               ),
             ),
           if (payout!.proofFileKey != null &&
@@ -324,15 +318,17 @@ class _PayoutTimelineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final collectionComplete =
+        cycle.state == CycleStateModel.readyForWinnerSelection ||
         cycle.state == CycleStateModel.readyForPayout ||
-        cycle.state == CycleStateModel.disbursed ||
-        cycle.state == CycleStateModel.closed;
-    final winnerSelected =
-        payout != null ||
-        cycle.state == CycleStateModel.disbursed ||
-        cycle.state == CycleStateModel.closed;
-    final isDisbursed = payout?.status == PayoutStatusModel.confirmed;
-    final isClosed = cycle.status == CycleStatusModel.closed;
+        cycle.state == CycleStateModel.payoutSent ||
+        cycle.state == CycleStateModel.completed;
+    final winnerSelected = cycle.selectedWinnerUserId != null || payout != null;
+    final payoutSent =
+        cycle.state == CycleStateModel.payoutSent ||
+        payout?.status == PayoutStatusModel.pending;
+    final receiptConfirmed =
+        payout?.status == PayoutStatusModel.confirmed ||
+        cycle.state == CycleStateModel.completed;
 
     return KitCard(
       child: Column(
@@ -346,7 +342,7 @@ class _PayoutTimelineCard extends StatelessWidget {
           _TimelineRow(
             label: 'Collection complete',
             done: collectionComplete,
-            detail: collectionComplete ? 'Ready for payout stage' : 'Pending',
+            detail: collectionComplete ? 'Winner step unlocked' : 'Pending',
           ),
           _TimelineRow(
             label: 'Winner selected',
@@ -354,14 +350,14 @@ class _PayoutTimelineCard extends StatelessWidget {
             detail: winnerSelected ? 'Winner set for cycle' : 'Pending',
           ),
           _TimelineRow(
-            label: 'Payout disbursed',
-            done: isDisbursed,
-            detail: isDisbursed ? 'Disbursement recorded' : 'Pending',
+            label: 'Payout sent',
+            done: payoutSent,
+            detail: payoutSent ? 'Admin marked payout as sent' : 'Pending',
           ),
           _TimelineRow(
-            label: 'Cycle closed',
-            done: isClosed,
-            detail: isClosed ? 'Cycle completed' : 'Pending',
+            label: 'Recipient confirmed receipt',
+            done: receiptConfirmed,
+            detail: receiptConfirmed ? 'Turn completed' : 'Pending',
           ),
         ],
       ),
@@ -418,6 +414,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
     required this.args,
     required this.cycle,
     required this.isAdmin,
+    required this.currentUserId,
     required this.payout,
     required this.actionState,
     required this.rules,
@@ -426,13 +423,12 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
     required this.onDecisionWinnerChanged,
     required this.disbursePaymentRefController,
     required this.disburseNoteController,
-    required this.autoNext,
-    required this.onAutoNextChanged,
   });
 
   final PayoutActionArgs args;
   final CycleModel cycle;
   final bool isAdmin;
+  final String? currentUserId;
   final PayoutModel? payout;
   final PayoutActionState actionState;
   final GroupRulesModel? rules;
@@ -441,36 +437,43 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
   final ValueChanged<String?> onDecisionWinnerChanged;
   final TextEditingController disbursePaymentRefController;
   final TextEditingController disburseNoteController;
-  final bool autoNext;
-  final ValueChanged<bool> onAutoNextChanged;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!isAdmin) {
+    final isWinner =
+        cycle.selectedWinnerUserId != null &&
+        cycle.selectedWinnerUserId == currentUserId;
+
+    if (!isAdmin && !isWinner) {
       return KitCard(
         child: Text(
           payout?.status == PayoutStatusModel.confirmed
-              ? 'Payout is disbursed.'
-              : 'Waiting for admin payout actions.',
+              ? 'Turn completed.'
+              : 'Waiting for the next payout action.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }
 
-    final isReadyForPayout = cycle.state == CycleStateModel.readyForPayout;
-    final isPayoutDisbursed = payout?.status == PayoutStatusModel.confirmed;
-    final canSelectAndDisburse =
-        isReadyForPayout &&
-        cycle.status == CycleStatusModel.open &&
-        !isPayoutDisbursed;
-    final canClose = isPayoutDisbursed && cycle.status == CycleStatusModel.open;
+    final canSelectWinner =
+        isAdmin &&
+        cycle.state == CycleStateModel.readyForWinnerSelection &&
+        cycle.status == CycleStatusModel.open;
+    final canSendPayout =
+        isAdmin &&
+        cycle.state == CycleStateModel.readyForPayout &&
+        cycle.status == CycleStatusModel.open;
+    final canConfirmReceipt =
+        isWinner &&
+        cycle.state == CycleStateModel.payoutSent &&
+        payout?.status == PayoutStatusModel.pending;
 
-    if (!canSelectAndDisburse && !canClose) {
+    if (!canSelectWinner && !canSendPayout && !canConfirmReceipt) {
       return KitCard(
         child: Text(
-          isPayoutDisbursed
-              ? 'Payout is disbursed. Close cycle to continue.'
-              : 'Winner selection becomes available when cycle is READY_FOR_PAYOUT.',
+          cycle.state == CycleStateModel.completed ||
+                  payout?.status == PayoutStatusModel.confirmed
+              ? 'Turn completed.'
+              : 'This turn will unlock the next payout action automatically as it progresses.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -478,7 +481,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
 
     return Column(
       children: [
-        if (canSelectAndDisburse)
+        if (canSelectWinner)
           KitCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,13 +503,13 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
               ],
             ),
           ),
-        if (canSelectAndDisburse)
+        if (canSendPayout)
           KitCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Disburse payout',
+                  'Mark payout sent',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -594,7 +597,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                   Text(
                     actionState.actionType == PayoutActionType.uploadingProof
                         ? 'Uploading payout proof...'
-                        : 'Disbursing payout...',
+                        : 'Saving payout send...',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -622,7 +625,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                 ],
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
-                  label: 'Disburse payout',
+                  label: 'Mark payout sent',
                   isLoading:
                       actionState.isLoading &&
                       actionState.actionType == PayoutActionType.disbursing,
@@ -643,53 +646,44 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                           }
 
                           if (success) {
-                            KitToast.success(context, 'Payout disbursed.');
+                            KitToast.success(context, 'Payout marked as sent.');
                           }
                         },
                 ),
               ],
             ),
           ),
-        if (canClose)
+        if (canConfirmReceipt)
           KitCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Close cycle',
+                  'Confirm receipt',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Payout is confirmed. You can close this cycle now.',
+                  'Confirm that you received the payout. This completes the turn.',
                   style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Auto-start next cycle'),
-                  value: autoNext,
-                  onChanged: actionState.isLoading ? null : onAutoNextChanged,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
-                  label: 'Close cycle',
+                  label: 'Confirm receipt',
                   isLoading:
                       actionState.isLoading &&
-                      actionState.actionType == PayoutActionType.closing,
+                      actionState.actionType == PayoutActionType.confirming,
                   onPressed: actionState.isLoading
                       ? null
                       : () async {
-                          final shouldClose = await KitDialog.confirm(
+                          final shouldConfirm = await KitDialog.confirm(
                             context: context,
-                            title: 'Close this cycle?',
-                            message:
-                                'This will mark the cycle as CLOSED. This action cannot be undone.',
-                            confirmLabel: 'Close',
-                            isDestructive: true,
+                            title: 'Confirm payout receipt?',
+                            message: 'This will mark the turn as completed.',
+                            confirmLabel: 'Confirm receipt',
                           );
 
-                          if (shouldClose != true) {
+                          if (shouldConfirm != true) {
                             return;
                           }
 
@@ -697,17 +691,14 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                               .read(
                                 payoutActionControllerProvider(args).notifier,
                               )
-                              .closeCycle(autoNext: autoNext);
+                              .confirmPayoutReceived();
 
                           if (!context.mounted) {
                             return;
                           }
 
                           if (success) {
-                            KitToast.success(context, 'Cycle closed.');
-                            if (context.canPop()) {
-                              context.pop();
-                            }
+                            KitToast.success(context, 'Turn completed.');
                           }
                         },
                 ),
@@ -925,7 +916,12 @@ String _cycleRecipientLabel(CycleModel cycle) {
 }
 
 String _selectedWinnerLabel(CycleModel cycle) {
-  final user = cycle.finalPayoutUser ?? cycle.payoutUser;
+  if (cycle.selectedWinnerUserId == null) {
+    return 'Pending';
+  }
+
+  final user =
+      cycle.selectedWinnerUser ?? cycle.finalPayoutUser ?? cycle.payoutUser;
   final fullName = user?.fullName?.trim();
   if (fullName != null && fullName.isNotEmpty) {
     return fullName;
@@ -936,5 +932,7 @@ String _selectedWinnerLabel(CycleModel cycle) {
     return phone;
   }
 
-  return cycle.finalPayoutUserId ?? cycle.payoutUserId;
+  return cycle.selectedWinnerUserId ??
+      cycle.finalPayoutUserId ??
+      cycle.payoutUserId;
 }

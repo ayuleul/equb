@@ -21,7 +21,7 @@ class PayoutsRepository {
     String? paymentRef,
     String? note,
   }) async {
-    final payload = await _api.disbursePayout(
+    final payload = await _api.sendTurnPayout(
       cycleId,
       proofFileKey: proofFileKey,
       paymentRef: paymentRef,
@@ -47,6 +47,13 @@ class PayoutsRepository {
     ConfirmPayoutRequest request,
   ) async {
     final payload = await _api.confirmPayout(payoutId, request);
+    final payout = PayoutModel.fromJson(payload);
+    _cyclePayoutCache[payout.cycleId] = payout;
+    return payout;
+  }
+
+  Future<PayoutModel> confirmTurnPayoutReceived(String turnId) async {
+    final payload = await _api.confirmTurnPayoutReceived(turnId);
     final payout = PayoutModel.fromJson(payload);
     _cyclePayoutCache[payout.cycleId] = payout;
     return payout;

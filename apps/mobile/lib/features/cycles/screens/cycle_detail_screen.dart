@@ -120,10 +120,14 @@ class _CycleDetailBody extends ConsumerWidget {
       CycleStatusModel.unknown => 'UNKNOWN',
     };
 
-    final selectedWinner = _recipientLabel(
-      cycle.finalPayoutUser ?? cycle.payoutUser,
-      cycle.finalPayoutUserId ?? cycle.payoutUserId,
-    );
+    final selectedWinner = cycle.selectedWinnerUserId == null
+        ? 'Pending'
+        : _recipientLabel(
+            cycle.selectedWinnerUser ??
+                cycle.finalPayoutUser ??
+                cycle.payoutUser,
+            cycle.selectedWinnerUserId,
+          );
     final finalRecipient = _recipientLabel(
       cycle.finalPayoutUser ?? cycle.payoutUser,
       cycle.finalPayoutUserId ?? cycle.payoutUserId,

@@ -128,14 +128,16 @@ export class GroupsController {
   @UseGuards(GroupMemberGuard)
   @ApiTags('Rules')
   @ApiOperation({ summary: 'Get group ruleset' })
-  @ApiOkResponse({ type: GroupRulesResponseDto })
-  @ApiForbiddenResponse({ description: 'Joined group membership required' })
-  @ApiNotFoundResponse({
-    description: 'Group not found or rules not configured',
+  @ApiOkResponse({
+    type: GroupRulesResponseDto,
+    description:
+      'Returns the configured ruleset, or null when the group exists but rules are not configured yet',
   })
+  @ApiForbiddenResponse({ description: 'Joined group membership required' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
   getGroupRules(
     @Param('id', new ParseUUIDPipe()) groupId: string,
-  ): Promise<GroupRulesResponseDto> {
+  ): Promise<GroupRulesResponseDto | null> {
     return this.groupsService.getGroupRules(groupId);
   }
 

@@ -4,6 +4,7 @@ import {
   GroupRuleFrequency,
   GroupRulePayoutMode,
   StartPolicy,
+  WinnerSelectionTiming,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -69,6 +70,15 @@ export class UpdateGroupRulesDto {
   })
   @IsEnum(GroupRulePayoutMode)
   payoutMode!: GroupRulePayoutMode;
+
+  @ApiProperty({
+    enum: WinnerSelectionTiming,
+    example: WinnerSelectionTiming.BEFORE_COLLECTION,
+    default: WinnerSelectionTiming.BEFORE_COLLECTION,
+  })
+  @IsEnum(WinnerSelectionTiming)
+  winnerSelectionTiming: WinnerSelectionTiming =
+    WinnerSelectionTiming.BEFORE_COLLECTION;
 
   @ApiProperty({
     enum: GroupPaymentMethod,
