@@ -272,7 +272,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
         uploadProgress: 1,
       );
 
-      await _payoutsRepository.disbursePayout(
+      await _payoutsRepository.disburseTurnPayout(
         args.cycleId,
         proofFileKey: proofFileKey,
         paymentRef: _normalizeOptional(paymentRef),

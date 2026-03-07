@@ -85,6 +85,20 @@ export class GroupMemberGuard implements CanActivate {
       return idParam;
     }
 
+    const turnId = request.params?.turnId;
+    if (turnId) {
+      const cycle = await this.prisma.equbCycle.findUnique({
+        where: { id: turnId },
+        select: { groupId: true },
+      });
+
+      if (!cycle) {
+        throw new ForbiddenException('Cycle not found');
+      }
+
+      return cycle.groupId;
+    }
+
     const cycleId = request.params?.cycleId;
     if (!cycleId) {
       throw new BadRequestException('Group or cycle identifier is required');

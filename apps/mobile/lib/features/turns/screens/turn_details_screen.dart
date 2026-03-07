@@ -1110,11 +1110,7 @@ _TurnAction? _resolveTurnAction({
 
   if ((cycle.auctionStatus ?? AuctionStatusModel.none) ==
       AuctionStatusModel.open) {
-    return _TurnAction(
-      label: isAdmin ? 'Close auction' : 'Place bid',
-      icon: Icons.gavel_rounded,
-      onPressed: null,
-    );
+    return null;
   }
 
   if (contribution == null) {
@@ -1155,16 +1151,7 @@ _TurnAction? _resolveTurnAction({
         AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
       ),
     ),
-    _ =>
-      isAdmin
-          ? _TurnAction(
-              label: 'Verify payments',
-              icon: Icons.fact_check_outlined,
-              onPressed: () => context.push(
-                AppRoutePaths.groupCycleContributions(group.id, cycle.id),
-              ),
-            )
-          : null,
+    _ => null,
   };
 }
 

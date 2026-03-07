@@ -157,6 +157,8 @@
   - `POST /cycles/:cycleId/winner/select`
   - `POST /turns/:turnId/payout/send`
   - `POST /turns/:turnId/payout/confirm-received`
+- Route parameter naming is locked by route family: turn routes use `turnId`, cycle routes use `cycleId`, and guards/services should resolve them explicitly instead of treating the param names as interchangeable aliases.
+- Read-heavy authenticated payout detail fetches (for example `GET /cycles/:cycleId/payout`) must not use the global default throttler limit, because turn detail/group refresh flows poll them as normal UI state reads.
 - Payout recipient is strict: payout `toUserId` must match `EqubCycle.finalPayoutUserId` (no override in MVP).
 - Strict payout confirmation uses current ACTIVE members (MVP): every ACTIVE member must have a `VERIFIED|CONFIRMED` contribution for the cycle.
 - In non-strict mode, payout confirmation is allowed with missing confirmations, but audit metadata must include required/confirmed/missing counts.
@@ -305,6 +307,7 @@
 - Group UI status labels must reflect `GroupStatusModel` values (for example `ACTIVE`/`ARCHIVED`) and should not use chat-presence wording such as "online".
 - Group detail pages should present core actions (`Members`, `Cycles`, `Payout`) as segmented in-page tabs instead of navigating to separate top-level screens by default.
 - Group invite actions should be exposed via the invite banner/CTA and menu actions, not as a default segmented tab.
+- Group detail current-turn hero is navigation-only: expose a single `View details` CTA and do not surface direct pay/verify/payout action buttons on the main group page.
 - Group detail segmented tab controls must remain compact-width and text-scale safe (no `RenderFlex` overflow under high accessibility text scales).
 - Group detail metadata badges and invite summary blocks must adapt to compact widths (horizontal scroll and/or stacked layout) so no `RenderFlex` overflow occurs on narrow devices.
 - Group setup should use a multi-step wizard with a horizontally scrollable step-tab row and a visually separated details panel; step navigation must remain overflow-safe on compact widths (no RenderFlex overflow in headers).
@@ -323,6 +326,7 @@
 - Shared kit buttons must clamp text to one line with ellipsis in icon+label rows to avoid `RenderFlex` overflow under high accessibility text scales.
 - App toast notifications should render as floating top overlays (non-pushing) to avoid blocking bottom CTAs and form actions.
 - Form screens with bottom primary CTAs (for example group setup save/finish actions) must hide those CTAs while the software keyboard is open or a text input is focused (focus-aware, not inset-only) to avoid keyboard overlap and crowding.
+- Standalone contribution list pages should not be the primary management flow from group/turn surfaces; contribution review and admin/member follow-up actions belong in the turn details experience.
 - Notification bootstrap must not access `FirebaseMessaging.instance` before Firebase app initialization; push setup should degrade gracefully when Firebase config is unavailable.
 - Bottom tab navigation must be docked to the bottom edge (no floating/lift), span left-to-right, and use the app primary color for the active tab state (`app/app_shell.dart`) unless a product requirement explicitly overrides it.
 - Bottom tab taps should use subtle motion (reduced size delta and short animation) plus light haptic feedback (`HapticFeedback.selectionClick`) in `app/app_shell.dart`.

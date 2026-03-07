@@ -40,7 +40,9 @@ void main() {
 
     expect(find.text('Turn 3'), findsOneWidget);
     expect(find.text('This turn\'s winner: Test User'), findsOneWidget);
-    expect(find.text('See turn details'), findsOneWidget);
+    expect(find.text('View details'), findsOneWidget);
+    expect(find.text('Verify payments'), findsNothing);
+    expect(find.text('Pay now'), findsNothing);
     expect(find.text('Admin Action'), findsNothing);
     expect(find.text('Contribution Summary'), findsNothing);
 
@@ -104,7 +106,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('See turn details'));
+      await tester.tap(find.text('View details'));
       await tester.pumpAndSettle();
 
       expect(find.byType(TurnDetailsScreen), findsOneWidget);

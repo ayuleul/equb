@@ -610,18 +610,6 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
-                  if (actionState.errorMessage!.toLowerCase().contains(
-                    'review contributions',
-                  ))
-                    KitTertiaryButton(
-                      onPressed: () => context.push(
-                        AppRoutePaths.groupCycleContributions(
-                          args.groupId,
-                          args.cycleId,
-                        ),
-                      ),
-                      label: 'View contributions',
-                    ),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(

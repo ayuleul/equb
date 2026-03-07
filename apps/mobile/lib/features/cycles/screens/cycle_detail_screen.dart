@@ -224,15 +224,6 @@ class _CycleDetailBody extends ConsumerWidget {
           child: Column(
             children: [
               ListTile(
-                title: const Text('Contributions'),
-                subtitle: const Text('View submissions and statuses'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push(
-                  AppRoutePaths.groupCycleContributions(groupId, cycleId),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              ListTile(
                 title: const Text('Payout'),
                 subtitle: const Text(
                   'Track payout confirmation and cycle closure',

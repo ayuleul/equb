@@ -765,8 +765,6 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUserId = ref.watch(currentUserProvider)?.id;
-
     return currentCycleAsync.when(
       loading: () => const KitCard(child: _HeroSkeleton()),
       error: (error, _) => KitCard(
@@ -787,23 +785,10 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
         final contributionList = contributionsAsync.valueOrNull;
         final summary = contributionList?.summary;
         final payout = payoutAsync.valueOrNull;
-        final myContribution = _findContribution(
-          contributionList,
-          currentUserId,
-        );
         final status = mapTurnStatus(
           cycle: cycle,
           contributionSummary: summary,
           payout: payout,
-        );
-        final actions = _resolveVisibleActions(
-          context: context,
-          group: group,
-          cycle: cycle,
-          contribution: myContribution,
-          payout: payout,
-          summary: summary,
-          currentUserId: currentUserId,
         );
         final paid = _paidCount(summary);
         final total = summary?.total ?? 0;
@@ -883,30 +868,6 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.md),
                   Divider(color: Theme.of(context).colorScheme.outlineVariant),
                   const SizedBox(height: AppSpacing.md),
-                  KitPrimaryButton(
-                    onPressed: actions.primary.onPressed,
-                    label: actions.primary.label,
-                    icon: actions.primary.icon,
-                  ),
-                  if (actions.secondary.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        for (final action in actions.secondary)
-                          KitSecondaryButton(
-                            onPressed: action.onPressed,
-                            label: action.label,
-                            icon: action.icon,
-                            expand: false,
-                          ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.md),
-                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
-                  const SizedBox(height: AppSpacing.md),
                   _ProgressSummaryBar(paid: paid, total: total),
                   const SizedBox(height: AppSpacing.md),
                   Wrap(
@@ -935,7 +896,7 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
                     onPressed: () => context.push(
                       AppRoutePaths.groupTurnDetail(group.id, cycle.id),
                     ),
-                    label: 'See turn details',
+                    label: 'View details',
                     icon: Icons.chevron_right_rounded,
                     expand: false,
                   ),
@@ -1413,202 +1374,6 @@ String _startDisabledReason({
     return 'Add at least $count more eligible member${count == 1 ? '' : 's'}.';
   }
   return 'Start the group when everything is ready.';
-}
-
-class _VisibleActions {
-  const _VisibleActions({required this.primary, required this.secondary});
-
-  final _TurnAction primary;
-  final List<_TurnAction> secondary;
-}
-
-class _TurnAction {
-  const _TurnAction({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-}
-
-_VisibleActions _resolveVisibleActions({
-  required BuildContext context,
-  required GroupModel group,
-  required CycleModel cycle,
-  required ContributionModel? contribution,
-  required PayoutModel? payout,
-  required ContributionSummaryModel? summary,
-  required String? currentUserId,
-}) {
-  final turnRoute = AppRoutePaths.groupTurnDetail(group.id, cycle.id);
-  final submitRoute = AppRoutePaths.groupCycleContributionsSubmit(
-    group.id,
-    cycle.id,
-  );
-  final payoutRoute = AppRoutePaths.groupCyclePayout(group.id, cycle.id);
-  final contributionsRoute = AppRoutePaths.groupCycleContributions(
-    group.id,
-    cycle.id,
-  );
-  final isAdmin = group.membership?.role == MemberRoleModel.admin;
-  final secondary = <_TurnAction>[];
-
-  if ((cycle.auctionStatus ?? AuctionStatusModel.none) ==
-      AuctionStatusModel.open) {
-    final primary = _TurnAction(
-      label: isAdmin ? 'Close auction' : 'Place bid',
-      icon: Icons.gavel_rounded,
-      onPressed: () => context.push(turnRoute),
-    );
-    if (isAdmin && (summary?.late ?? 0) > 0) {
-      secondary.add(
-        _TurnAction(
-          label: 'Verify payments',
-          icon: Icons.fact_check_outlined,
-          onPressed: () => context.push(contributionsRoute),
-        ),
-      );
-    }
-    return _VisibleActions(primary: primary, secondary: secondary);
-  }
-
-  if (isAdmin && cycle.state == CycleStateModel.readyForWinnerSelection) {
-    final primary = _TurnAction(
-      label: 'Draw winner',
-      icon: Icons.emoji_events_outlined,
-      onPressed: () => context.push(turnRoute),
-    );
-    secondary.add(
-      _TurnAction(
-        label: 'Verify payments',
-        icon: Icons.fact_check_outlined,
-        onPressed: () => context.push(contributionsRoute),
-      ),
-    );
-    return _VisibleActions(primary: primary, secondary: secondary);
-  }
-
-  if (isAdmin && cycle.state == CycleStateModel.readyForPayout) {
-    final primary = _TurnAction(
-      label: 'Mark payout sent',
-      icon: Icons.account_balance_wallet_outlined,
-      onPressed: () => context.push(payoutRoute),
-    );
-    return _VisibleActions(primary: primary, secondary: secondary);
-  }
-
-  if (!isAdmin &&
-      cycle.state == CycleStateModel.payoutSent &&
-      cycle.selectedWinnerUserId == currentUserId) {
-    return _VisibleActions(
-      primary: _TurnAction(
-        label: 'Confirm receipt',
-        icon: Icons.task_alt_rounded,
-        onPressed: () => context.push(payoutRoute),
-      ),
-      secondary: secondary,
-    );
-  }
-
-  if (contribution == null) {
-    return _VisibleActions(
-      primary: _TurnAction(
-        label: 'Pay now',
-        icon: Icons.upload_file_outlined,
-        onPressed: () => context.push(submitRoute),
-      ),
-      secondary: secondary,
-    );
-  }
-
-  switch (contribution.status) {
-    case ContributionStatusModel.rejected:
-      return _VisibleActions(
-        primary: _TurnAction(
-          label: 'Fix & resubmit',
-          icon: Icons.refresh_rounded,
-          onPressed: () => context.push(submitRoute),
-        ),
-        secondary: secondary,
-      );
-    case ContributionStatusModel.late:
-      return _VisibleActions(
-        primary: _TurnAction(
-          label: 'Pay now',
-          icon: Icons.warning_amber_rounded,
-          onPressed: () => context.push(submitRoute),
-        ),
-        secondary: secondary,
-      );
-    case ContributionStatusModel.pending:
-      return _VisibleActions(
-        primary: _TurnAction(
-          label: 'Upload receipt',
-          icon: Icons.upload_file_outlined,
-          onPressed: () => context.push(submitRoute),
-        ),
-        secondary: secondary,
-      );
-    case ContributionStatusModel.paidSubmitted:
-    case ContributionStatusModel.submitted:
-      if (isAdmin) {
-        secondary.add(
-          _TurnAction(
-            label: 'See turn details',
-            icon: Icons.visibility_outlined,
-            onPressed: () => context.push(turnRoute),
-          ),
-        );
-        return _VisibleActions(
-          primary: _TurnAction(
-            label: 'Verify payments',
-            icon: Icons.fact_check_outlined,
-            onPressed: () => context.push(contributionsRoute),
-          ),
-          secondary: secondary,
-        );
-      }
-      return const _VisibleActions(
-        primary: _TurnAction(
-          label: 'Waiting for verification',
-          icon: Icons.hourglass_bottom_rounded,
-          onPressed: null,
-        ),
-        secondary: <_TurnAction>[],
-      );
-    case ContributionStatusModel.verified:
-    case ContributionStatusModel.confirmed:
-      if (isAdmin) {
-        return _VisibleActions(
-          primary: _TurnAction(
-            label: 'Verify payments',
-            icon: Icons.fact_check_outlined,
-            onPressed: () => context.push(contributionsRoute),
-          ),
-          secondary: secondary,
-        );
-      }
-      return _VisibleActions(
-        primary: _TurnAction(
-          label: 'See turn details',
-          icon: Icons.visibility_outlined,
-          onPressed: () => context.push(turnRoute),
-        ),
-        secondary: secondary,
-      );
-    case ContributionStatusModel.unknown:
-      return _VisibleActions(
-        primary: _TurnAction(
-          label: 'See turn details',
-          icon: Icons.visibility_outlined,
-          onPressed: () => context.push(turnRoute),
-        ),
-        secondary: secondary,
-      );
-  }
 }
 
 ContributionModel? _findContribution(

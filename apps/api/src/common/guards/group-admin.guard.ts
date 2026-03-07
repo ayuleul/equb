@@ -62,6 +62,19 @@ export class GroupAdminGuard implements CanActivate {
     request: RequestWithUserAndParams,
   ): Promise<string> {
     const params = request.params ?? {};
+    const turnId = params.turnId;
+    if (turnId) {
+      const cycle = await this.prisma.equbCycle.findUnique({
+        where: { id: turnId },
+        select: { groupId: true },
+      });
+
+      if (!cycle) {
+        throw new ForbiddenException('Cycle not found');
+      }
+
+      return cycle.groupId;
+    }
 
     const cycleId = params.cycleId;
     if (cycleId) {

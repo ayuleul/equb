@@ -15,20 +15,20 @@ class PayoutsRepository {
     _cyclePayoutCache.remove(cycleId);
   }
 
-  Future<PayoutModel> disbursePayout(
-    String cycleId, {
+  Future<PayoutModel> disburseTurnPayout(
+    String turnId, {
     String? proofFileKey,
     String? paymentRef,
     String? note,
   }) async {
     final payload = await _api.sendTurnPayout(
-      cycleId,
+      turnId,
       proofFileKey: proofFileKey,
       paymentRef: paymentRef,
       note: note,
     );
     final payout = PayoutModel.fromJson(payload);
-    _cyclePayoutCache[cycleId] = payout;
+    _cyclePayoutCache[payout.cycleId] = payout;
     return payout;
   }
 

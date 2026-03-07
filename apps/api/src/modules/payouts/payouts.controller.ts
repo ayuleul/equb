@@ -19,6 +19,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { GroupAdminGuard } from '../../common/guards/group-admin.guard';
@@ -178,6 +179,7 @@ export class PayoutsController {
 
   @Get('cycles/:cycleId/payout')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Cycles')
   @ApiOperation({ summary: 'Get payout for cycle if available' })
   @ApiOkResponse({ type: PayoutResponseDto })
