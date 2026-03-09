@@ -9,6 +9,8 @@ class PayoutsRepository {
   final PayoutsApi _api;
 
   final Map<String, PayoutModel?> _cyclePayoutCache = <String, PayoutModel?>{};
+  final Map<String, Future<PayoutModel?>> _pendingPayoutRequests =
+      <String, Future<PayoutModel?>>{};
 
   Future<void> selectWinner(String cycleId, {String? userId}) async {
     await _api.selectWinner(cycleId, userId: userId);
@@ -67,15 +69,20 @@ class PayoutsRepository {
       return _cyclePayoutCache[cycleId];
     }
 
-    final payload = await _api.getPayout(cycleId);
-    if (payload == null || payload.isEmpty) {
-      _cyclePayoutCache[cycleId] = null;
-      return null;
+    if (!forceRefresh) {
+      final pending = _pendingPayoutRequests[cycleId];
+      if (pending != null) {
+        return pending;
+      }
     }
 
-    final payout = PayoutModel.fromJson(payload);
-    _cyclePayoutCache[cycleId] = payout;
-    return payout;
+    final request = _loadPayout(cycleId);
+    _pendingPayoutRequests[cycleId] = request;
+    try {
+      return await request;
+    } finally {
+      _pendingPayoutRequests.remove(cycleId);
+    }
   }
 
   Future<Map<String, dynamic>> closeCycle(
@@ -93,5 +100,18 @@ class PayoutsRepository {
 
   void invalidatePayout(String cycleId) {
     _cyclePayoutCache.remove(cycleId);
+    _pendingPayoutRequests.remove(cycleId);
+  }
+
+  Future<PayoutModel?> _loadPayout(String cycleId) async {
+    final payload = await _api.getPayout(cycleId);
+    if (payload == null || payload.isEmpty) {
+      _cyclePayoutCache[cycleId] = null;
+      return null;
+    }
+
+    final payout = PayoutModel.fromJson(payload);
+    _cyclePayoutCache[cycleId] = payout;
+    return payout;
   }
 }

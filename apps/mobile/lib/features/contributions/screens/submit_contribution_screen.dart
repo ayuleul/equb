@@ -178,6 +178,7 @@ class _SubmitForm extends ConsumerWidget {
         amount: amount,
         paymentRef: paymentRefController.text,
         note: noteController.text,
+        preferSocketSync: true,
       );
 
       if (!context.mounted || !success) {
@@ -185,7 +186,6 @@ class _SubmitForm extends ConsumerWidget {
       }
 
       AppSnackbars.success(context, 'Contribution submitted successfully');
-      ref.invalidate(cycleContributionsProvider(args));
       Navigator.of(context).pop();
     }
 

@@ -12,13 +12,29 @@ class ContributionsRepository {
   ContributionsRepository(this._api);
 
   final ContributionsApi _api;
+  final Map<String, Future<ContributionListModel>>
+  _pendingCycleContributionsRequests =
+      <String, Future<ContributionListModel>>{};
+  final Map<String, Future<List<ContributionDisputeModel>>>
+  _pendingDisputesRequests = <String, Future<List<ContributionDisputeModel>>>{};
 
   Future<ContributionListModel> listCycleContributions(
     String groupId,
     String cycleId,
   ) async {
-    final payload = await _api.listCycleContributions(groupId, cycleId);
-    return ContributionListModel.fromJson(payload);
+    final cacheKey = '$groupId:$cycleId';
+    final pending = _pendingCycleContributionsRequests[cacheKey];
+    if (pending != null) {
+      return pending;
+    }
+
+    final request = _loadCycleContributions(groupId, cycleId);
+    _pendingCycleContributionsRequests[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      _pendingCycleContributionsRequests.remove(cacheKey);
+    }
   }
 
   Future<ContributionModel> submitContribution(
@@ -58,10 +74,18 @@ class ContributionsRepository {
   Future<List<ContributionDisputeModel>> listContributionDisputes(
     String contributionId,
   ) async {
-    final payload = await _api.listContributionDisputes(contributionId);
-    return payload
-        .map(ContributionDisputeModel.fromJson)
-        .toList(growable: false);
+    final pending = _pendingDisputesRequests[contributionId];
+    if (pending != null) {
+      return pending;
+    }
+
+    final request = _loadContributionDisputes(contributionId);
+    _pendingDisputesRequests[contributionId] = request;
+    try {
+      return await request;
+    } finally {
+      _pendingDisputesRequests.remove(contributionId);
+    }
   }
 
   Future<ContributionDisputeModel> createContributionDispute(
@@ -97,5 +121,22 @@ class ContributionsRepository {
       ResolveDisputeRequest(outcome: outcome.trim(), note: note),
     );
     return ContributionDisputeModel.fromJson(payload);
+  }
+
+  Future<ContributionListModel> _loadCycleContributions(
+    String groupId,
+    String cycleId,
+  ) async {
+    final payload = await _api.listCycleContributions(groupId, cycleId);
+    return ContributionListModel.fromJson(payload);
+  }
+
+  Future<List<ContributionDisputeModel>> _loadContributionDisputes(
+    String contributionId,
+  ) async {
+    final payload = await _api.listContributionDisputes(contributionId);
+    return payload
+        .map(ContributionDisputeModel.fromJson)
+        .toList(growable: false);
   }
 }

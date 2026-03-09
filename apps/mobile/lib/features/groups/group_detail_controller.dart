@@ -112,6 +112,41 @@ class GroupDetailController {
     ]);
   }
 
+  Future<void> refreshCurrentTurnState(
+    String groupId, {
+    String? cycleId,
+  }) async {
+    _ref.read(cyclesRepositoryProvider).invalidateGroupCache(groupId);
+    _ref.invalidate(currentCycleProvider(groupId));
+    _ref.invalidate(cyclesListProvider(groupId));
+
+    final currentCycleFuture = _ref.read(currentCycleProvider(groupId).future);
+    final cyclesFuture = _ref.read(cyclesListProvider(groupId).future);
+
+    await Future.wait([currentCycleFuture, cyclesFuture]);
+
+    final resolvedCycleId = cycleId ?? (await currentCycleFuture)?.id;
+    if (resolvedCycleId == null) {
+      return;
+    }
+
+    _ref.read(payoutsRepositoryProvider).invalidatePayout(resolvedCycleId);
+    _ref.invalidate(
+      cycleContributionsProvider((groupId: groupId, cycleId: resolvedCycleId)),
+    );
+    _ref.invalidate(cyclePayoutProvider(resolvedCycleId));
+
+    await Future.wait([
+      _ref.read(
+        cycleContributionsProvider((
+          groupId: groupId,
+          cycleId: resolvedCycleId,
+        )).future,
+      ),
+      _ref.read(cyclePayoutProvider(resolvedCycleId).future),
+    ]);
+  }
+
   Future<void> refreshAfterCycleStart(String groupId) {
     return refreshGroupPage(groupId);
   }

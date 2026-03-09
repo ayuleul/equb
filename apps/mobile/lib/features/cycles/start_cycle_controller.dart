@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/bootstrap.dart';
 import '../../data/cycles/cycles_repository.dart';
 import '../../data/models/cycle_model.dart';
+import '../../data/realtime/socket_sync_policy.dart';
 import '../../shared/utils/api_error_mapper.dart';
 import '../groups/group_detail_controller.dart';
 
@@ -56,9 +59,18 @@ class StartCycleController extends StateNotifier<StartCycleState> {
 
     try {
       final createdCycle = await _repository.startCycle(groupId);
-      await _ref
-          .read(groupDetailControllerProvider)
-          .refreshAfterCycleStart(groupId);
+      unawaited(
+        _ref
+            .read(socketSyncPolicyProvider)
+            .waitForSocketOrFallback(
+              eventTypes: const {'turn.started'},
+              groupId: groupId,
+              turnId: createdCycle.id,
+              fallback: () => _ref
+                  .read(groupDetailControllerProvider)
+                  .refreshAfterCycleStart(groupId),
+            ),
+      );
 
       state = state.copyWith(isSubmitting: false, clearError: true);
       return createdCycle;

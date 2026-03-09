@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/bootstrap.dart';
 import '../../data/auctions/auction_repository.dart';
+import '../../data/realtime/socket_sync_policy.dart';
 import '../../shared/utils/api_error_mapper.dart';
 import '../groups/group_detail_controller.dart';
 import 'cycle_bids_provider.dart';
@@ -69,7 +72,7 @@ class CycleAuctionActionController
   final CycleAuctionArgs _args;
   final AuctionRepository repository;
 
-  Future<bool> openAuction() async {
+  Future<bool> openAuction({bool preferSocketSync = false}) async {
     state = state.copyWith(
       isLoading: true,
       actionType: CycleAuctionActionType.opening,
@@ -78,7 +81,20 @@ class CycleAuctionActionController
 
     try {
       await repository.openAuction(_args.cycleId);
-      await _refreshCycleData();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'turn.updated'},
+                groupId: _args.groupId,
+                turnId: _args.cycleId,
+                fallback: _refreshCycleData,
+              ),
+        );
+      } else {
+        await _refreshCycleData();
+      }
       state = state.copyWith(
         isLoading: false,
         actionType: CycleAuctionActionType.none,
@@ -95,7 +111,7 @@ class CycleAuctionActionController
     }
   }
 
-  Future<bool> closeAuction() async {
+  Future<bool> closeAuction({bool preferSocketSync = false}) async {
     state = state.copyWith(
       isLoading: true,
       actionType: CycleAuctionActionType.closing,
@@ -104,7 +120,20 @@ class CycleAuctionActionController
 
     try {
       await repository.closeAuction(_args.cycleId);
-      await _refreshCycleData();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'turn.updated', 'winner.selected'},
+                groupId: _args.groupId,
+                turnId: _args.cycleId,
+                fallback: _refreshCycleData,
+              ),
+        );
+      } else {
+        await _refreshCycleData();
+      }
       state = state.copyWith(
         isLoading: false,
         actionType: CycleAuctionActionType.none,
@@ -121,7 +150,7 @@ class CycleAuctionActionController
     }
   }
 
-  Future<bool> submitBid(int amount) async {
+  Future<bool> submitBid(int amount, {bool preferSocketSync = false}) async {
     state = state.copyWith(
       isLoading: true,
       actionType: CycleAuctionActionType.bidding,
@@ -130,7 +159,23 @@ class CycleAuctionActionController
 
     try {
       await repository.submitBid(_args.cycleId, amount);
-      _ref.invalidate(cycleBidsProvider(_args.cycleId));
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'turn.updated'},
+                groupId: _args.groupId,
+                turnId: _args.cycleId,
+                fallback: () async {
+                  _ref.invalidate(cycleBidsProvider(_args.cycleId));
+                  await _ref.read(cycleBidsProvider(_args.cycleId).future);
+                },
+              ),
+        );
+      } else {
+        _ref.invalidate(cycleBidsProvider(_args.cycleId));
+      }
       state = state.copyWith(
         isLoading: false,
         actionType: CycleAuctionActionType.none,
@@ -152,13 +197,25 @@ class CycleAuctionActionController
         .read(cyclesRepositoryProvider)
         .invalidateCycleDetail(_args.groupId, _args.cycleId);
     _ref.read(cyclesRepositoryProvider).invalidateGroupCache(_args.groupId);
-    _ref.read(groupsRepositoryProvider).invalidateGroup(_args.groupId);
     _ref.invalidate(
       cycleDetailProvider((groupId: _args.groupId, cycleId: _args.cycleId)),
     );
     _ref.invalidate(currentCycleProvider(_args.groupId));
     _ref.invalidate(cyclesListProvider(_args.groupId));
-    _ref.invalidate(groupDetailProvider(_args.groupId));
     _ref.invalidate(cycleBidsProvider(_args.cycleId));
+    await Future.wait([
+      _ref.read(
+        cycleDetailProvider((
+          groupId: _args.groupId,
+          cycleId: _args.cycleId,
+        )).future,
+      ),
+      _ref.read(currentCycleProvider(_args.groupId).future),
+      _ref.read(cyclesListProvider(_args.groupId).future),
+      _ref.read(cycleBidsProvider(_args.cycleId).future),
+      _ref
+          .read(groupDetailControllerProvider)
+          .refreshCurrentTurnState(_args.groupId, cycleId: _args.cycleId),
+    ]);
   }
 }

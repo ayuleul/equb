@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -11,6 +12,7 @@ import '../../data/files/files_repository.dart';
 import '../../data/payouts/payouts_repository.dart';
 import '../../data/models/create_payout_request.dart';
 import '../../data/models/signed_upload_request.dart';
+import '../../data/realtime/socket_sync_policy.dart';
 import '../../shared/utils/api_error_mapper.dart';
 import '../../shared/utils/upload_error_mapper.dart';
 import '../cycles/current_cycle_provider.dart';
@@ -196,7 +198,10 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     state = state.copyWith(clearError: true);
   }
 
-  Future<bool> selectWinner({String? userId}) async {
+  Future<bool> selectWinner({
+    String? userId,
+    bool preferSocketSync = false,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       actionType: PayoutActionType.selectingWinner,
@@ -209,8 +214,20 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
         args.cycleId,
         userId: _normalizeOptional(userId),
       );
-
-      _invalidateAfterMutation();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'winner.selected', 'turn.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                fallback: _refreshAfterMutation,
+              ),
+        );
+      } else {
+        await _refreshAfterMutation();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -228,7 +245,11 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     }
   }
 
-  Future<bool> disbursePayout({String? paymentRef, String? note}) async {
+  Future<bool> disbursePayout({
+    String? paymentRef,
+    String? note,
+    bool preferSocketSync = false,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       actionType: PayoutActionType.disbursing,
@@ -278,8 +299,20 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
         paymentRef: _normalizeOptional(paymentRef),
         note: _normalizeOptional(note),
       );
-
-      _invalidateAfterMutation();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'payout.updated', 'turn.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                fallback: _refreshAfterMutation,
+              ),
+        );
+      } else {
+        await _refreshAfterMutation();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -309,6 +342,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     int? amount,
     String? paymentRef,
     String? note,
+    bool preferSocketSync = false,
   }) async {
     state = state.copyWith(
       isLoading: true,
@@ -326,8 +360,20 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
           note: _normalizeOptional(note),
         ),
       );
-
-      _invalidateAfterMutation();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'payout.updated', 'turn.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                fallback: _refreshAfterMutation,
+              ),
+        );
+      } else {
+        await _refreshAfterMutation();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -345,7 +391,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     }
   }
 
-  Future<bool> confirmPayoutReceived() async {
+  Future<bool> confirmPayoutReceived({bool preferSocketSync = false}) async {
     state = state.copyWith(
       isLoading: true,
       actionType: PayoutActionType.confirming,
@@ -354,8 +400,20 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
 
     try {
       await _payoutsRepository.confirmTurnPayoutReceived(args.cycleId);
-
-      _invalidateAfterMutation();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'payout.updated', 'turn.completed'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                fallback: _refreshAfterMutation,
+              ),
+        );
+      } else {
+        await _refreshAfterMutation();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -373,7 +431,10 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     }
   }
 
-  Future<bool> closeCycle({bool autoNext = false}) async {
+  Future<bool> closeCycle({
+    bool autoNext = false,
+    bool preferSocketSync = false,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       actionType: PayoutActionType.closing,
@@ -396,7 +457,23 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
         return false;
       }
 
-      _invalidateAfterMutation();
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {
+                  'turn.started',
+                  'turn.completed',
+                  'turn.updated',
+                },
+                groupId: args.groupId,
+                fallback: _refreshAfterMutation,
+              ),
+        );
+      } else {
+        await _refreshAfterMutation();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -449,7 +526,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     return value;
   }
 
-  void _invalidateAfterMutation() {
+  Future<void> _refreshAfterMutation() async {
     _payoutsRepository.invalidatePayout(args.cycleId);
     _cyclesRepository.invalidateCycleDetail(args.groupId, args.cycleId);
     _cyclesRepository.invalidateGroupCache(args.groupId);
@@ -460,5 +537,16 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     );
     _ref.invalidate(currentCycleProvider(args.groupId));
     _ref.invalidate(cyclesListProvider(args.groupId));
+    await Future.wait([
+      _ref.read(cyclePayoutProvider(args.cycleId).future),
+      _ref.read(
+        cycleDetailProvider((
+          groupId: args.groupId,
+          cycleId: args.cycleId,
+        )).future,
+      ),
+      _ref.read(currentCycleProvider(args.groupId).future),
+      _ref.read(cyclesListProvider(args.groupId).future),
+    ]);
   }
 }

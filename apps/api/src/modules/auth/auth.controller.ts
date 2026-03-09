@@ -27,7 +27,7 @@ export class AuthController {
 
   @Post('request-otp')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ otp: { ttl: 60_000, limit: 5 } })
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({ summary: 'Request OTP for login' })
   @ApiBody({ type: RequestOtpDto })
   @ApiOkResponse({ type: RequestOtpResponseDto })
@@ -38,7 +38,7 @@ export class AuthController {
 
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ otp: { ttl: 60_000, limit: 10 } })
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @ApiOperation({ summary: 'Verify OTP and issue access/refresh tokens' })
   @ApiBody({ type: VerifyOtpDto })
   @ApiOkResponse({ type: AuthTokensResponseDto })

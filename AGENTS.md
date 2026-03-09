@@ -24,6 +24,7 @@
 - S3-compatible storage for proof uploads (signed URLs)
 - Validation: use `class-validator` + `class-transformer`
 - API docs: Swagger enabled in dev
+- Realtime uses Socket.IO only as a live-update enhancement for Group Details and Turn Details; REST remains the source of truth for initial and full-state loads.
 
 ## Coding standards
 - Prefer small diffs and incremental commits.
@@ -44,6 +45,7 @@
 - Refresh tokens stored hashed; rotate on refresh; allow revoke on logout.
 - Signed upload URLs must be scoped to authenticated user and group membership.
 - Use rate limiting on OTP endpoints.
+- With `@nestjs/throttler`, do not register OTP as a second global named throttler for the whole app; keep the global app throttler limited to the default bucket and override OTP routes explicitly, otherwise normal routes can still be rate-limited by the OTP bucket.
 - Group role/status transitions must never leave a group with zero ACTIVE admins.
 
 ## Profile completion rules
@@ -215,6 +217,14 @@
   - `FCM_PROJECT_ID`
   - `FCM_CLIENT_EMAIL`
   - `FCM_PRIVATE_KEY` (supports escaped newlines)
+
+## Realtime rules
+- Realtime is enabled first for Group Details and Turn Details only; do not expand it into a socket-first app architecture without an explicit product decision.
+- Group/turn screens must join and leave their realtime rooms explicitly (`group:{groupId}` and `turn:{turnId}`).
+- Socket payloads are invalidation signals: clients should refetch relevant REST providers instead of applying complex local entity patches.
+- Socket-triggered refreshes on active screens must be debounced/coalesced so bursts of domain events do not stampede the API.
+- Realtime must stay non-blocking; when sockets are unavailable, the app must continue working through existing REST flows.
+- Read-heavy authenticated endpoints paired with realtime-driven detail screens must not use the global default throttler when normal UI refresh/poll behavior would otherwise trigger `429`.
 
 ## Folder conventions
 - `apps/api` is the canonical backend implementation path. If a legacy `server/` scaffold exists, treat it as deprecated bootstrap code and do not add new phase work there.

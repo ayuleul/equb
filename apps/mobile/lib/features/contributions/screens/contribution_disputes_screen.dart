@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../../../app/bootstrap.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/contribution_dispute_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/realtime/socket_sync_policy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -32,6 +35,16 @@ class ContributionDisputesScreen extends ConsumerStatefulWidget {
 class _ContributionDisputesScreenState
     extends ConsumerState<ContributionDisputesScreen> {
   bool _isBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,11 +160,27 @@ class _ContributionDisputesScreenState
       await ref
           .read(contributionsRepositoryProvider)
           .createContributionDispute(widget.contributionId, reason: reason);
+      unawaited(
+        ref
+            .read(socketSyncPolicyProvider)
+            .waitForSocketOrFallback(
+              eventTypes: const {'dispute.updated'},
+              groupId: widget.groupId,
+              turnId: widget.cycleId,
+              fallback: () async {
+                ref.invalidate(
+                  contributionDisputesProvider(widget.contributionId),
+                );
+                await ref.read(
+                  contributionDisputesProvider(widget.contributionId).future,
+                );
+              },
+            ),
+      );
       if (!mounted) {
         return;
       }
       KitToast.success(context, 'Dispute opened');
-      ref.invalidate(contributionDisputesProvider(widget.contributionId));
     } catch (error) {
       if (!mounted) {
         return;
@@ -181,11 +210,27 @@ class _ContributionDisputesScreenState
       await ref
           .read(contributionsRepositoryProvider)
           .mediateDispute(disputeId, note: note);
+      unawaited(
+        ref
+            .read(socketSyncPolicyProvider)
+            .waitForSocketOrFallback(
+              eventTypes: const {'dispute.updated'},
+              groupId: widget.groupId,
+              turnId: widget.cycleId,
+              fallback: () async {
+                ref.invalidate(
+                  contributionDisputesProvider(widget.contributionId),
+                );
+                await ref.read(
+                  contributionDisputesProvider(widget.contributionId).future,
+                );
+              },
+            ),
+      );
       if (!mounted) {
         return;
       }
       KitToast.success(context, 'Dispute moved to mediating');
-      ref.invalidate(contributionDisputesProvider(widget.contributionId));
     } catch (error) {
       if (!mounted) {
         return;
@@ -215,12 +260,27 @@ class _ContributionDisputesScreenState
       await ref
           .read(contributionsRepositoryProvider)
           .resolveDispute(disputeId, outcome: outcome, note: null);
+      unawaited(
+        ref
+            .read(socketSyncPolicyProvider)
+            .waitForSocketOrFallback(
+              eventTypes: const {'dispute.updated'},
+              groupId: widget.groupId,
+              turnId: widget.cycleId,
+              fallback: () async {
+                ref.invalidate(
+                  contributionDisputesProvider(widget.contributionId),
+                );
+                await ref.read(
+                  contributionDisputesProvider(widget.contributionId).future,
+                );
+              },
+            ),
+      );
       if (!mounted) {
         return;
       }
       KitToast.success(context, 'Dispute resolved');
-      ref.invalidate(contributionDisputesProvider(widget.contributionId));
-      await ref.read(groupDetailControllerProvider).refreshAll(widget.groupId);
     } catch (error) {
       if (!mounted) {
         return;

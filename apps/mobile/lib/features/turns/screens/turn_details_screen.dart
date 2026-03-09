@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +25,7 @@ import '../../cycles/cycle_bids_provider.dart';
 import '../../cycles/cycle_detail_provider.dart';
 import '../../groups/group_detail_controller.dart';
 import '../../payouts/cycle_payout_provider.dart';
+import '../turn_detail_controller.dart';
 import '../turn_disputes_provider.dart';
 
 class TurnDetailsScreen extends ConsumerStatefulWidget {
@@ -47,10 +49,19 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
   void initState() {
     super.initState();
     _bidAmountController = TextEditingController();
+    ref
+        .read(realtimeClientProvider)
+        .joinTurn(widget.turnId, groupId: widget.groupId);
   }
 
   @override
   void dispose() {
+    ref.read(realtimeClientProvider).leaveTurn(widget.turnId);
+    unawaited(
+      ref
+          .read(groupDetailControllerProvider)
+          .refreshCurrentTurnState(widget.groupId, cycleId: widget.turnId),
+    );
     _bidAmountController.dispose();
     super.dispose();
   }
@@ -92,28 +103,6 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
       }
     });
 
-    Future<void> onRefresh() async {
-      ref
-          .read(cyclesRepositoryProvider)
-          .invalidateCycleDetail(widget.groupId, widget.turnId);
-      ref.read(cyclesRepositoryProvider).invalidateGroupCache(widget.groupId);
-      ref.read(payoutsRepositoryProvider).invalidatePayout(widget.turnId);
-      ref.read(groupsRepositoryProvider).invalidateGroup(widget.groupId);
-      ref.invalidate(cycleDetailProvider(args));
-      ref.invalidate(cycleContributionsProvider(args));
-      ref.invalidate(cyclePayoutProvider(widget.turnId));
-      ref.invalidate(
-        turnDisputesProvider((groupId: widget.groupId, cycleId: widget.turnId)),
-      );
-      ref.invalidate(cycleBidsProvider(widget.turnId));
-      ref.invalidate(groupDetailProvider(widget.groupId));
-
-      await Future.wait([
-        ref.read(cycleDetailProvider(args).future),
-        ref.read(cycleContributionsProvider(args).future),
-      ]);
-    }
-
     return KitScaffold(
       appBar: const KitAppBar(title: 'Turn details'),
       child: groupAsync.when(
@@ -142,7 +131,7 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
             );
 
             return RefreshIndicator(
-              onRefresh: onRefresh,
+              onRefresh: _refreshTurn,
               child: ListView(
                 children: [
                   const SizedBox(height: AppSpacing.xs),
@@ -247,6 +236,12 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _refreshTurn() async {
+    await ref
+        .read(turnDetailControllerProvider)
+        .refreshTurn(widget.groupId, widget.turnId);
   }
 }
 
@@ -411,7 +406,7 @@ class _ContributionProgressCard extends ConsumerWidget {
                                   cycleId: cycle.id,
                                 )).notifier,
                               )
-                              .evaluateCycleCollection();
+                              .evaluateCycleCollection(preferSocketSync: true);
                           if (!context.mounted || evaluation == null) {
                             return;
                           }
@@ -534,7 +529,7 @@ class _ContributionRow extends ConsumerWidget {
                   .read(
                     adminContributionActionsControllerProvider(args).notifier,
                   )
-                  .confirm(contribution.id);
+                  .confirm(contribution.id, preferSocketSync: true);
               if (!context.mounted || !success) {
                 return;
               }
@@ -561,7 +556,7 @@ class _ContributionRow extends ConsumerWidget {
                   .read(
                     adminContributionActionsControllerProvider(args).notifier,
                   )
-                  .reject(contribution.id, reason);
+                  .reject(contribution.id, reason, preferSocketSync: true);
               if (!context.mounted || !success) {
                 return;
               }
@@ -824,7 +819,7 @@ class _AuctionSection extends ConsumerWidget {
                                 args,
                               ).notifier,
                             )
-                            .submitBid(amount);
+                            .submitBid(amount, preferSocketSync: true);
                         if (!context.mounted || !success) {
                           return;
                         }
@@ -845,7 +840,7 @@ class _AuctionSection extends ConsumerWidget {
                                 args,
                               ).notifier,
                             )
-                            .closeAuction();
+                            .closeAuction(preferSocketSync: true);
                         if (!context.mounted || !success) {
                           return;
                         }

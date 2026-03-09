@@ -21,6 +21,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { GroupAdminGuard } from '../../common/guards/group-admin.guard';
@@ -112,6 +113,7 @@ export class GroupsController {
 
   @Get(':id')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Members')
   @ApiOperation({ summary: 'Get group details for current member' })
   @ApiOkResponse({ type: GroupDetailResponseDto })
@@ -126,6 +128,7 @@ export class GroupsController {
 
   @Get(':id/rules')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Rules')
   @ApiOperation({ summary: 'Get group ruleset' })
   @ApiOkResponse({
@@ -200,6 +203,7 @@ export class GroupsController {
 
   @Get(':id/members')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Members')
   @ApiOperation({ summary: 'List members in a group' })
   @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
@@ -300,6 +304,7 @@ export class GroupsController {
 
   @Get(':id/cycles/current')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Cycles')
   @ApiOperation({ summary: 'Get current open cycle for a group' })
   @ApiOkResponse({ type: GroupCycleResponseDto })
@@ -312,6 +317,7 @@ export class GroupsController {
 
   @Get(':id/cycles/:cycleId')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Cycles')
   @ApiOperation({ summary: 'Get cycle details by id' })
   @ApiOkResponse({ type: GroupCycleResponseDto })
@@ -326,6 +332,7 @@ export class GroupsController {
 
   @Get(':id/cycles')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Cycles')
   @ApiOperation({ summary: 'List cycles for a group' })
   @ApiOkResponse({ type: GroupCycleResponseDto, isArray: true })

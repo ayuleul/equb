@@ -24,6 +24,7 @@ import type { AuthenticatedUser } from '../../common/types/authenticated-user.ty
 import { CreateContributionDisputeDto } from './dto/create-contribution-dispute.dto';
 import { MediateDisputeDto } from './dto/mediate-dispute.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { RejectContributionDto } from './dto/reject-contribution.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 import { SubmitContributionDto } from './dto/submit-contribution.dto';
@@ -88,6 +89,7 @@ export class ContributionsService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
+    private readonly realtimeService: RealtimeService,
   ) {}
 
   async submitContribution(
@@ -314,6 +316,19 @@ export class ContributionsService {
       },
     );
 
+    this.emitContributionRealtimeEvent(
+      'contribution.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.id,
+    );
+    this.emitContributionRealtimeEvent(
+      'turn.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.cycleId,
+    );
+
     return this.toContributionResponse(contribution, true);
   }
 
@@ -423,6 +438,19 @@ export class ContributionsService {
       },
     });
 
+    this.emitContributionRealtimeEvent(
+      'contribution.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.id,
+    );
+    this.emitContributionRealtimeEvent(
+      'turn.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.cycleId,
+    );
+
     return this.toContributionResponse(contribution, true);
   }
 
@@ -512,6 +540,19 @@ export class ContributionsService {
         reason: dto.reason,
       },
     });
+
+    this.emitContributionRealtimeEvent(
+      'contribution.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.id,
+    );
+    this.emitContributionRealtimeEvent(
+      'turn.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.cycleId,
+    );
 
     return this.toContributionResponse(contribution, true);
   }
@@ -727,6 +768,19 @@ export class ContributionsService {
       ),
     );
 
+    this.emitContributionRealtimeEvent(
+      'contribution.updated',
+      evaluation.groupId,
+      evaluation.cycleId,
+      evaluation.cycleId,
+    );
+    this.emitContributionRealtimeEvent(
+      'turn.updated',
+      evaluation.groupId,
+      evaluation.cycleId,
+      evaluation.cycleId,
+    );
+
     return {
       cycleId: evaluation.cycleId,
       dueAt: evaluation.dueAt,
@@ -886,6 +940,13 @@ export class ContributionsService {
         },
       });
     }
+
+    this.emitContributionRealtimeEvent(
+      'dispute.updated',
+      dispute.groupId,
+      dispute.cycleId,
+      dispute.id,
+    );
 
     return this.toContributionDisputeResponse(dispute);
   }
@@ -1069,6 +1130,13 @@ export class ContributionsService {
       });
     }
 
+    this.emitContributionRealtimeEvent(
+      'dispute.updated',
+      dispute.groupId,
+      dispute.cycleId,
+      dispute.id,
+    );
+
     return this.toContributionDisputeResponse(dispute);
   }
 
@@ -1193,6 +1261,13 @@ export class ContributionsService {
         },
       });
     }
+
+    this.emitContributionRealtimeEvent(
+      'dispute.updated',
+      dispute.groupId,
+      dispute.cycleId,
+      dispute.id,
+    );
 
     return this.toContributionDisputeResponse(dispute);
   }
@@ -1454,6 +1529,21 @@ export class ContributionsService {
     const date = new Date(value);
     date.setDate(date.getDate() + days);
     return date;
+  }
+
+  private emitContributionRealtimeEvent(
+    eventType: string,
+    groupId: string,
+    turnId: string,
+    entityId: string,
+  ): void {
+    this.realtimeService.emitTurnEvent(groupId, turnId, {
+      eventType,
+      groupId,
+      turnId,
+      entityId,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   private toContributionDisputeResponse(

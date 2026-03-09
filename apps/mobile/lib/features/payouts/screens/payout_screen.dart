@@ -627,6 +627,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                               .disbursePayout(
                                 paymentRef: disbursePaymentRefController.text,
                                 note: disburseNoteController.text,
+                                preferSocketSync: true,
                               );
 
                           if (!context.mounted) {
@@ -679,7 +680,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                               .read(
                                 payoutActionControllerProvider(args).notifier,
                               )
-                              .confirmPayoutReceived();
+                              .confirmPayoutReceived(preferSocketSync: true);
 
                           if (!context.mounted) {
                             return;
@@ -736,7 +737,7 @@ class _WinnerSelectionContent extends ConsumerWidget {
     Future<void> runSelection({String? userId}) async {
       final success = await ref
           .read(payoutActionControllerProvider(args).notifier)
-          .selectWinner(userId: userId);
+          .selectWinner(userId: userId, preferSocketSync: true);
 
       if (!context.mounted) {
         return;

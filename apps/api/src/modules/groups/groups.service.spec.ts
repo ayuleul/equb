@@ -99,7 +99,9 @@ describe('GroupsService.startCycle', () => {
       listCompletedWinnerUserIds: jest.fn().mockResolvedValue([]),
       computeRemainingEligibleWinnerUserIds: jest
         .fn()
-        .mockImplementation((participantUserIds: string[]) => participantUserIds),
+        .mockImplementation(
+          (participantUserIds: string[]) => participantUserIds,
+        ),
       closeRoundIfOpen: jest.fn().mockResolvedValue(undefined),
     } as unknown as RoundEligibilityService;
 
@@ -121,6 +123,7 @@ describe('GroupsService.startCycle', () => {
       { notifyGroupAdmins: jest.fn() } as never,
       roundEligibilityService,
       winnerSelectionService,
+      { emitGroupEvent: jest.fn(), emitTurnEvent: jest.fn() } as never,
     );
 
     jest.spyOn(service, 'getCycleById').mockResolvedValue({

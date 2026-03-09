@@ -27,6 +27,7 @@ import { isPayoutProofKeyScopedTo } from '../contributions/utils/proof-key.util'
 import { GroupCycleResponseDto } from '../groups/entities/groups.entities';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { CloseCycleDto } from './dto/close-cycle.dto';
 import { ConfirmPayoutDto } from './dto/confirm-payout.dto';
 import { CreatePayoutDto } from './dto/create-payout.dto';
@@ -69,6 +70,7 @@ export class PayoutsService {
     private readonly groupsService: GroupsService,
     private readonly roundEligibilityService: RoundEligibilityService,
     private readonly winnerSelectionService: WinnerSelectionService,
+    private readonly realtimeService: RealtimeService,
   ) {}
 
   async selectWinner(
@@ -187,6 +189,18 @@ export class PayoutsService {
         },
       },
       { excludeUserId: selection.winnerUserId },
+    );
+    this.emitTurnRealtimeEvent(
+      'winner.selected',
+      selection.groupId,
+      selection.cycleId,
+      selection.winnerUserId,
+    );
+    this.emitTurnRealtimeEvent(
+      'turn.updated',
+      selection.groupId,
+      selection.cycleId,
+      selection.cycleId,
     );
 
     return this.groupsService.getCycleById(
@@ -421,6 +435,19 @@ export class PayoutsService {
       },
     });
 
+    this.emitTurnRealtimeEvent(
+      'payout.updated',
+      result.groupId,
+      result.cycleId,
+      result.id,
+    );
+    this.emitTurnRealtimeEvent(
+      'turn.updated',
+      result.groupId,
+      result.cycleId,
+      result.cycleId,
+    );
+
     return this.toPayoutResponse(result);
   }
 
@@ -631,6 +658,19 @@ export class PayoutsService {
       },
     });
 
+    this.emitTurnRealtimeEvent(
+      'payout.updated',
+      payout.groupId,
+      payout.cycleId,
+      payout.id,
+    );
+    this.emitTurnRealtimeEvent(
+      'turn.completed',
+      payout.groupId,
+      payout.cycleId,
+      payout.cycleId,
+    );
+
     return this.toPayoutResponse(payout);
   }
 
@@ -746,5 +786,20 @@ export class PayoutsService {
       confirmedAt: payout.confirmedAt,
       toUser: payout.toUser,
     };
+  }
+
+  private emitTurnRealtimeEvent(
+    eventType: string,
+    groupId: string,
+    turnId: string,
+    entityId: string,
+  ): void {
+    this.realtimeService.emitTurnEvent(groupId, turnId, {
+      eventType,
+      groupId,
+      turnId,
+      entityId,
+      timestamp: new Date().toISOString(),
+    });
   }
 }

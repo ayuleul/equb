@@ -164,6 +164,7 @@ describe('ContributionsService.evaluateCycleCollection', () => {
         notifyUser: jest.fn(),
         notifyGroupAdmins: jest.fn(),
       } as never,
+      { emitTurnEvent: jest.fn() } as never,
     );
 
     return { service, updatedStates };
@@ -183,5 +184,117 @@ describe('ContributionsService.evaluateCycleCollection', () => {
     await service.evaluateCycleCollection(currentUser, 'cycle-1');
 
     expect(updatedStates).toContain(CycleState.READY_FOR_WINNER_SELECTION);
+  });
+});
+
+describe('ContributionsService.verifyContribution realtime emissions', () => {
+  const currentUser: AuthenticatedUser = {
+    id: 'user-admin',
+    phone: '+251911111111',
+  };
+
+  it('emits contribution and turn realtime events after verification', async () => {
+    const contributionRecord = {
+      id: 'contribution-1',
+      groupId: 'group-1',
+      cycleId: 'cycle-1',
+      userId: 'user-member',
+      amount: 500,
+      status: ContributionStatus.VERIFIED,
+      paymentMethod: null,
+      proofFileKey: null,
+      paymentRef: null,
+      note: null,
+      submittedAt: null,
+      confirmedAt: new Date('2026-03-09T00:00:00.000Z'),
+      confirmedByUserId: currentUser.id,
+      rejectedAt: null,
+      rejectedByUserId: null,
+      rejectReason: null,
+      lateMarkedAt: null,
+      createdAt: new Date('2026-03-09T00:00:00.000Z'),
+      user: {
+        id: 'user-member',
+        fullName: 'Member',
+        phone: '+251922222222',
+      },
+    };
+    const txMock = {
+      contribution: {
+        findUnique: jest.fn().mockResolvedValue({
+          ...contributionRecord,
+          status: ContributionStatus.PAID_SUBMITTED,
+        }),
+        update: jest.fn().mockResolvedValue(contributionRecord),
+        count: jest.fn().mockResolvedValue(2),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'contribution-1', status: ContributionStatus.VERIFIED },
+          { id: 'contribution-2', status: ContributionStatus.VERIFIED },
+        ]),
+      },
+      ledgerEntry: {
+        create: jest.fn().mockResolvedValue({}),
+      },
+      equbCycle: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'cycle-1',
+          status: CycleStatus.OPEN,
+          state: CycleState.COLLECTING,
+          selectedWinnerUserId: null,
+          group: {
+            rules: {
+              strictCollection: true,
+              winnerSelectionTiming: 'AFTER_COLLECTION',
+            },
+          },
+          contributions: [
+            { status: ContributionStatus.VERIFIED },
+            { status: ContributionStatus.VERIFIED },
+          ],
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      contributionReceipt: {
+        upsert: jest.fn(),
+      },
+    };
+    const prismaMock = {
+      $transaction: jest.fn(async (callback: (tx: typeof txMock) => unknown) =>
+        callback(txMock),
+      ),
+    } as unknown as PrismaService;
+    const realtimeService = {
+      emitTurnEvent: jest.fn(),
+    };
+    const service = new ContributionsService(
+      prismaMock,
+      { log: jest.fn() } as never,
+      {
+        notifyUser: jest.fn(),
+        notifyGroupAdmins: jest.fn(),
+      } as never,
+      realtimeService as never,
+    );
+
+    await service.verifyContribution(currentUser, 'contribution-1');
+
+    expect(realtimeService.emitTurnEvent).toHaveBeenNthCalledWith(
+      1,
+      'group-1',
+      'cycle-1',
+      expect.objectContaining({
+        eventType: 'contribution.updated',
+        entityId: 'contribution-1',
+      }),
+    );
+    expect(realtimeService.emitTurnEvent).toHaveBeenNthCalledWith(
+      2,
+      'group-1',
+      'cycle-1',
+      expect.objectContaining({
+        eventType: 'turn.updated',
+        entityId: 'cycle-1',
+      }),
+    );
   });
 });

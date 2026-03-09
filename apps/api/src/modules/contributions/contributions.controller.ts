@@ -19,6 +19,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { GroupAdminGuard } from '../../common/guards/group-admin.guard';
@@ -209,6 +210,7 @@ export class ContributionsController {
 
   @Get('contributions/:id/disputes')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiOperation({ summary: 'List disputes for a contribution' })
   @ApiOkResponse({ type: ContributionDisputeResponseDto, isArray: true })
   @ApiForbiddenResponse({ description: 'Active group membership required' })
@@ -269,6 +271,7 @@ export class ContributionsController {
 
   @Get('groups/:id/cycles/:cycleId/contributions')
   @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
   @ApiTags('Cycles')
   @ApiOperation({
     summary: 'List cycle contributions and summary for group members',

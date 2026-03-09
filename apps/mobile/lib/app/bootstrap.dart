@@ -29,6 +29,7 @@ import '../data/profile/profile_api.dart';
 import '../data/profile/profile_repository.dart';
 import '../data/settings/settings_local_store.dart';
 import '../data/auth/token_store.dart';
+import '../data/realtime/realtime_client.dart';
 import '../shared/utils/app_logger.dart';
 
 class AppBootstrapConfig {
@@ -115,6 +116,19 @@ final appBootstrapConfigProvider = Provider<AppBootstrapConfig>((ref) {
 
 final appLoggerProvider = Provider<AppLogger>((ref) {
   return const AppLogger();
+});
+
+final realtimeClientProvider = Provider<RealtimeClient>((ref) {
+  final config = ref.watch(appBootstrapConfigProvider);
+  final tokenStore = ref.watch(tokenStoreProvider);
+  final logger = ref.watch(appLoggerProvider);
+  final client = RealtimeClient(
+    apiBaseUrl: config.apiBaseUrl,
+    tokenStore: tokenStore,
+    logger: logger,
+  );
+  ref.onDispose(client.dispose);
+  return client;
 });
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {

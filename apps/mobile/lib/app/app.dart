@@ -8,6 +8,8 @@ import '../features/notifications/notification_bootstrap_service.dart';
 import '../features/notifications/notifications_list_provider.dart';
 import '../features/settings/app_lock_controller.dart';
 import '../features/settings/widgets/app_lock_overlay.dart';
+import 'bootstrap.dart';
+import '../data/realtime/realtime_sync_controller.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
@@ -47,13 +49,25 @@ class _EqubAppState extends ConsumerState<EqubApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(realtimeSyncControllerProvider);
+
     ref.listen(authControllerProvider, (previous, next) {
       final previousUserId = previous?.user?.id;
       final nextUserId = next.user?.id;
+      final wasAuthenticated = previous?.isAuthenticated ?? false;
       final becameAuthenticated =
           next.isAuthenticated &&
           nextUserId != null &&
           (previousUserId == null || previousUserId != nextUserId);
+      final becameUnauthenticated = wasAuthenticated && !next.isAuthenticated;
+
+      if (becameAuthenticated) {
+        Future<void>.microtask(
+          () => ref.read(realtimeClientProvider).connect(),
+        );
+      } else if (becameUnauthenticated) {
+        ref.read(realtimeClientProvider).disconnect();
+      }
 
       if (!becameAuthenticated) {
         return;

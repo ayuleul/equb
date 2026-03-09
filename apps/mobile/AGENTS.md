@@ -26,6 +26,7 @@
   - `/splash` as initial route while checking token presence
   - `/login` for unauthenticated sessions
   - `/home` for authenticated sessions
+- Realtime sockets are an enhancement only: REST stays the source of truth for initial screen loads and full-state refreshes.
 
 ## Folder conventions
 - `lib/app/`
@@ -146,6 +147,21 @@
 - Group Overview must show cycle summary (completed cycles, last winner, current status) and must not show future-turn lists.
 - Group turn surfaces should show per-member payout progress for the latest round using explicit `Received` / `Pending` states plus the received turn number when available.
 - Cycle-focused UI surfaces must group turn records by round and label completed Equb runs as `Cycle 1`, `Cycle 2`, etc.; a new cycle in the same group must restart visible turn numbering from `Turn 1` instead of continuing the previous round’s turn count.
+
+## Realtime rules
+- Realtime is used first only on Group Details and Turn Details; do not wire socket subscriptions into unrelated screens by default.
+- Only Group Details and Turn Details own realtime room subscriptions. Auxiliary mutation/detail screens under those flows must not join their own socket rooms; they should rely on the underlying detail screen plus one-time fallback refresh if needed.
+- Group and turn screens must join their socket rooms on open and leave them on dispose.
+- Group Details should run one targeted catch-up refresh when it becomes the current route again after deeper group/turn flows are popped, so the page does not depend on manual pull-to-refresh after nested actions.
+- For socket-covered entities, REST is used for initial load and mutation requests only; live state changes after mutation should come from socket events.
+- Socket events should invalidate/refetch Riverpod providers through existing controllers; do not build per-field patch logic for Equb entities in the client.
+- Do not manually refetch socket-covered entities after successful mutation when the same entity will be updated by socket.
+- Use one fallback refetch only if the expected socket event does not arrive within a short timeout; never turn that fallback into polling.
+- Socket is the primary live-update trigger for Group Details and Turn Details.
+- Group-detail socket refresh for turn-state events must use targeted current-turn invalidation (`currentCycle`, `cyclesList`, turn contributions/payout) instead of full group-page reloads; reserve full group-page refresh for membership/setup changes.
+- Realtime-driven refetch on a screen must coalesce burst events into a short debounce window instead of issuing one REST refresh per socket message.
+- Repository read paths used by realtime-driven detail screens must dedupe in-flight requests so repeated invalidations collapse onto a single HTTP call per resource key before hitting Dio.
+- Realtime failures must never block navigation or core REST actions; the screen should continue working with manual/REST refresh.
 
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.

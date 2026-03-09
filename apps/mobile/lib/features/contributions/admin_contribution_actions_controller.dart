@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/bootstrap.dart';
 import '../../data/contributions/contributions_repository.dart';
 import '../../data/models/cycle_collection_evaluation_model.dart';
+import '../../data/realtime/socket_sync_policy.dart';
 import '../../shared/utils/api_error_mapper.dart';
 import '../cycles/cycle_detail_provider.dart';
+import '../groups/group_detail_controller.dart';
 import 'cycle_contributions_provider.dart';
 
 final adminContributionActionsControllerProvider =
@@ -76,7 +80,11 @@ class AdminContributionActionsController
   final CycleContributionsArgs args;
   final ContributionsRepository repository;
 
-  Future<bool> confirm(String contributionId, {String? note}) async {
+  Future<bool> confirm(
+    String contributionId, {
+    String? note,
+    bool preferSocketSync = false,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       activeContributionId: contributionId,
@@ -85,10 +93,21 @@ class AdminContributionActionsController
 
     try {
       await repository.confirmContribution(contributionId, note: note);
-      _ref.invalidate(cycleContributionsProvider(args));
-      _ref.invalidate(
-        cycleDetailProvider((groupId: args.groupId, cycleId: args.cycleId)),
-      );
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'contribution.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                entityId: contributionId,
+                fallback: _fallbackRefresh,
+              ),
+        );
+      } else {
+        await _fallbackRefresh();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -106,7 +125,11 @@ class AdminContributionActionsController
     }
   }
 
-  Future<bool> reject(String contributionId, String reason) async {
+  Future<bool> reject(
+    String contributionId,
+    String reason, {
+    bool preferSocketSync = false,
+  }) async {
     state = state.copyWith(
       isLoading: true,
       activeContributionId: contributionId,
@@ -115,10 +138,21 @@ class AdminContributionActionsController
 
     try {
       await repository.rejectContribution(contributionId, reason);
-      _ref.invalidate(cycleContributionsProvider(args));
-      _ref.invalidate(
-        cycleDetailProvider((groupId: args.groupId, cycleId: args.cycleId)),
-      );
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'contribution.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                entityId: contributionId,
+                fallback: _fallbackRefresh,
+              ),
+        );
+      } else {
+        await _fallbackRefresh();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -136,7 +170,9 @@ class AdminContributionActionsController
     }
   }
 
-  Future<CycleCollectionEvaluationModel?> evaluateCycleCollection() async {
+  Future<CycleCollectionEvaluationModel?> evaluateCycleCollection({
+    bool preferSocketSync = false,
+  }) async {
     state = state.copyWith(
       isEvaluating: true,
       clearError: true,
@@ -145,10 +181,20 @@ class AdminContributionActionsController
 
     try {
       final evaluation = await repository.evaluateCycleCollection(args.cycleId);
-      _ref.invalidate(cycleContributionsProvider(args));
-      _ref.invalidate(
-        cycleDetailProvider((groupId: args.groupId, cycleId: args.cycleId)),
-      );
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'contribution.updated', 'turn.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                fallback: _fallbackRefresh,
+              ),
+        );
+      } else {
+        await _fallbackRefresh();
+      }
 
       state = state.copyWith(
         isEvaluating: false,
@@ -163,5 +209,24 @@ class AdminContributionActionsController
       );
       return null;
     }
+  }
+
+  Future<void> _fallbackRefresh() async {
+    _ref.invalidate(cycleContributionsProvider(args));
+    _ref.invalidate(
+      cycleDetailProvider((groupId: args.groupId, cycleId: args.cycleId)),
+    );
+    await Future.wait([
+      _ref.read(cycleContributionsProvider(args).future),
+      _ref.read(
+        cycleDetailProvider((
+          groupId: args.groupId,
+          cycleId: args.cycleId,
+        )).future,
+      ),
+      _ref
+          .read(groupDetailControllerProvider)
+          .refreshCurrentTurnState(args.groupId, cycleId: args.cycleId),
+    ]);
   }
 }

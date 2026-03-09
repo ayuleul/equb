@@ -66,6 +66,7 @@ import {
   GROUP_RULESET_REQUIRED_REASON_CODE,
 } from './groups.constants';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 @Injectable()
 export class GroupsService {
@@ -77,6 +78,7 @@ export class GroupsService {
     private readonly notificationsService: NotificationsService,
     private readonly roundEligibilityService: RoundEligibilityService,
     private readonly winnerSelectionService: WinnerSelectionService,
+    private readonly realtimeService: RealtimeService,
   ) {}
 
   async createGroup(
@@ -689,6 +691,13 @@ export class GroupsService {
       },
     );
 
+    this.realtimeService.emitGroupEvent(
+      result.groupId,
+      this.buildRealtimeEvent('member.updated', result.groupId, {
+        entityId: currentUser.id,
+      }),
+    );
+
     return result;
   }
 
@@ -806,6 +815,13 @@ export class GroupsService {
       groupId,
     );
 
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('member.updated', groupId, {
+        entityId: updatedMembership.id,
+      }),
+    );
+
     return this.toMemberResponse(updatedMembership);
   }
 
@@ -881,6 +897,13 @@ export class GroupsService {
         nextRole: dto.role,
       },
       groupId,
+    );
+
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('member.updated', groupId, {
+        entityId: updatedMembership.id,
+      }),
     );
 
     return this.toMemberResponse(updatedMembership);
@@ -989,6 +1012,13 @@ export class GroupsService {
         nextStatus: requestedStatus,
       },
       groupId,
+    );
+
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('member.updated', groupId, {
+        entityId: updatedMembership.id,
+      }),
     );
 
     return this.toMemberResponse(updatedMembership);
@@ -1300,8 +1330,37 @@ export class GroupsService {
       },
       groupId,
     );
+    const cycle = await this.getCycleById(groupId, cycleResult.cycleId);
 
-    return this.getCycleById(groupId, cycleResult.cycleId);
+    this.realtimeService.emitTurnEvent(
+      groupId,
+      cycle.id,
+      this.buildRealtimeEvent('turn.started', groupId, {
+        turnId: cycle.id,
+        entityId: cycle.id,
+      }),
+    );
+
+    if (cycle.selectedWinnerUserId) {
+      this.realtimeService.emitTurnEvent(
+        groupId,
+        cycle.id,
+        this.buildRealtimeEvent('winner.selected', groupId, {
+          turnId: cycle.id,
+          entityId: cycle.selectedWinnerUserId,
+        }),
+      );
+      this.realtimeService.emitTurnEvent(
+        groupId,
+        cycle.id,
+        this.buildRealtimeEvent('turn.updated', groupId, {
+          turnId: cycle.id,
+          entityId: cycle.id,
+        }),
+      );
+    }
+
+    return cycle;
   }
 
   async getCurrentCycle(
@@ -1899,5 +1958,24 @@ export class GroupsService {
     }
 
     return `${baseUrl.replace(/\/$/, '')}/groups/join?code=${code}`;
+  }
+
+  private buildRealtimeEvent(
+    eventType: string,
+    groupId: string,
+    options?: {
+      turnId?: string;
+      entityId?: string;
+      summary?: Record<string, unknown>;
+    },
+  ) {
+    return {
+      eventType,
+      groupId,
+      turnId: options?.turnId,
+      entityId: options?.entityId,
+      timestamp: new Date().toISOString(),
+      summary: options?.summary,
+    };
   }
 }

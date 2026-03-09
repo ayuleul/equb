@@ -5,11 +5,12 @@ import { RoundEligibilityService } from '../../common/cycles/round-eligibility.s
 import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import { DateService } from '../../common/date/date.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 
 @Module({
-  imports: [AuditModule, NotificationsModule],
+  imports: [AuditModule, NotificationsModule, RealtimeModule],
   controllers: [GroupsController],
   providers: [
     GroupsService,

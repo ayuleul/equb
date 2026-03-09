@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import '../../../data/models/group_rules_model.dart';
 import '../../../data/models/member_model.dart';
 import '../../../data/models/member_status_utils.dart';
 import '../../../data/models/payout_model.dart';
+import '../../../data/realtime/socket_sync_policy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/utils/turn_status_mapper.dart';
@@ -28,13 +30,36 @@ import '../group_rules_provider.dart';
 import '../widgets/group_invite_sheet.dart';
 import '../widgets/group_more_actions_button.dart';
 
-class GroupDetailScreen extends ConsumerWidget {
+class GroupDetailScreen extends ConsumerStatefulWidget {
   const GroupDetailScreen({super.key, required this.groupId});
 
   final String groupId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
+  bool _wasCurrentRoute = false;
+  bool _hasSeenCurrentRoute = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(realtimeClientProvider).joinGroup(widget.groupId);
+  }
+
+  @override
+  void dispose() {
+    ref.read(realtimeClientProvider).leaveGroup(widget.groupId);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _scheduleCatchUpRefreshIfNeeded();
+
+    final groupId = widget.groupId;
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final group = groupAsync.valueOrNull;
     final isAdmin = group?.membership?.role == MemberRoleModel.admin;
@@ -62,13 +87,41 @@ class GroupDetailScreen extends ConsumerWidget {
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
           message: mapFriendlyError(error),
-          onRetry: () => ref
-              .read(groupDetailControllerProvider)
-              .refreshGroupPage(groupId),
+          onRetry: () =>
+              ref.read(groupDetailControllerProvider).refreshGroupPage(groupId),
         ),
         data: (group) => _GroupTurnOverview(group: group),
       ),
     );
+  }
+
+  void _scheduleCatchUpRefreshIfNeeded() {
+    final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!isCurrentRoute) {
+      _wasCurrentRoute = false;
+      return;
+    }
+
+    if (_wasCurrentRoute) {
+      return;
+    }
+
+    _wasCurrentRoute = true;
+    if (!_hasSeenCurrentRoute) {
+      _hasSeenCurrentRoute = true;
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        ref
+            .read(groupDetailControllerProvider)
+            .refreshCurrentTurnState(widget.groupId),
+      );
+    });
   }
 }
 
@@ -421,9 +474,18 @@ class _PreStartMembersSectionState
       await ref
           .read(groupsRepositoryProvider)
           .verifyMember(widget.group.id, member.id);
-      await ref
-          .read(groupDetailControllerProvider)
-          .refreshGroupPage(widget.group.id);
+      unawaited(
+        ref
+            .read(socketSyncPolicyProvider)
+            .waitForSocketOrFallback(
+              eventTypes: const {'member.updated'},
+              groupId: widget.group.id,
+              entityId: member.id,
+              fallback: () => ref
+                  .read(groupDetailControllerProvider)
+                  .refreshGroupPage(widget.group.id),
+            ),
+      );
       if (!mounted) {
         return;
       }
@@ -1202,12 +1264,14 @@ _RoundProgressSummary _buildRoundProgress({
       .where((member) => isParticipatingMemberStatus(member.status))
       .toList(growable: false);
   final latestRoundId =
-      currentCycle?.roundId ?? (cycles.isNotEmpty ? cycles.first.roundId : null);
-  final latestRoundCycles = latestRoundId == null
-      ? const <CycleModel>[]
-      : cycles
-            .where((cycle) => cycle.roundId == latestRoundId)
-            .toList(growable: true)
+      currentCycle?.roundId ??
+      (cycles.isNotEmpty ? cycles.first.roundId : null);
+  final latestRoundCycles =
+      latestRoundId == null
+            ? const <CycleModel>[]
+            : cycles
+                  .where((cycle) => cycle.roundId == latestRoundId)
+                  .toList(growable: true)
         ..sort((a, b) => a.cycleNo.compareTo(b.cycleNo));
 
   final receivedTurnByUserId = <String, int>{};

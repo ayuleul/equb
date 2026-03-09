@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -11,9 +12,11 @@ import '../../data/files/files_repository.dart';
 import '../../data/models/group_rules_model.dart';
 import '../../data/models/signed_upload_request.dart';
 import '../../data/models/submit_contribution_request.dart';
+import '../../data/realtime/socket_sync_policy.dart';
 import '../../shared/utils/api_error_mapper.dart';
 import '../../shared/utils/upload_error_mapper.dart';
 import '../cycles/cycle_detail_provider.dart';
+import '../groups/group_detail_controller.dart';
 import 'cycle_contributions_provider.dart';
 
 final contributionImagePickerProvider = Provider<ContributionImagePicker>((
@@ -185,6 +188,7 @@ class SubmitContributionController
     required int amount,
     String? paymentRef,
     String? note,
+    bool preferSocketSync = false,
   }) async {
     final image = state.image;
     if (image == null) {
@@ -235,7 +239,7 @@ class SubmitContributionController
         uploadProgress: 1,
       );
 
-      await _contributionsRepository.submitContribution(
+      final contribution = await _contributionsRepository.submitContribution(
         args.cycleId,
         SubmitContributionRequest(
           method: method,
@@ -255,11 +259,21 @@ class SubmitContributionController
               : normalizedNote,
         ),
       );
-
-      _ref.invalidate(cycleContributionsProvider(args));
-      _ref.invalidate(
-        cycleDetailProvider((groupId: args.groupId, cycleId: args.cycleId)),
-      );
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'contribution.updated', 'turn.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                entityId: contribution.id,
+                fallback: _fallbackRefresh,
+              ),
+        );
+      } else {
+        await _fallbackRefresh();
+      }
 
       state = state.copyWith(
         step: SubmitContributionStep.success,
@@ -279,6 +293,25 @@ class SubmitContributionController
       );
       return false;
     }
+  }
+
+  Future<void> _fallbackRefresh() async {
+    _ref.invalidate(cycleContributionsProvider(args));
+    _ref.invalidate(
+      cycleDetailProvider((groupId: args.groupId, cycleId: args.cycleId)),
+    );
+    await Future.wait([
+      _ref.read(cycleContributionsProvider(args).future),
+      _ref.read(
+        cycleDetailProvider((
+          groupId: args.groupId,
+          cycleId: args.cycleId,
+        )).future,
+      ),
+      _ref
+          .read(groupDetailControllerProvider)
+          .refreshCurrentTurnState(args.groupId, cycleId: args.cycleId),
+    ]);
   }
 
   Future<void> _pick(Future<PickedContributionImage?> Function() picker) async {

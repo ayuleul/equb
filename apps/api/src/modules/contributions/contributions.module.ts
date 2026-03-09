@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 
 import { AuditModule } from '../../common/audit/audit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { ContributionsController } from './contributions.controller';
 import { ContributionsService } from './contributions.service';
 
 @Module({
-  imports: [AuditModule, NotificationsModule],
+  imports: [AuditModule, NotificationsModule, RealtimeModule],
   controllers: [ContributionsController],
   providers: [ContributionsService],
   exports: [ContributionsService],
