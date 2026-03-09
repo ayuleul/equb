@@ -28,6 +28,7 @@ import {
 import { randomBytes } from 'crypto';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { RoundEligibilityService } from '../../common/cycles/round-eligibility.service';
 import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import {
   PARTICIPATING_MEMBER_STATUSES,
@@ -74,6 +75,7 @@ export class GroupsService {
     private readonly configService: ConfigService,
     private readonly dateService: DateService,
     private readonly notificationsService: NotificationsService,
+    private readonly roundEligibilityService: RoundEligibilityService,
     private readonly winnerSelectionService: WinnerSelectionService,
   ) {}
 
@@ -1077,36 +1079,6 @@ export class GroupsService {
         ...new Set(eligibleMembers.map((member) => member.userId)),
       ];
 
-      if (uniqueEligibleUserIds.length < 2) {
-        throw new BadRequestException(
-          group.rules.requiresMemberVerification
-            ? 'At least 2 verified members are required to start a cycle'
-            : 'At least 2 joined members are required to start a cycle',
-        );
-      }
-
-      const requiredToStart = this.resolveRequiredToStart(group.rules);
-      const readiness = this.buildStartReadiness(
-        uniqueEligibleUserIds.length,
-        group.rules.startPolicy,
-        group.rules.startAt,
-        requiredToStart,
-        group.rules.roundSize,
-      );
-
-      if (!readiness.isReadyToStart) {
-        if (readiness.isWaitingForDate) {
-          throw new BadRequestException(
-            `Cycle start date has not arrived. Start is allowed on or after ${group.rules.startAt?.toISOString()}.`,
-          );
-        }
-        throw new BadRequestException(
-          `Not enough eligible members to start this cycle. Required: ${requiredToStart}, eligible: ${uniqueEligibleUserIds.length}.`,
-        );
-      }
-
-      const defaultRecipientUserId = uniqueEligibleUserIds[0];
-
       const activeRound = await tx.equbRound.findFirst({
         where: {
           groupId,
@@ -1121,9 +1093,67 @@ export class GroupsService {
         },
       });
 
-      const roundId =
-        activeRound?.id ??
-        (
+      let roundId = activeRound?.id ?? null;
+      let roundParticipantUserIds: string[] = [];
+      let remainingEligibleWinnerUserIds: string[] = [];
+
+      if (activeRound) {
+        roundParticipantUserIds =
+          await this.roundEligibilityService.getRoundParticipantUserIds(tx, {
+            roundId: activeRound.id,
+            fallbackUserIds: uniqueEligibleUserIds,
+          });
+        const completedWinnerUserIds =
+          await this.roundEligibilityService.listCompletedWinnerUserIds(
+            tx,
+            activeRound.id,
+          );
+        remainingEligibleWinnerUserIds =
+          this.roundEligibilityService.computeRemainingEligibleWinnerUserIds(
+            roundParticipantUserIds,
+            completedWinnerUserIds,
+          );
+
+        if (remainingEligibleWinnerUserIds.length === 0) {
+          await this.roundEligibilityService.closeRoundIfOpen(tx, {
+            roundId: activeRound.id,
+            closedAt: new Date(),
+          });
+          roundId = null;
+          roundParticipantUserIds = [];
+        }
+      }
+
+      if (roundId == null) {
+        if (uniqueEligibleUserIds.length < 2) {
+          throw new BadRequestException(
+            group.rules.requiresMemberVerification
+              ? 'At least 2 verified members are required to start a cycle'
+              : 'At least 2 joined members are required to start a cycle',
+          );
+        }
+
+        const requiredToStart = this.resolveRequiredToStart(group.rules);
+        const readiness = this.buildStartReadiness(
+          uniqueEligibleUserIds.length,
+          group.rules.startPolicy,
+          group.rules.startAt,
+          requiredToStart,
+          group.rules.roundSize,
+        );
+
+        if (!readiness.isReadyToStart) {
+          if (readiness.isWaitingForDate) {
+            throw new BadRequestException(
+              `Cycle start date has not arrived. Start is allowed on or after ${group.rules.startAt?.toISOString()}.`,
+            );
+          }
+          throw new BadRequestException(
+            `Not enough eligible members to start this cycle. Required: ${requiredToStart}, eligible: ${uniqueEligibleUserIds.length}.`,
+          );
+        }
+
+        roundId = (
           await tx.equbRound.create({
             data: {
               groupId,
@@ -1142,6 +1172,26 @@ export class GroupsService {
             select: { id: true },
           })
         ).id;
+        roundParticipantUserIds = uniqueEligibleUserIds;
+        remainingEligibleWinnerUserIds = uniqueEligibleUserIds;
+
+        await tx.payoutSchedule.createMany({
+          data: roundParticipantUserIds.map((userId, index) => ({
+            roundId: roundId!,
+            position: index + 1,
+            userId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      if (remainingEligibleWinnerUserIds.length === 0) {
+        throw new ConflictException(
+          'All eligible members have already received payout in this Equb round',
+        );
+      }
+
+      const defaultRecipientUserId = remainingEligibleWinnerUserIds[0];
 
       const latestCycle = await tx.equbCycle.findFirst({
         where: { groupId },
@@ -1165,12 +1215,21 @@ export class GroupsService {
               group.timezone,
             )
         : this.dateService.normalizeGroupDate(group.startDate, group.timezone);
+      const latestRoundCycle = await tx.equbCycle.findFirst({
+        where: {
+          roundId: roundId!,
+        },
+        orderBy: [{ cycleNo: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          cycleNo: true,
+        },
+      });
 
       const createdCycle = await tx.equbCycle.create({
         data: {
           groupId,
-          roundId,
-          cycleNo: (latestCycle?.cycleNo ?? 0) + 1,
+          roundId: roundId!,
+          cycleNo: (latestRoundCycle?.cycleNo ?? 0) + 1,
           dueDate,
           dueAt: dueDate,
           state: CycleState.SETUP,
@@ -1195,7 +1254,7 @@ export class GroupsService {
       });
 
       const dueRows = await tx.contribution.createMany({
-        data: uniqueEligibleUserIds.map((userId) => ({
+        data: roundParticipantUserIds.map((userId) => ({
           groupId,
           cycleId: createdCycle.id,
           userId,
@@ -1226,7 +1285,7 @@ export class GroupsService {
         cycleId: createdCycle.id,
         dueAt: createdCycle.dueDate,
         dueRowsCreated: dueRows.count,
-        eligibleMemberCount: uniqueEligibleUserIds.length,
+        eligibleMemberCount: roundParticipantUserIds.length,
       };
     });
 
@@ -1284,7 +1343,7 @@ export class GroupsService {
         },
       },
       orderBy: {
-        cycleNo: 'desc',
+        createdAt: 'desc',
       },
     });
 
@@ -1379,7 +1438,7 @@ export class GroupsService {
         },
       },
       orderBy: {
-        cycleNo: 'desc',
+        createdAt: 'desc',
       },
       take: 50,
     });

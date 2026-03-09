@@ -117,14 +117,30 @@ void main() {
       expect(find.textContaining('Winner: Test User'), findsNothing);
     },
   );
+
+  testWidgets('Group detail shows completed Equb CTA after the final payout', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildTestApp(completedRound: true));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Equb Completed'), findsOneWidget);
+    expect(find.text('All members have received their payout.'), findsOneWidget);
+    expect(find.text('Start New Cycle'), findsOneWidget);
+    expect(find.text('Ready for the next turn'), findsNothing);
+  });
 }
 
-Widget _buildTestApp({bool selectedWinnerAssignedForCurrentCycle = true}) {
+Widget _buildTestApp({
+  bool selectedWinnerAssignedForCurrentCycle = true,
+  bool completedRound = false,
+}) {
   final groupsRepository = GroupsRepository(_FakeGroupsApi());
   final cyclesRepository = CyclesRepository(
     _FakeCyclesApi(
       selectedWinnerAssignedForCurrentCycle:
           selectedWinnerAssignedForCurrentCycle,
+      completedRound: completedRound,
     ),
   );
   final auctionRepository = AuctionRepository(
@@ -386,9 +402,13 @@ class _FakeGroupsApi implements GroupsApi {
 }
 
 class _FakeCyclesApi implements CyclesApi {
-  _FakeCyclesApi({this.selectedWinnerAssignedForCurrentCycle = true});
+  _FakeCyclesApi({
+    this.selectedWinnerAssignedForCurrentCycle = true,
+    this.completedRound = false,
+  });
 
   final bool selectedWinnerAssignedForCurrentCycle;
+  final bool completedRound;
 
   @override
   Future<Map<String, dynamic>> startCycle(String groupId) async {
@@ -397,16 +417,33 @@ class _FakeCyclesApi implements CyclesApi {
 
   @override
   Future<Map<String, dynamic>> getCycle(String groupId, String cycleId) async {
+    if (completedRound) {
+      return _completedCycle(
+        groupId,
+        cycleId,
+        cycleId == 'cycle-1' ? 1 : 2,
+        cycleId == 'cycle-1' ? 'user-1' : 'user-2',
+      );
+    }
     return _cycle(groupId, cycleId, isCurrent: cycleId == 'cycle-1');
   }
 
   @override
   Future<Map<String, dynamic>?> getCurrentCycle(String groupId) async {
+    if (completedRound) {
+      return null;
+    }
     return _cycle(groupId, 'cycle-1', isCurrent: true);
   }
 
   @override
   Future<List<Map<String, dynamic>>> listCycles(String groupId) async {
+    if (completedRound) {
+      return [
+        _completedCycle(groupId, 'cycle-2', 2, 'user-2'),
+        _completedCycle(groupId, 'cycle-1', 1, 'user-1'),
+      ];
+    }
     return [
       _cycle(groupId, 'cycle-1', isCurrent: true),
       _cycle(groupId, 'cycle-2', isCurrent: false),
@@ -434,6 +471,9 @@ class _FakeCyclesApi implements CyclesApi {
       'auctionStatus': isCurrent ? 'NONE' : 'CLOSED',
       'winningBidAmount': null,
       'winningBidUserId': null,
+      'payoutReceivedConfirmedAt': isCurrent
+          ? null
+          : DateTime(2026, 2, 2).toIso8601String(),
       'status': isCurrent ? 'OPEN' : 'CLOSED',
       'scheduledPayoutUser': {
         'id': 'user-1',
@@ -452,6 +492,56 @@ class _FakeCyclesApi implements CyclesApi {
         'id': 'user-1',
         'phone': '+251911000000',
         'fullName': 'Test User',
+      },
+    };
+  }
+
+  Map<String, dynamic> _completedCycle(
+    String groupId,
+    String cycleId,
+    int cycleNo,
+    String winnerUserId,
+  ) {
+    final winnerName = winnerUserId == 'user-1' ? 'Test User' : 'Second User';
+    final winnerPhone =
+        winnerUserId == 'user-1' ? '+251911000000' : '+251922000000';
+
+    return {
+      'id': cycleId,
+      'groupId': groupId,
+      'roundId': 'round-1',
+      'cycleNo': cycleNo,
+      'dueDate': DateTime(2026, cycleNo, 1).toIso8601String(),
+      'state': 'COMPLETED',
+      'scheduledPayoutUserId': winnerUserId,
+      'finalPayoutUserId': winnerUserId,
+      'selectedWinnerUserId': winnerUserId,
+      'payoutUserId': winnerUserId,
+      'auctionStatus': 'CLOSED',
+      'winningBidAmount': null,
+      'winningBidUserId': null,
+      'payoutReceivedConfirmedAt':
+          DateTime(2026, cycleNo, 2).toIso8601String(),
+      'status': 'CLOSED',
+      'scheduledPayoutUser': {
+        'id': winnerUserId,
+        'phone': winnerPhone,
+        'fullName': winnerName,
+      },
+      'finalPayoutUser': {
+        'id': winnerUserId,
+        'phone': winnerPhone,
+        'fullName': winnerName,
+      },
+      'selectedWinnerUser': {
+        'id': winnerUserId,
+        'phone': winnerPhone,
+        'fullName': winnerName,
+      },
+      'payoutUser': {
+        'id': winnerUserId,
+        'phone': winnerPhone,
+        'fullName': winnerName,
       },
     };
   }

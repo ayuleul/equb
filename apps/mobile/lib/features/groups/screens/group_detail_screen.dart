@@ -81,6 +81,7 @@ class _GroupTurnOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentCycleAsync = ref.watch(currentCycleProvider(group.id));
     final cyclesAsync = ref.watch(cyclesListProvider(group.id));
+    final membersAsync = ref.watch(groupMembersProvider(group.id));
     final hasStarted =
         currentCycleAsync.valueOrNull != null ||
         (cyclesAsync.valueOrNull?.isNotEmpty ?? false);
@@ -98,6 +99,8 @@ class _GroupTurnOverview extends ConsumerWidget {
                 _CurrentTurnHeroCard(
                   group: group,
                   currentCycleAsync: currentCycleAsync,
+                  cyclesAsync: cyclesAsync,
+                  membersAsync: membersAsync,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _PastTurnsSection(
@@ -132,6 +135,7 @@ class _PreStartGroupView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final membersAsync = ref.watch(groupMembersProvider(group.id));
     final resolvedMode = _resolveMode(
       currentCycle: currentCycleAsync.valueOrNull,
       cycles: cyclesAsync.valueOrNull,
@@ -143,6 +147,8 @@ class _PreStartGroupView extends ConsumerWidget {
           _CurrentTurnHeroCard(
             group: group,
             currentCycleAsync: currentCycleAsync,
+            cyclesAsync: cyclesAsync,
+            membersAsync: membersAsync,
           ),
           const SizedBox(height: AppSpacing.lg),
           _PastTurnsSection(
@@ -169,7 +175,6 @@ class _PreStartGroupView extends ConsumerWidget {
     }
 
     final rulesAsync = ref.watch(groupRulesProvider(group.id));
-    final membersAsync = ref.watch(groupMembersProvider(group.id));
 
     return ListView(
       children: [
@@ -645,7 +650,7 @@ class _StartGroupCardState extends ConsumerState<_StartGroupCard> {
       return;
     }
 
-    KitToast.success(context, 'Group started. Turn 1 is now active.');
+    KitToast.success(context, 'New cycle started. Turn 1 is now active.');
   }
 
   @override
@@ -743,10 +748,14 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
   const _CurrentTurnHeroCard({
     required this.group,
     required this.currentCycleAsync,
+    required this.cyclesAsync,
+    required this.membersAsync,
   });
 
   final GroupModel group;
   final AsyncValue<CycleModel?> currentCycleAsync;
+  final AsyncValue<List<CycleModel>> cyclesAsync;
+  final AsyncValue<List<MemberModel>> membersAsync;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -760,7 +769,11 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
       ),
       data: (cycle) {
         if (cycle == null) {
-          return _NoCurrentTurnHeroCard(group: group);
+          return _NoCurrentTurnHeroCard(
+            group: group,
+            cyclesAsync: cyclesAsync,
+            membersAsync: membersAsync,
+          );
         }
 
         final contributionsAsync = ref.watch(
@@ -1047,9 +1060,15 @@ class _PastTurnRow extends ConsumerWidget {
 }
 
 class _NoCurrentTurnHeroCard extends ConsumerStatefulWidget {
-  const _NoCurrentTurnHeroCard({required this.group});
+  const _NoCurrentTurnHeroCard({
+    required this.group,
+    required this.cyclesAsync,
+    required this.membersAsync,
+  });
 
   final GroupModel group;
+  final AsyncValue<List<CycleModel>> cyclesAsync;
+  final AsyncValue<List<MemberModel>> membersAsync;
 
   @override
   ConsumerState<_NoCurrentTurnHeroCard> createState() =>
@@ -1084,12 +1103,18 @@ class _NoCurrentTurnHeroCardState
       return;
     }
 
-    KitToast.success(context, 'Turn started. Contributions are now due.');
+    KitToast.success(context, 'New cycle started. Turn 1 is now active.');
   }
 
   @override
   Widget build(BuildContext context) {
     final isAdmin = widget.group.membership?.role == MemberRoleModel.admin;
+    final roundProgress = _buildRoundProgress(
+      members: widget.membersAsync.valueOrNull ?? const <MemberModel>[],
+      cycles: widget.cyclesAsync.valueOrNull ?? const <CycleModel>[],
+      currentCycle: null,
+    );
+    final isCompleted = roundProgress.isCompleted;
 
     return KitCard(
       child: Padding(
@@ -1098,14 +1123,20 @@ class _NoCurrentTurnHeroCardState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isAdmin ? 'Ready for the next turn' : 'No turn is open right now',
+              isCompleted
+                  ? 'Equb Completed'
+                  : isAdmin
+                  ? 'Ready for the next turn'
+                  : 'No turn is open right now',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              isAdmin
+              isCompleted
+                  ? 'All members have received their payout.'
+                  : isAdmin
                   ? 'Start the next turn when the group is ready.'
                   : 'Check back after an admin starts the next turn.',
               style: Theme.of(context).textTheme.bodyMedium,
@@ -1119,14 +1150,20 @@ class _NoCurrentTurnHeroCardState
                   : () =>
                         context.push(AppRoutePaths.groupSetup(widget.group.id)),
               label: !isAdmin
-                  ? 'Waiting for admin start'
+                  ? (isCompleted ? 'Equb completed' : 'Waiting for admin start')
                   : widget.group.canStartCycle
-                  ? (_isStarting ? 'Starting turn...' : 'Start turn')
+                  ? (_isStarting
+                        ? (isCompleted
+                              ? 'Starting new cycle...'
+                              : 'Starting turn...')
+                        : (isCompleted ? 'Start New Cycle' : 'Start turn'))
                   : 'Complete setup to start',
               icon: !isAdmin
-                  ? Icons.hourglass_top_rounded
+                  ? Icons.check_circle_outline_rounded
                   : widget.group.canStartCycle
-                  ? Icons.play_arrow_rounded
+                  ? (isCompleted
+                        ? Icons.autorenew_rounded
+                        : Icons.play_arrow_rounded)
                   : Icons.rule_folder_outlined,
             ),
           ],
@@ -1134,6 +1171,72 @@ class _NoCurrentTurnHeroCardState
       ),
     );
   }
+}
+
+class _RoundProgressSummary {
+  const _RoundProgressSummary({
+    required this.isCompleted,
+    required this.members,
+  });
+
+  final bool isCompleted;
+  final List<_RoundMemberProgress> members;
+}
+
+class _RoundMemberProgress {
+  const _RoundMemberProgress({
+    required this.member,
+    required this.receivedTurnNo,
+  });
+
+  final MemberModel member;
+  final int? receivedTurnNo;
+}
+
+_RoundProgressSummary _buildRoundProgress({
+  required List<MemberModel> members,
+  required List<CycleModel> cycles,
+  required CycleModel? currentCycle,
+}) {
+  final participatingMembers = members
+      .where((member) => isParticipatingMemberStatus(member.status))
+      .toList(growable: false);
+  final latestRoundId =
+      currentCycle?.roundId ?? (cycles.isNotEmpty ? cycles.first.roundId : null);
+  final latestRoundCycles = latestRoundId == null
+      ? const <CycleModel>[]
+      : cycles
+            .where((cycle) => cycle.roundId == latestRoundId)
+            .toList(growable: true)
+        ..sort((a, b) => a.cycleNo.compareTo(b.cycleNo));
+
+  final receivedTurnByUserId = <String, int>{};
+  for (final cycle in latestRoundCycles) {
+    final winnerUserId = cycle.selectedWinnerUserId;
+    if (winnerUserId == null || cycle.payoutReceivedConfirmedAt == null) {
+      continue;
+    }
+    receivedTurnByUserId[winnerUserId] = cycle.cycleNo;
+  }
+
+  final memberProgress = participatingMembers
+      .map(
+        (member) => _RoundMemberProgress(
+          member: member,
+          receivedTurnNo: receivedTurnByUserId[member.userId],
+        ),
+      )
+      .toList(growable: false);
+
+  final isCompleted =
+      currentCycle == null &&
+      memberProgress.isNotEmpty &&
+      memberProgress.every((item) => item.receivedTurnNo != null);
+
+  return _RoundProgressSummary(
+    isCompleted: isCompleted,
+    members: memberProgress,
+  );
 }
 
 class _HeroSkeleton extends StatelessWidget {

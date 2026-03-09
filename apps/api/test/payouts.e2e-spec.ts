@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   ContributionStatus,
@@ -33,6 +37,7 @@ type GroupRecord = {
 type CycleRecord = {
   id: string;
   groupId: string;
+  roundId: string;
   scheduledPayoutUserId: string;
   finalPayoutUserId: string;
   selectedWinnerUserId: string | null;
@@ -109,6 +114,7 @@ describe('Payouts (e2e)', () => {
     {
       id: '00000000-0000-0000-0000-000000000201',
       groupId: '00000000-0000-0000-0000-000000000101',
+      roundId: '00000000-0000-0000-0000-000000000301',
       scheduledPayoutUserId: '00000000-0000-0000-0000-000000000011',
       finalPayoutUserId: '00000000-0000-0000-0000-000000000022',
       selectedWinnerUserId: '00000000-0000-0000-0000-000000000022',
@@ -254,6 +260,77 @@ describe('Payouts (e2e)', () => {
 
           return cycle;
         },
+      ),
+      updateMany: jest.fn(
+        ({
+          where,
+          data,
+        }: {
+          where: {
+            id?: string;
+            roundId?: string;
+            closedAt?: null;
+            status?: CycleStatus;
+            state?: CycleState;
+            selectedWinnerUserId?: string | null;
+          };
+          data: Partial<CycleRecord> & { state?: CycleState; closedAt?: Date };
+        }) => {
+          const matches = cycles.filter((cycle) => {
+            if (where.id != null && cycle.id !== where.id) {
+              return false;
+            }
+            if (where.roundId != null && cycle.roundId !== where.roundId) {
+              return false;
+            }
+            if (where.closedAt === null && cycle.closedAt != null) {
+              return false;
+            }
+            if (where.status != null && cycle.status !== where.status) {
+              return false;
+            }
+            if (where.state != null && cycle.state !== where.state) {
+              return false;
+            }
+            if (
+              where.selectedWinnerUserId !== undefined &&
+              cycle.selectedWinnerUserId !== where.selectedWinnerUserId
+            ) {
+              return false;
+            }
+            return true;
+          });
+
+          matches.forEach((cycle) => Object.assign(cycle, data));
+          return { count: matches.length };
+        },
+      ),
+      findMany: jest.fn(
+        ({
+          where,
+          select,
+        }: {
+          where: {
+            roundId: string;
+            payoutReceivedConfirmedAt?: { not: null };
+            selectedWinnerUserId?: { not: null };
+          };
+          select: { selectedWinnerUserId: true };
+        }) =>
+          cycles
+            .filter(
+              (cycle) =>
+                cycle.roundId === where.roundId &&
+                (where.payoutReceivedConfirmedAt == null ||
+                  cycle.payoutReceivedConfirmedAt != null) &&
+                (where.selectedWinnerUserId == null ||
+                  cycle.selectedWinnerUserId != null),
+            )
+            .map((cycle) => ({
+              ...(select.selectedWinnerUserId
+                ? { selectedWinnerUserId: cycle.selectedWinnerUserId }
+                : {}),
+            })),
       ),
     },
     payout: {
@@ -419,6 +496,39 @@ describe('Payouts (e2e)', () => {
             }));
         },
       ),
+    },
+    payoutSchedule: {
+      findMany: jest.fn(
+        ({
+          where,
+        }: {
+          where: {
+            roundId: string;
+          };
+        }) => {
+          const roundCycles = cycles.filter(
+            (item) => item.roundId === where.roundId,
+          );
+          const participantIds = new Set<string>();
+          for (const cycle of roundCycles) {
+            contributions
+              .filter((item) => item.cycleId === cycle.id)
+              .forEach((item) => participantIds.add(item.userId));
+          }
+
+          if (participantIds.size === 0) {
+            members.forEach((member) => participantIds.add(member.userId));
+          }
+
+          return [...participantIds].map((userId, index) => ({
+            userId,
+            position: index + 1,
+          }));
+        },
+      ),
+    },
+    equbRound: {
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     contribution: {
       aggregate: jest.fn(
@@ -586,5 +696,80 @@ describe('Payouts (e2e)', () => {
         '00000000-0000-0000-0000-000000000201',
       ),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('rejects payout disbursement when the selected winner already received payout in the round', async () => {
+    cycles.push({
+      id: '00000000-0000-0000-0000-000000000202',
+      groupId: cycles[0].groupId,
+      roundId: cycles[0].roundId,
+      scheduledPayoutUserId: '00000000-0000-0000-0000-000000000011',
+      finalPayoutUserId: '00000000-0000-0000-0000-000000000022',
+      selectedWinnerUserId: '00000000-0000-0000-0000-000000000022',
+      winningBidAmount: null,
+      winningBidUserId: null,
+      payoutSentAt: new Date('2026-03-07T00:00:00.000Z'),
+      payoutSentByUserId: adminUser.id,
+      payoutReceivedConfirmedAt: new Date('2026-03-07T01:00:00.000Z'),
+      payoutReceivedConfirmedByUserId: winnerUser.id,
+      state: CycleState.COMPLETED,
+      status: CycleStatus.CLOSED,
+      closedAt: new Date('2026-03-07T01:00:00.000Z'),
+      closedByUserId: winnerUser.id,
+    });
+
+    await expect(
+      payoutsController.sendTurnPayout(
+        adminUser,
+        '00000000-0000-0000-0000-000000000201',
+        {},
+      ),
+    ).rejects.toThrow(ConflictException);
+
+    cycles.pop();
+  });
+
+  it('closes the round after the final member confirms payout', async () => {
+    cycles.push({
+      id: '00000000-0000-0000-0000-000000000202',
+      groupId: cycles[0].groupId,
+      roundId: cycles[0].roundId,
+      scheduledPayoutUserId: adminUser.id,
+      finalPayoutUserId: adminUser.id,
+      selectedWinnerUserId: adminUser.id,
+      winningBidAmount: null,
+      winningBidUserId: null,
+      payoutSentAt: new Date('2026-03-06T00:00:00.000Z'),
+      payoutSentByUserId: adminUser.id,
+      payoutReceivedConfirmedAt: new Date('2026-03-06T01:00:00.000Z'),
+      payoutReceivedConfirmedByUserId: adminUser.id,
+      state: CycleState.COMPLETED,
+      status: CycleStatus.CLOSED,
+      closedAt: new Date('2026-03-06T01:00:00.000Z'),
+      closedByUserId: adminUser.id,
+    });
+
+    await payoutsController.sendTurnPayout(
+      adminUser,
+      '00000000-0000-0000-0000-000000000201',
+      {},
+    );
+
+    await payoutsController.confirmTurnPayoutReceived(
+      winnerUser,
+      '00000000-0000-0000-0000-000000000201',
+    );
+
+    expect(prismaMock.equbRound.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: cycles[0].roundId,
+        closedAt: null,
+      },
+      data: {
+        closedAt: expect.any(Date),
+      },
+    });
+
+    cycles.pop();
   });
 });

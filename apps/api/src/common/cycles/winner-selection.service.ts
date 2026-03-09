@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   AuctionStatus,
+  CycleState,
   CycleStatus,
   GroupRulePayoutMode,
   MemberStatus,
@@ -17,6 +18,7 @@ import {
   PARTICIPATING_MEMBER_STATUSES,
   VERIFIED_MEMBER_STATUSES,
 } from '../membership/member-status.util';
+import { RoundEligibilityService } from './round-eligibility.service';
 
 type WinnerSelectionTx = Prisma.TransactionClient;
 
@@ -30,6 +32,10 @@ export type WinnerSelectionResult = {
 
 @Injectable()
 export class WinnerSelectionService {
+  constructor(
+    private readonly roundEligibilityService: RoundEligibilityService,
+  ) {}
+
   async selectWinner(
     tx: WinnerSelectionTx,
     args: {
@@ -43,6 +49,7 @@ export class WinnerSelectionService {
       select: {
         id: true,
         groupId: true,
+        roundId: true,
         status: true,
         cycleNo: true,
         createdAt: true,
@@ -112,12 +119,25 @@ export class WinnerSelectionService {
     const eligibleUserIds = [
       ...new Set(eligibleMembers.map((member) => member.userId)),
     ];
+    const roundParticipantUserIds =
+      await this.roundEligibilityService.getRoundParticipantUserIds(tx, {
+        roundId: cycle.roundId,
+        fallbackUserIds: eligibleUserIds,
+      });
+    const completedWinnerUserIds =
+      await this.roundEligibilityService.listCompletedWinnerUserIds(
+        tx,
+        cycle.roundId,
+      );
+    const remainingEligibleWinnerUserIds =
+      this.roundEligibilityService.computeRemainingEligibleWinnerUserIds(
+        roundParticipantUserIds,
+        completedWinnerUserIds,
+      );
 
-    if (eligibleUserIds.length < 2) {
-      throw new BadRequestException(
-        cycle.group.rules.requiresMemberVerification
-          ? 'At least 2 verified members are required for winner selection'
-          : 'At least 2 joined members are required for winner selection',
+    if (remainingEligibleWinnerUserIds.length === 0) {
+      throw new ConflictException(
+        'All eligible members have already received payout in this Equb round',
       );
     }
 
@@ -130,12 +150,13 @@ export class WinnerSelectionService {
 
     switch (payoutMode) {
       case GroupRulePayoutMode.LOTTERY: {
-        const winnerIndex = randomInt(eligibleUserIds.length);
-        winnerUserId = eligibleUserIds[winnerIndex];
+        const winnerIndex = randomInt(remainingEligibleWinnerUserIds.length);
+        winnerUserId = remainingEligibleWinnerUserIds[winnerIndex];
         selectionMetadata = {
           mode: GroupRulePayoutMode.LOTTERY,
           winnerIndex,
-          poolSize: eligibleUserIds.length,
+          poolSize: remainingEligibleWinnerUserIds.length,
+          completedWinnerCount: completedWinnerUserIds.length,
           selectedAt: selectedAt.toISOString(),
         };
         break;
@@ -151,7 +172,12 @@ export class WinnerSelectionService {
         }
 
         const topBid = await tx.cycleBid.findFirst({
-          where: { cycleId: cycle.id },
+          where: {
+            cycleId: cycle.id,
+            userId: {
+              in: remainingEligibleWinnerUserIds,
+            },
+          },
           orderBy: [{ amount: 'desc' }, { createdAt: 'asc' }],
           select: {
             id: true,
@@ -161,7 +187,7 @@ export class WinnerSelectionService {
           },
         });
 
-        winnerUserId = topBid?.userId ?? cycle.scheduledPayoutUserId;
+        winnerUserId = topBid?.userId ?? remainingEligibleWinnerUserIds[0];
         winningBidAmount = topBid?.amount ?? null;
         winningBidUserId = topBid?.userId ?? null;
         auctionStatus = AuctionStatus.CLOSED;
@@ -184,33 +210,19 @@ export class WinnerSelectionService {
           winningBidId: topBid?.id ?? null,
           winningBidAmount,
           winningBidUserId,
-          fallbackWinnerUserId: topBid ? null : cycle.scheduledPayoutUserId,
+          fallbackWinnerUserId: topBid ? null : remainingEligibleWinnerUserIds[0],
+          eligibleBidderCount: remainingEligibleWinnerUserIds.length,
           selectedAt: selectedAt.toISOString(),
         };
         break;
       }
       case GroupRulePayoutMode.ROTATION: {
-        const priorRotationSelections = await tx.equbCycle.findMany({
-          where: {
-            groupId: cycle.groupId,
-            id: { not: cycle.id },
-            selectionMethod: GroupRulePayoutMode.ROTATION,
-            selectedWinnerUserId: {
-              in: eligibleUserIds,
-            },
-          },
-          select: {
-            selectedWinnerUserId: true,
-          },
-        });
-
-        const rotationIndex =
-          priorRotationSelections.length % eligibleUserIds.length;
-        winnerUserId = eligibleUserIds[rotationIndex];
+        winnerUserId = remainingEligibleWinnerUserIds[0];
         selectionMetadata = {
           mode: GroupRulePayoutMode.ROTATION,
-          rotationIndex,
-          eligibleCount: eligibleUserIds.length,
+          rotationIndex: roundParticipantUserIds.indexOf(winnerUserId),
+          eligibleCount: remainingEligibleWinnerUserIds.length,
+          completedWinnerCount: completedWinnerUserIds.length,
           selectedAt: selectedAt.toISOString(),
         };
         break;
@@ -223,7 +235,7 @@ export class WinnerSelectionService {
           );
         }
 
-        if (!eligibleUserIds.includes(requestedWinnerUserId)) {
+        if (!remainingEligibleWinnerUserIds.includes(requestedWinnerUserId)) {
           throw new BadRequestException(
             'Selected user is not eligible for payout winner selection',
           );
@@ -242,33 +254,51 @@ export class WinnerSelectionService {
       }
     }
 
-    const updatedCycle = await tx.equbCycle.update({
-      where: { id: cycle.id },
-      data: {
-        finalPayoutUserId: winnerUserId,
-        selectedWinnerUserId: winnerUserId,
-        winnerSelectedAt: selectedAt,
-        selectionMethod: payoutMode,
-        selectionMetadata,
-        winningBidAmount,
-        winningBidUserId,
-        auctionStatus,
-      },
-      select: {
-        id: true,
-        groupId: true,
-        selectedWinnerUserId: true,
-        selectionMethod: true,
-        selectionMetadata: true,
-      },
-    });
+    try {
+      const updateResult = await tx.equbCycle.updateMany({
+        where: {
+          id: cycle.id,
+          selectedWinnerUserId: null,
+          status: CycleStatus.OPEN,
+          state: {
+            in: [CycleState.SETUP, CycleState.READY_FOR_WINNER_SELECTION],
+          },
+        },
+        data: {
+          finalPayoutUserId: winnerUserId,
+          selectedWinnerUserId: winnerUserId,
+          winnerSelectedAt: selectedAt,
+          selectionMethod: payoutMode,
+          selectionMetadata,
+          winningBidAmount,
+          winningBidUserId,
+          auctionStatus,
+        },
+      });
+
+      if (updateResult.count !== 1) {
+        throw new ConflictException(
+          'Winner has already been selected for this cycle',
+        );
+      }
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Selected user has already received payout in this Equb round',
+        );
+      }
+      throw error;
+    }
 
     return {
-      cycleId: updatedCycle.id,
-      groupId: updatedCycle.groupId,
-      winnerUserId: updatedCycle.selectedWinnerUserId!,
-      payoutMode: updatedCycle.selectionMethod!,
-      selectionMetadata: updatedCycle.selectionMetadata,
+      cycleId: cycle.id,
+      groupId: cycle.groupId,
+      winnerUserId,
+      payoutMode,
+      selectionMetadata: selectionMetadata as Prisma.JsonValue,
     };
   }
 

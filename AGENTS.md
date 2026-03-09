@@ -93,6 +93,7 @@
 
 ## Cycle rules
 - Only one `OPEN` cycle is allowed per group at any time.
+- Each Equb round must snapshot its participant user IDs when the first turn starts; every turn in that round reuses that same participant pool for contributions, while winner eligibility is `round participants who have not already confirmed payout in the same round`.
 - Cycle start endpoint is locked to `POST /groups/:id/cycles/start`; legacy round/draw-next/payout-order and batch-generation routes are removed.
 - Cycle start gating is locked to start policy readiness:
   - `requiredToStart = (minToStart ?? roundSize)` for `ON_DATE`/`MANUAL`, and `roundSize` for `WHEN_FULL`
@@ -106,6 +107,8 @@
   - `BEFORE_COLLECTION` -> winner is selected during cycle start, then the cycle continues in `COLLECTING`
   - `AFTER_COLLECTION` -> cycle reaches `READY_FOR_WINNER_SELECTION` after collection readiness, and winner selection runs exactly once from that state
   - once `selectedWinnerUserId` is set, the cycle must reject further winner selection attempts with `409`
+- Round fairness is locked: a user may appear as `selectedWinnerUserId` at most once per round, the final remaining participant is still a valid winner, and once every round participant has confirmed payout the round must close and no further turns may be created in that round.
+- Turn numbering is round-local: when a new Equb round/cycle starts inside the same group, its first turn must be created with `cycleNo = 1`; previous completed rounds remain in history and must not continue numbering into the new round.
 - Client/UI winner labels must treat `selectedWinnerUserId` as the only source of truth for whether a winner exists; `finalPayoutUser*` may be present earlier as a recipient fallback and must not be shown as an already-selected winner.
 - Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.
 - Collection readiness rule is locked:

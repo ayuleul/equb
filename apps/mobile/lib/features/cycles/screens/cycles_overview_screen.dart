@@ -64,89 +64,106 @@ class _CyclesOverviewBody extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView(
-        children: [
-          if (isAdmin && !group.canStartCycle) ...[
-            KitBanner(
-              title: 'Rules setup required',
-              message:
-                  'Complete setup and ensure at least 2 eligible members before starting the first cycle.',
-              tone: KitBadgeTone.warning,
-              icon: Icons.rule_folder_outlined,
-              ctaLabel: 'Open setup',
-              onCtaPressed: () =>
-                  context.push(AppRoutePaths.groupSetup(group.id)),
+      child: cyclesAsync.when(
+        loading: () => ListView(
+          children: [
+            SizedBox(height: AppSpacing.md),
+            KitCard(
+              child: SizedBox(height: 180, child: KitSkeletonList(itemCount: 3)),
             ),
-            const SizedBox(height: AppSpacing.md),
           ],
-          _CurrentCycleCard(
-            groupId: group.id,
-            currentCycleAsync: currentCycleAsync,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (isAdmin &&
-              currentCycleAsync.valueOrNull == null &&
-              group.canStartCycle)
-            KitPrimaryButton(
-              onPressed: () =>
-                  context.push(AppRoutePaths.groupDetail(group.id)),
-              icon: Icons.add_circle_outline,
-              label: 'Go to current turn',
-            ),
-          if (isAdmin &&
-              currentCycleAsync.valueOrNull == null &&
-              !group.canStartCycle)
-            KitPrimaryButton(
-              onPressed: () => context.push(AppRoutePaths.groupSetup(group.id)),
-              icon: Icons.rule_folder_outlined,
-              label: 'Complete setup to start',
-            ),
-          if (isAdmin && currentCycleAsync.valueOrNull != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: Text(
-                'Finish the current open turn before starting the next cycle.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          if (isAdmin && currentCycleAsync.valueOrNull == null)
-            const SizedBox(height: AppSpacing.md),
-          const KitSectionHeader(title: 'Past cycles'),
-          cyclesAsync.when(
-            loading: () => const SizedBox(
-              height: 300,
-              child: KitSkeletonList(itemCount: 3),
-            ),
-            error: (error, _) => ErrorView(
+        ),
+        error: (error, _) => ListView(
+          children: [
+            ErrorView(
               message: mapFriendlyError(error),
               onRetry: () {
-                ref
-                    .read(cyclesRepositoryProvider)
-                    .invalidateGroupCache(group.id);
+                ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
                 ref.invalidate(cyclesListProvider(group.id));
               },
             ),
-            data: (cycles) {
-              if (cycles.isEmpty) {
-                return _EmptyCyclesView(
+          ],
+        ),
+        data: (cycles) {
+          final cycleSummaries = _buildCycleSummaries(cycles);
+          final currentCycle = currentCycleAsync.valueOrNull;
+          final activeCycleSummary = currentCycle == null
+              ? null
+              : cycleSummaries.cast<_CycleSummary?>().firstWhere(
+                    (summary) => summary?.roundId == currentCycle.roundId,
+                    orElse: () => null,
+                  );
+          final pastCycleSummaries = cycleSummaries
+              .where((summary) => summary.roundId != currentCycle?.roundId)
+              .toList(growable: false);
+
+          return ListView(
+            children: [
+              if (isAdmin && !group.canStartCycle) ...[
+                KitBanner(
+                  title: 'Rules setup required',
+                  message:
+                      'Complete setup and ensure at least 2 eligible members before starting the first cycle.',
+                  tone: KitBadgeTone.warning,
+                  icon: Icons.rule_folder_outlined,
+                  ctaLabel: 'Open setup',
+                  onCtaPressed: () =>
+                      context.push(AppRoutePaths.groupSetup(group.id)),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              _CurrentCycleCard(
+                groupId: group.id,
+                currentCycle: currentCycle,
+                cycleSummary: activeCycleSummary,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (isAdmin && currentCycle == null && group.canStartCycle)
+                KitPrimaryButton(
+                  onPressed: () =>
+                      context.push(AppRoutePaths.groupDetail(group.id)),
+                  icon: Icons.add_circle_outline,
+                  label:
+                      cycles.isEmpty ? 'Start First Cycle' : 'Start New Cycle',
+                ),
+              if (isAdmin && currentCycle == null && !group.canStartCycle)
+                KitPrimaryButton(
+                  onPressed: () =>
+                      context.push(AppRoutePaths.groupSetup(group.id)),
+                  icon: Icons.rule_folder_outlined,
+                  label: 'Complete setup to start',
+                ),
+              if (isAdmin && currentCycle != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: Text(
+                    'Finish the current open turn before starting the next cycle.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              if (isAdmin && currentCycle == null)
+                const SizedBox(height: AppSpacing.md),
+              const KitSectionHeader(title: 'Past cycles'),
+              if (cycleSummaries.isEmpty)
+                _EmptyCyclesView(
                   isAdmin: isAdmin,
                   canStartCycle: group.canStartCycle,
-                );
-              }
-
-              return Column(
-                children: cycles
-                    .map(
-                      (cycle) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _CycleListTile(groupId: group.id, cycle: cycle),
-                      ),
-                    )
-                    .toList(growable: false),
-              );
-            },
-          ),
-        ],
+                )
+              else if (pastCycleSummaries.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: AppSpacing.xs),
+                  child: Text('No completed cycles yet.'),
+                )
+              else
+                ...pastCycleSummaries.map(
+                  (summary) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: _CycleListTile(groupId: group.id, summary: summary),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -155,11 +172,13 @@ class _CyclesOverviewBody extends ConsumerWidget {
 class _CurrentCycleCard extends StatelessWidget {
   const _CurrentCycleCard({
     required this.groupId,
-    required this.currentCycleAsync,
+    required this.currentCycle,
+    required this.cycleSummary,
   });
 
   final String groupId;
-  final AsyncValue<CycleModel?> currentCycleAsync;
+  final CycleModel? currentCycle;
+  final _CycleSummary? cycleSummary;
 
   @override
   Widget build(BuildContext context) {
@@ -169,42 +188,39 @@ class _CurrentCycleCard extends StatelessWidget {
         children: [
           Text('Current cycle', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.sm),
-          currentCycleAsync.when(
-            loading: () => const KitSkeletonBox(height: 72),
-            error: (error, _) => Text(error.toString()),
-            data: (cycle) {
-              if (cycle == null) {
-                return const Text('No open cycle yet.');
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Turn ${cycle.cycleNo}',
-                    style: Theme.of(context).textTheme.headlineSmall,
+          if (currentCycle == null)
+            const Text('No open cycle right now.')
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cycleSummary?.label ?? 'Current cycle',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Turn ${currentCycle!.cycleNo}',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Due ${formatDate(currentCycle!.dueDate)}'),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Turns completed: ${cycleSummary?.completedTurnCount ?? 0} / ${cycleSummary?.turnCount ?? 0}',
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Recipient: ${_recipientLabel(currentCycle!)}'),
+                const SizedBox(height: AppSpacing.sm),
+                KitSecondaryButton(
+                  onPressed: () => context.push(
+                    AppRoutePaths.groupCycleDetail(groupId, currentCycle!.id),
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text('Due ${formatDate(cycle.dueDate)}'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text('Recipient: ${_recipientLabel(cycle)}'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Progress: --/-- paid',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  KitSecondaryButton(
-                    onPressed: () => context.push(
-                      AppRoutePaths.groupCycleDetail(groupId, cycle.id),
-                    ),
-                    label: 'View current turn',
-                    expand: false,
-                  ),
-                ],
-              );
-            },
-          ),
+                  label: 'View current turn',
+                  expand: false,
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -232,30 +248,87 @@ class _EmptyCyclesView extends StatelessWidget {
 }
 
 class _CycleListTile extends StatelessWidget {
-  const _CycleListTile({required this.groupId, required this.cycle});
+  const _CycleListTile({required this.groupId, required this.summary});
 
   final String groupId;
-  final CycleModel cycle;
+  final _CycleSummary summary;
 
   @override
   Widget build(BuildContext context) {
-    final statusLabel = switch (cycle.status) {
-      CycleStatusModel.open => 'OPEN',
-      CycleStatusModel.closed => 'CLOSED',
-      CycleStatusModel.unknown => 'UNKNOWN',
-    };
-
     return KitCard(
       child: EqubListTile(
-        title: 'Cycle #${cycle.cycleNo}',
+        title: summary.label,
         subtitle:
-            'Due ${formatDate(cycle.dueDate)} • ${_recipientLabel(cycle)}',
+            '${summary.turnCount} turns • Last payout: ${summary.lastRecipientLabel}',
         onTap: () =>
-            context.push(AppRoutePaths.groupCycleDetail(groupId, cycle.id)),
-        trailing: StatusPill.fromLabel(statusLabel),
+            context.push(AppRoutePaths.groupCycleDetail(groupId, summary.lastTurn.id)),
+        trailing: StatusPill.fromLabel(
+          summary.isCompleted ? 'COMPLETED' : 'ACTIVE',
+        ),
       ),
     );
   }
+}
+
+class _CycleSummary {
+  const _CycleSummary({
+    required this.roundId,
+    required this.label,
+    required this.turnCount,
+    required this.completedTurnCount,
+    required this.isCompleted,
+    required this.lastRecipientLabel,
+    required this.lastTurn,
+  });
+
+  final String roundId;
+  final String label;
+  final int turnCount;
+  final int completedTurnCount;
+  final bool isCompleted;
+  final String lastRecipientLabel;
+  final CycleModel lastTurn;
+}
+
+List<_CycleSummary> _buildCycleSummaries(List<CycleModel> cycles) {
+  if (cycles.isEmpty) {
+    return const <_CycleSummary>[];
+  }
+
+  final orderedCycles = [...cycles]
+    ..sort((a, b) {
+      final aCreated = a.createdAt ?? a.dueDate;
+      final bCreated = b.createdAt ?? b.dueDate;
+      return bCreated.compareTo(aCreated);
+    });
+  final grouped = <String, List<CycleModel>>{};
+  for (final cycle in orderedCycles) {
+    final roundId = cycle.roundId ?? cycle.id;
+    grouped.putIfAbsent(roundId, () => <CycleModel>[]).add(cycle);
+  }
+
+  final roundIdsNewestFirst = grouped.keys.toList(growable: false);
+  final roundIdsOldestFirst = roundIdsNewestFirst.reversed.toList(growable: false);
+  final roundNumberById = <String, int>{};
+  for (var index = 0; index < roundIdsOldestFirst.length; index++) {
+    roundNumberById[roundIdsOldestFirst[index]] = index + 1;
+  }
+
+  return roundIdsNewestFirst.map((roundId) {
+    final turns = grouped[roundId]!
+      ..sort((a, b) => a.cycleNo.compareTo(b.cycleNo));
+    final lastTurn = turns.last;
+    return _CycleSummary(
+      roundId: roundId,
+      label: 'Cycle ${roundNumberById[roundId]}',
+      turnCount: turns.length,
+      completedTurnCount:
+          turns.where((turn) => turn.status == CycleStatusModel.closed).length,
+      isCompleted: turns.every((turn) => turn.status == CycleStatusModel.closed),
+      lastRecipientLabel: _recipientLabel(lastTurn),
+      lastTurn: lastTurn,
+    );
+  }).toList(growable: false);
 }
 
 String _recipientLabel(CycleModel cycle) {

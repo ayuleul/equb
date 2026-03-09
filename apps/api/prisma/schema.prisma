@@ -388,6 +388,7 @@ model EqubCycle {
   bids            CycleBid[]
 
   @@unique([roundId, cycleNo])
+  @@unique([roundId, selectedWinnerUserId])
   @@index([groupId, status])
   @@index([groupId, roundId])
   @@index([selectedWinnerUserId])

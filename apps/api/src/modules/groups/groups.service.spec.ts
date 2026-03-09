@@ -14,6 +14,7 @@ import {
 import { DateService } from '../../common/date/date.service';
 import type { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
+import { RoundEligibilityService } from '../../common/cycles/round-eligibility.service';
 import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import { GroupsService } from './groups.service';
 
@@ -75,6 +76,10 @@ describe('GroupsService.startCycle', () => {
       equbRound: {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: 'round-1' }),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      payoutSchedule: {
+        createMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
       contribution: {
         createMany: jest.fn().mockResolvedValue({ count: 2 }),
@@ -86,6 +91,17 @@ describe('GroupsService.startCycle', () => {
         callback(txMock),
       ),
     } as unknown as PrismaService;
+
+    const roundEligibilityService = {
+      getRoundParticipantUserIds: jest
+        .fn()
+        .mockResolvedValue(['user-admin', 'user-member']),
+      listCompletedWinnerUserIds: jest.fn().mockResolvedValue([]),
+      computeRemainingEligibleWinnerUserIds: jest
+        .fn()
+        .mockImplementation((participantUserIds: string[]) => participantUserIds),
+      closeRoundIfOpen: jest.fn().mockResolvedValue(undefined),
+    } as unknown as RoundEligibilityService;
 
     const winnerSelectionService = {
       selectWinner: jest.fn().mockResolvedValue({
@@ -103,6 +119,7 @@ describe('GroupsService.startCycle', () => {
       {} as never,
       new DateService(),
       { notifyGroupAdmins: jest.fn() } as never,
+      roundEligibilityService,
       winnerSelectionService,
     );
 
@@ -167,6 +184,13 @@ describe('GroupsService.startCycle', () => {
 
     await service.startCycle(currentUser, 'group-1');
 
+    expect(txMock.equbCycle.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          cycleNo: 1,
+        }),
+      }),
+    );
     expect(winnerSelectionService.selectWinner).toHaveBeenCalledWith(txMock, {
       cycleId: 'cycle-1',
       actorUserId: currentUser.id,

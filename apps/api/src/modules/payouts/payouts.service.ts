@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 
 import { AuditService } from '../../common/audit/audit.service';
+import { RoundEligibilityService } from '../../common/cycles/round-eligibility.service';
 import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import { PARTICIPATING_MEMBER_STATUSES } from '../../common/membership/member-status.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -66,6 +67,7 @@ export class PayoutsService {
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
     private readonly groupsService: GroupsService,
+    private readonly roundEligibilityService: RoundEligibilityService,
     private readonly winnerSelectionService: WinnerSelectionService,
   ) {}
 
@@ -108,12 +110,23 @@ export class PayoutsService {
         );
       }
 
-      await tx.equbCycle.update({
-        where: { id: cycle.id },
+      const selectionLock = await tx.equbCycle.updateMany({
+        where: {
+          id: cycle.id,
+          status: CycleStatus.OPEN,
+          state: CycleState.READY_FOR_WINNER_SELECTION,
+          selectedWinnerUserId: null,
+        },
         data: {
           state: CycleState.SETUP,
         },
       });
+
+      if (selectionLock.count !== 1) {
+        throw new ConflictException(
+          'Winner selection is already in progress or completed for this cycle',
+        );
+      }
 
       const result = await this.winnerSelectionService.selectWinner(tx, {
         cycleId: cycle.id,
@@ -236,6 +249,17 @@ export class PayoutsService {
       if (cycle.payoutSentAt != null) {
         throw new ConflictException(
           'Payout has already been sent for this cycle',
+        );
+      }
+
+      const completedWinnerUserIds =
+        await this.roundEligibilityService.listCompletedWinnerUserIds(
+          tx,
+          cycle.roundId,
+        );
+      if (completedWinnerUserIds.includes(cycle.selectedWinnerUserId)) {
+        throw new ConflictException(
+          'Selected winner has already received payout in this Equb round',
         );
       }
 
@@ -550,6 +574,28 @@ export class PayoutsService {
             closedByUserId: currentUser.id,
           },
         });
+
+        const roundParticipantUserIds =
+          await this.roundEligibilityService.getRoundParticipantUserIds(tx, {
+            roundId: cycle.roundId,
+          });
+        const completedWinnerUserIds =
+          await this.roundEligibilityService.listCompletedWinnerUserIds(
+            tx,
+            cycle.roundId,
+          );
+        const remainingEligibleWinnerUserIds =
+          this.roundEligibilityService.computeRemainingEligibleWinnerUserIds(
+            roundParticipantUserIds,
+            completedWinnerUserIds,
+          );
+
+        if (remainingEligibleWinnerUserIds.length === 0) {
+          await this.roundEligibilityService.closeRoundIfOpen(tx, {
+            roundId: cycle.roundId,
+            closedAt: now,
+          });
+        }
 
         await this.auditService.log(
           'PAYOUT_RECEIPT_CONFIRMED',

@@ -122,6 +122,7 @@
 - Turn Details is the operational hub for a turn and should carry contribution, payout, auction, and dispute complexity instead of the main group page.
 - Contributions live under a specific turn; the main group page must not render the full contributions list.
 - Past turns on the group page use compact summary rows, while the current turn uses the highlighted hero card treatment.
+- When the latest Equb round is fully paid out and no current turn is open, the main group hero must switch to a completed state (`Equb Completed` / `All members have received their payout`) and must not show next-turn/draw actions for the finished round.
 - Admin controls in group detail must be grouped inside a collapsed Admin actions container/action sheet.
 - Group Overview content must reuse existing group detail/members providers; do not introduce duplicate fetch pathways.
 
@@ -143,6 +144,8 @@
   - `Turn completed`
 - Mobile must not show any `Close turn` action before the selected winner confirms payout receipt.
 - Group Overview must show cycle summary (completed cycles, last winner, current status) and must not show future-turn lists.
+- Group turn surfaces should show per-member payout progress for the latest round using explicit `Received` / `Pending` states plus the received turn number when available.
+- Cycle-focused UI surfaces must group turn records by round and label completed Equb runs as `Cycle 1`, `Cycle 2`, etc.; a new cycle in the same group must restart visible turn numbering from `Turn 1` instead of continuing the previous round’s turn count.
 
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.
