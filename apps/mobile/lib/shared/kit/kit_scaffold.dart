@@ -14,6 +14,7 @@ class KitScaffold extends StatelessWidget {
     this.useSafeArea = true,
     this.backgroundColor,
     this.floatingActionButton,
+    this.bottomNavigationBar,
     this.appBar,
     this.extendBodyBehindAppBar = false,
     this.maxContentWidth = 620,
@@ -27,6 +28,7 @@ class KitScaffold extends StatelessWidget {
   final bool useSafeArea;
   final Color? backgroundColor;
   final Widget? floatingActionButton;
+  final Widget? bottomNavigationBar;
   final PreferredSizeWidget? appBar;
   final bool extendBodyBehindAppBar;
   final double maxContentWidth;
@@ -56,6 +58,7 @@ class KitScaffold extends StatelessWidget {
           appBar ??
           (title != null ? KitAppBar(title: title!, actions: actions) : null),
       floatingActionButton: floatingActionButton,
+      bottomNavigationBar: bottomNavigationBar,
       body: themedBody,
     );
   }

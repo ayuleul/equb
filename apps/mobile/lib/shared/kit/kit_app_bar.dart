@@ -7,6 +7,7 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.status,
     this.leading,
     this.actions,
     this.centerTitle = false,
@@ -20,6 +21,7 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   final String title;
   final String? subtitle;
+  final Widget? status;
   final Widget? leading;
   final List<Widget>? actions;
   final bool centerTitle;
@@ -30,10 +32,11 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showTitleChevron;
   final Color? backgroundColor;
 
-  static const double _baseHeight = 76;
-  static const double _subtitleHeight = 82;
+  static const double _baseHeight = 68;
+  static const double _subtitleHeight = 74;
 
   bool get _hasSubtitle => subtitle != null && subtitle!.trim().isNotEmpty;
+  bool get _hasSecondaryLine => _hasSubtitle || status != null;
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +44,11 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
     final useDefaultBackButton = leading == null && shouldShowBack;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final subtitleStyle = theme.textTheme.titleMedium?.copyWith(
+    final subtitleStyle = theme.textTheme.bodySmall?.copyWith(
       color: colorScheme.primary,
       fontWeight: FontWeight.w600,
     );
-    final titleStyle = theme.textTheme.titleLarge?.copyWith(
+    final titleStyle = theme.textTheme.titleMedium?.copyWith(
       fontWeight: FontWeight.w700,
     );
     final resolvedAvatar = showAvatar
@@ -84,13 +87,24 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ],
                 ],
               ),
-              if (_hasSubtitle)
-                Text(
-                  subtitle!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: subtitleStyle,
-                  textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+              if (_hasSecondaryLine)
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xxs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (_hasSubtitle)
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: subtitleStyle,
+                        textAlign: centerTitle
+                            ? TextAlign.center
+                            : TextAlign.start,
+                      ),
+                    if (status case final Widget statusWidget) statusWidget,
+                  ],
                 ),
             ],
           ),
@@ -101,7 +115,7 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       automaticallyImplyLeading: false,
       centerTitle: centerTitle,
-      toolbarHeight: _hasSubtitle ? _subtitleHeight : _baseHeight,
+      toolbarHeight: _hasSecondaryLine ? _subtitleHeight : _baseHeight,
       titleSpacing: 4,
       leadingWidth: useDefaultBackButton ? 72 : null,
       backgroundColor:
@@ -132,7 +146,7 @@ class KitAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize =>
-      Size.fromHeight(_hasSubtitle ? _subtitleHeight : _baseHeight);
+      Size.fromHeight(_hasSecondaryLine ? _subtitleHeight : _baseHeight);
 }
 
 class _KitAppBarAvatar extends StatelessWidget {
@@ -153,8 +167,8 @@ class _KitAppBarAvatar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      width: 42,
-      height: 42,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -169,7 +183,7 @@ class _KitAppBarAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
             color: colorScheme.onPrimary,
             fontWeight: FontWeight.w700,
           ),

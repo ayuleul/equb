@@ -120,7 +120,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     }
 
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Payout'),
+      appBar: const KitAppBar(title: 'Payout details'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading payout...'),
         error: (error, _) => ErrorView(
@@ -212,7 +212,7 @@ class _CycleHeaderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Cycle #${cycle.cycleNo}',
+            'Turn ${cycle.cycleNo}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -439,9 +439,12 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
   final TextEditingController disburseNoteController;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isWinner =
-        cycle.selectedWinnerUserId != null &&
-        cycle.selectedWinnerUserId == currentUserId;
+    final receiptConfirmerUserId =
+        cycle.selectedWinnerUserId ??
+        payout?.toUserId ??
+        cycle.finalPayoutUserId ??
+        cycle.payoutUserId;
+    final isWinner = receiptConfirmerUserId == currentUserId;
 
     if (!isAdmin && !isWinner) {
       return KitCard(
@@ -465,7 +468,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
     final canConfirmReceipt =
         isWinner &&
         cycle.state == CycleStateModel.payoutSent &&
-        payout?.status == PayoutStatusModel.pending;
+        payout?.status != PayoutStatusModel.confirmed;
 
     if (!canSelectWinner && !canSendPayout && !canConfirmReceipt) {
       return KitCard(

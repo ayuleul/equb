@@ -79,7 +79,7 @@ class _SubmitContributionScreenState
     }
 
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Pay now'),
+      appBar: const KitAppBar(title: 'Submit contribution'),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -222,7 +222,10 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(title: '1) Upload receipt'),
+              const KitSectionHeader(
+                title: '1) Add payment proof',
+                subtitle: 'Add the payment proof image for this turn',
+              ),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
@@ -287,7 +290,10 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(title: '2) Payment details'),
+              const KitSectionHeader(
+                title: '2) Payment details',
+                subtitle: 'Confirm amount, payment method, and optional note',
+              ),
               KitDropdownField<GroupPaymentMethodModel>(
                 value: method,
                 label: 'Payment method',
@@ -340,7 +346,10 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(title: '3) Submit'),
+              const KitSectionHeader(
+                title: '3) Review & submit',
+                subtitle: 'Send the contribution and wait for the live update',
+              ),
               if (submitState.isBusy) ...[
                 LinearProgressIndicator(value: submitState.uploadProgress),
                 const SizedBox(height: AppSpacing.xs),

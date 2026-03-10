@@ -20,6 +20,7 @@ import '../../../shared/utils/formatters.dart';
 import '../../../shared/utils/turn_status_mapper.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../../shared/widgets/realtime_status_banner.dart';
 import '../../contributions/cycle_contributions_provider.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
@@ -68,6 +69,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       appBar: KitAppBar(
         title: group?.name ?? 'Group detail',
         subtitle: group == null ? null : 'Tap for details',
+        status: const RealtimeHeaderStatus(),
         onTitleTap: group == null
             ? null
             : () => context.push(AppRoutePaths.groupOverview(groupId)),
@@ -83,14 +85,21 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           ),
         ],
       ),
-      child: groupAsync.when(
-        loading: () => const LoadingView(message: 'Loading group...'),
-        error: (error, _) => ErrorView(
-          message: mapFriendlyError(error),
-          onRetry: () =>
-              ref.read(groupDetailControllerProvider).refreshGroupPage(groupId),
-        ),
-        data: (group) => _GroupTurnOverview(group: group),
+      child: Column(
+        children: [
+          Expanded(
+            child: groupAsync.when(
+              loading: () => const LoadingView(message: 'Loading group...'),
+              error: (error, _) => ErrorView(
+                message: mapFriendlyError(error),
+                onRetry: () => ref
+                    .read(groupDetailControllerProvider)
+                    .refreshGroupPage(groupId),
+              ),
+              data: (group) => _GroupTurnOverview(group: group),
+            ),
+          ),
+        ],
       ),
     );
   }

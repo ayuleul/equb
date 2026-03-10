@@ -62,7 +62,7 @@ class _ContributionDisputesScreenState
     }
 
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Dispute status'),
+      appBar: const KitAppBar(title: 'Contribution issue'),
       child: disputesAsync.when(
         loading: () => const LoadingView(message: 'Loading disputes...'),
         error: (error, _) => ErrorView(
@@ -87,12 +87,12 @@ class _ContributionDisputesScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Contribution dispute',
+                        'Issue timeline',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Use this flow to report mismatch, mediate, and resolve.',
+                        'Report a mismatch, track mediation, and close the issue.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

@@ -131,6 +131,13 @@ final realtimeClientProvider = Provider<RealtimeClient>((ref) {
   return client;
 });
 
+final realtimeConnectionStatusProvider =
+    StreamProvider<RealtimeConnectionStatus>((ref) async* {
+      final client = ref.watch(realtimeClientProvider);
+      yield client.connectionStatus;
+      yield* client.connectionStatuses;
+    });
+
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage();
 });

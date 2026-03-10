@@ -143,6 +143,12 @@
   - `Mark payout sent`
   - `Confirm receipt`
   - `Turn completed`
+- Turn Details should present true turn-level next actions (`Draw winner`, `Mark payout sent`, `Confirm receipt`) in a sticky bottom action tray; member-specific actions (`Pay now`, `Update payment`, `Fix & resubmit`) stay inside the contribution section instead.
+- Member contribution CTAs should use payment-oriented copy (`Pay now`, `Update payment`, `View payment proof`) instead of storage-oriented upload/receipt wording when guiding the user’s next action.
+- Shared action sheets should keep compact top spacing beneath the drag handle and use rounded bordered action rows so bottom-sheet menus feel aligned with the app’s card-based kit styling.
+- The Turn Details bottom tray should stay structurally present for important waiting states; when no turn-level CTA is available, render a compact status message there instead of removing the tray entirely.
+- From Turn Details, turn-level payout actions should open focused sheets/dialogs for the needed form step instead of pushing a generic payout detail screen.
+- Large turn/group detail screens should be split into same-feature parts/widgets once they accumulate multiple sections and action flows; keep the main screen focused on provider wiring, navigation, and composition.
 - Mobile must not show any `Close turn` action before the selected winner confirms payout receipt.
 - Group Overview must show cycle summary (completed cycles, last winner, current status) and must not show future-turn lists.
 - Group turn surfaces should show per-member payout progress for the latest round using explicit `Received` / `Pending` states plus the received turn number when available.
@@ -162,6 +168,7 @@
 - Realtime-driven refetch on a screen must coalesce burst events into a short debounce window instead of issuing one REST refresh per socket message.
 - Repository read paths used by realtime-driven detail screens must dedupe in-flight requests so repeated invalidations collapse onto a single HTTP call per resource key before hitting Dio.
 - Realtime failures must never block navigation or core REST actions; the screen should continue working with manual/REST refresh.
+- Realtime connection status should stay invisible when connected; show only a compact inline header status within `KitAppBar` on Group Details and Turn Details for prolonged `connecting` or `disconnected` states, never as global toasts/snackbars.
 
 ## Uploads & contributions rules
 - Signed proof uploads must use a separate Dio client with no auth interceptors; never upload proof files through authenticated API endpoints.
@@ -212,8 +219,11 @@
 ## Header rules
 - Feature pages must use `KitScaffold(appBar: KitAppBar(...))` instead of defining custom `AppBar` widgets.
 - `KitAppBar` is the single header primitive: centered title, optional subtitle, optional leading override, optional right actions, and auto-back when route can pop.
+- `KitAppBar` should stay compact by default: use restrained title/subtitle sizing and a compact avatar so pushed detail headers do not dominate the first content fold.
+- When a detail screen needs lightweight live-status context (for example realtime socket state), render it through `KitAppBar.status` instead of adding a separate status strip below the header.
 - Root tab pages (`/home`, `/groups`, `/settings`) must force `showBackButton: false`.
 - Pushed/detail pages rely on `KitAppBar` default back behavior (`context.canPop()`).
+- Pushed/detail page app bars should use real entity context in `KitAppBar` (`title` + optional `subtitle`) instead of generic labels, so long names stay truncated safely through the shared ellipsis behavior.
 - Headerless exceptions are allowed for auth screens (`/login`, `/otp`) and root tab pages (`/home`, `/groups`, `/settings`) when the product design calls for immersive top content.
 
 ## Tab architecture rules

@@ -6,6 +6,8 @@ import '../../shared/utils/app_logger.dart';
 import '../auth/token_store.dart';
 import 'realtime_event.dart';
 
+enum RealtimeConnectionStatus { idle, connecting, connected, disconnected }
+
 class RealtimeClient {
   RealtimeClient({
     required this.apiBaseUrl,
@@ -30,14 +32,21 @@ class RealtimeClient {
   final AppLogger _logger;
   final StreamController<RealtimeEvent> _eventsController =
       StreamController<RealtimeEvent>.broadcast();
+  final StreamController<RealtimeConnectionStatus> _statusController =
+      StreamController<RealtimeConnectionStatus>.broadcast();
   final Map<String, int> _groupRoomRefs = <String, int>{};
   final Map<String, int> _turnRoomRefs = <String, int>{};
   final Map<String, String> _turnGroupIds = <String, String>{};
 
   io.Socket? _socket;
   bool _hasConnectedOnce = false;
+  bool _disconnectRequested = false;
+  RealtimeConnectionStatus _connectionStatus = RealtimeConnectionStatus.idle;
 
   Stream<RealtimeEvent> get events => _eventsController.stream;
+  Stream<RealtimeConnectionStatus> get connectionStatuses =>
+      _statusController.stream;
+  RealtimeConnectionStatus get connectionStatus => _connectionStatus;
   Iterable<String> get activeGroupIds => _groupRoomRefs.keys;
   Iterable<String> get activeTurnIds => _turnRoomRefs.keys;
   String? groupIdForTurn(String turnId) => _turnGroupIds[turnId];
@@ -45,13 +54,16 @@ class RealtimeClient {
   Future<void> connect() async {
     final accessToken = await _tokenStore.getAccessToken();
     if (accessToken == null || accessToken.isEmpty) {
+      _setConnectionStatus(RealtimeConnectionStatus.idle);
       return;
     }
 
     if (_socket?.connected ?? false) {
+      _setConnectionStatus(RealtimeConnectionStatus.connected);
       return;
     }
 
+    _disconnectRequested = false;
     if (_socket != null) {
       _socket!.dispose();
       _socket = null;
@@ -74,11 +86,14 @@ class RealtimeClient {
 
     _bindSocket(socket);
     _socket = socket;
+    _setConnectionStatus(RealtimeConnectionStatus.connecting);
     socket.connect();
   }
 
   void disconnect() {
     _hasConnectedOnce = false;
+    _disconnectRequested = true;
+    _setConnectionStatus(RealtimeConnectionStatus.idle);
     final socket = _socket;
     _socket = null;
     if (socket == null) {
@@ -92,6 +107,7 @@ class RealtimeClient {
   void dispose() {
     disconnect();
     _eventsController.close();
+    _statusController.close();
   }
 
   void joinGroup(String groupId) {
@@ -136,6 +152,8 @@ class RealtimeClient {
     socket.onConnect((_) {
       final wasConnectedBefore = _hasConnectedOnce;
       _hasConnectedOnce = true;
+      _disconnectRequested = false;
+      _setConnectionStatus(RealtimeConnectionStatus.connected);
       _logger.info('Realtime socket connected.');
       _rejoinRooms();
 
@@ -146,10 +164,31 @@ class RealtimeClient {
 
     socket.onDisconnect((reason) {
       _logger.info('Realtime socket disconnected: $reason');
+      _setConnectionStatus(
+        _disconnectRequested
+            ? RealtimeConnectionStatus.idle
+            : RealtimeConnectionStatus.connecting,
+      );
     });
 
     socket.onConnectError((error) {
       _logger.error('Realtime socket connect error.', error: error);
+      _setConnectionStatus(RealtimeConnectionStatus.disconnected);
+    });
+
+    socket.onReconnectAttempt((attempt) {
+      _logger.info('Realtime socket reconnect attempt: $attempt');
+      _setConnectionStatus(RealtimeConnectionStatus.connecting);
+    });
+
+    socket.onReconnectError((error) {
+      _logger.error('Realtime socket reconnect error.', error: error);
+      _setConnectionStatus(RealtimeConnectionStatus.connecting);
+    });
+
+    socket.onReconnectFailed((_) {
+      _logger.error('Realtime socket reconnect failed.');
+      _setConnectionStatus(RealtimeConnectionStatus.disconnected);
     });
 
     for (final eventName in _serverEvents) {
@@ -180,6 +219,16 @@ class RealtimeClient {
 
     for (final turnId in _turnRoomRefs.keys) {
       _emitIfConnected('join_turn_room', <String, dynamic>{'turnId': turnId});
+    }
+  }
+
+  void _setConnectionStatus(RealtimeConnectionStatus nextStatus) {
+    if (_connectionStatus == nextStatus) {
+      return;
+    }
+    _connectionStatus = nextStatus;
+    if (!_statusController.isClosed) {
+      _statusController.add(nextStatus);
     }
   }
 
