@@ -45,7 +45,6 @@ class HomeScreen extends ConsumerWidget {
           children: [
             KitSectionHeader(
               title: 'Dashboard',
-              kicker: 'Overview',
               subtitle: 'Track your groups, contributions, and due dates.',
               action: IconButton(
                 tooltip: 'Notifications',

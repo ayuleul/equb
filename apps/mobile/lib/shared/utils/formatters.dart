@@ -39,6 +39,10 @@ String formatCalendarDate(DateTime date) {
   return _calendarDateFormat.format(date.toLocal());
 }
 
+String formatShortDate(DateTime date) {
+  return _shortMonthDayFormat.format(date.toLocal());
+}
+
 String formatShortDateTime(DateTime date) {
   final localDate = date.toLocal();
   return '${_shortMonthDayFormat.format(localDate)} • ${_timeFormat.format(localDate)}';

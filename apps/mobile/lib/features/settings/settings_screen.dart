@@ -20,7 +20,6 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           KitSectionHeader(
             title: 'Settings',
-            kicker: 'Account',
             subtitle: 'Manage your account and app preferences.',
           ),
           KitCard(

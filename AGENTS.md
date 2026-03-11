@@ -324,6 +324,7 @@
 - Group detail current-turn hero is navigation-only: expose a single `View details` CTA and do not surface direct pay/verify/payout action buttons on the main group page.
 - Turn details should center payment progress on a single `paid / total` summary metric with one aligned progress bar; secondary breakdown states like `verified` and `late` should be shown only when non-zero to keep the screen scannable.
 - Group overview should stay informational rather than operational: use one merged `Group Info` summary card for configuration/high-level cycle metadata, keep member reading flow ahead of invite actions, and avoid separate activity/admin dashboard cards on that screen.
+- Group list/mobile summary UI must derive cadence labels from the ruleset frequency when available (`CUSTOM_INTERVAL` overrides legacy group frequency display), and should derive the viewer role from fetched membership/member data when summary payloads omit `membership`.
 - Group detail segmented tab controls must remain compact-width and text-scale safe (no `RenderFlex` overflow under high accessibility text scales).
 - Group detail metadata badges and invite summary blocks must adapt to compact widths (horizontal scroll and/or stacked layout) so no `RenderFlex` overflow occurs on narrow devices.
 - Group member verification summaries in the UI must use actual member totals from the loaded member list; start-readiness thresholds such as `requiredToStart` are separate readiness data and must not be used as the members-section denominator.
