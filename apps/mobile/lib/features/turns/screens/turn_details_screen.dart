@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../app/theme/app_theme_extensions.dart';
 import '../../../data/models/contribution_dispute_model.dart';
 import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_bid_model.dart';
@@ -54,24 +55,19 @@ class TurnDetailsScreen extends ConsumerStatefulWidget {
 class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
   static const double _turnActionTrayInset = 116;
   late final TextEditingController _bidAmountController;
+  late final dynamic _realtimeClient;
 
   @override
   void initState() {
     super.initState();
     _bidAmountController = TextEditingController();
-    ref
-        .read(realtimeClientProvider)
-        .joinTurn(widget.turnId, groupId: widget.groupId);
+    _realtimeClient = ref.read(realtimeClientProvider);
+    _realtimeClient.joinTurn(widget.turnId, groupId: widget.groupId);
   }
 
   @override
   void dispose() {
-    ref.read(realtimeClientProvider).leaveTurn(widget.turnId);
-    unawaited(
-      ref
-          .read(groupDetailControllerProvider)
-          .refreshCurrentTurnState(widget.groupId, cycleId: widget.turnId),
-    );
+    _realtimeClient.leaveTurn(widget.turnId);
     _bidAmountController.dispose();
     super.dispose();
   }
@@ -197,14 +193,14 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                               cycle: cycle,
                               payout: payout,
                               status: status,
-                              disputesAsync: disputesAsync,
                               contributionsAsync: contributionsAsync,
+                              currentUserId: currentUserId,
                             ),
                             const SizedBox(height: AppSpacing.md),
                             const KitSectionHeader(
-                              title: 'Member Contributions',
+                              title: 'Members',
                               subtitle:
-                                  'Turn-wide status and per-member payment tracking',
+                                  'Payment progress and per-member status',
                             ),
                             _CollectionSection(
                               group: group,

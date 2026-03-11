@@ -99,7 +99,7 @@ _TurnAction? _resolveTurnAction({
 
   if (contribution == null) {
     return _TurnAction(
-      label: 'Pay now',
+      label: 'Pay ${formatCurrency(group.contributionAmount, group.currency)}',
       icon: Icons.upload_file_outlined,
       onPressed: () => context.push(
         AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
@@ -120,7 +120,7 @@ _TurnAction? _resolveTurnAction({
       kind: _TurnActionKind.fixResubmit,
     ),
     ContributionStatusModel.late => _TurnAction(
-      label: 'Pay now',
+      label: 'Pay ${formatCurrency(group.contributionAmount, group.currency)}',
       icon: Icons.warning_amber_rounded,
       onPressed: () => context.push(
         AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
@@ -137,7 +137,7 @@ _TurnAction? _resolveTurnAction({
       kind: _TurnActionKind.waitingForVerification,
     ),
     ContributionStatusModel.pending => _TurnAction(
-      label: 'Pay now',
+      label: 'Pay ${formatCurrency(group.contributionAmount, group.currency)}',
       icon: Icons.upload_file_outlined,
       onPressed: () => context.push(
         AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
@@ -234,7 +234,8 @@ _TurnFooter? _resolveTurnFooter({
   if (cycle.state == CycleStateModel.collecting) {
     return const _TurnFooter.status(
       message: 'Collection is in progress',
-      detail: 'This turn will unlock the next step when collection requirements are met.',
+      detail:
+          'This turn will unlock the next step when collection requirements are met.',
       icon: Icons.sync_alt_rounded,
     );
   }
@@ -250,7 +251,8 @@ _TurnFooter? _resolveTurnFooter({
   if (cycle.state == CycleStateModel.readyForPayout) {
     return const _TurnFooter.status(
       message: 'Waiting for payout to be sent',
-      detail: 'The selected winner is set. The next step is payout disbursement.',
+      detail:
+          'The selected winner is set. The next step is payout disbursement.',
       icon: Icons.account_balance_wallet_outlined,
     );
   }
@@ -346,9 +348,7 @@ Widget _buildTurnActionTray({
                                   const SizedBox(height: AppSpacing.xxs),
                                   Text(
                                     footer.detail!,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           color: colorScheme.onSurfaceVariant,
                                         ),
@@ -361,10 +361,10 @@ Widget _buildTurnActionTray({
                 ),
               ),
             ),
-            ),
           ),
         ),
       ),
+    ),
   );
 }
 
@@ -407,10 +407,7 @@ Future<void> _openSendPayoutSheet({
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    builder: (_) => _SendPayoutSheet(
-      groupId: groupId,
-      cycle: cycle,
-    ),
+    builder: (_) => _SendPayoutSheet(groupId: groupId, cycle: cycle),
   );
 }
 
@@ -463,7 +460,9 @@ Future<void> _handleDrawWinnerAction({
   final success = await ref
       .read(payoutActionControllerProvider(args).notifier)
       .selectWinner(
-        userId: mode == GroupRulePayoutModeModel.decision ? selectedUserId : null,
+        userId: mode == GroupRulePayoutModeModel.decision
+            ? selectedUserId
+            : null,
         preferSocketSync: true,
       );
   if (success && context.mounted) {
@@ -489,8 +488,10 @@ Future<void> _handleConfirmReceiptAction({
 
   final success = await ref
       .read(
-        payoutActionControllerProvider((groupId: groupId, cycleId: cycle.id))
-            .notifier,
+        payoutActionControllerProvider((
+          groupId: groupId,
+          cycleId: cycle.id,
+        )).notifier,
       )
       .confirmPayoutReceived(preferSocketSync: true);
   if (success && context.mounted) {
@@ -562,10 +563,7 @@ Future<String?> _promptDecisionWinner({
 }
 
 class _SendPayoutSheet extends ConsumerStatefulWidget {
-  const _SendPayoutSheet({
-    required this.groupId,
-    required this.cycle,
-  });
+  const _SendPayoutSheet({required this.groupId, required this.cycle});
 
   final String groupId;
   final CycleModel cycle;
@@ -578,10 +576,8 @@ class _SendPayoutSheetState extends ConsumerState<_SendPayoutSheet> {
   late final TextEditingController _paymentRefController;
   late final TextEditingController _noteController;
 
-  PayoutActionArgs get _args => (
-    groupId: widget.groupId,
-    cycleId: widget.cycle.id,
-  );
+  PayoutActionArgs get _args =>
+      (groupId: widget.groupId, cycleId: widget.cycle.id);
 
   @override
   void initState() {
@@ -669,9 +665,9 @@ class _SendPayoutSheetContent extends ConsumerWidget {
       children: [
         Text(
           'Mark payout sent',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(

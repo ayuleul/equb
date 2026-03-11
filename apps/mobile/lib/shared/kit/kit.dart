@@ -5,6 +5,7 @@ export 'kit_badge.dart';
 export 'kit_banner.dart';
 export 'kit_buttons.dart';
 export 'kit_card.dart';
+export 'kit_due_countdown.dart';
 export 'kit_dialog.dart';
 export 'kit_divider.dart';
 export 'kit_empty_state.dart';

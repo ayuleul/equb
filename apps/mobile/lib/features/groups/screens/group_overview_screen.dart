@@ -17,6 +17,7 @@ import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
 import '../group_detail_controller.dart';
 import '../widgets/group_invite_sheet.dart';
+import '../widgets/group_more_actions_button.dart';
 
 class GroupOverviewScreen extends ConsumerWidget {
   const GroupOverviewScreen({super.key, required this.groupId});
@@ -27,9 +28,16 @@ class GroupOverviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupDetailProvider(groupId));
     final group = groupAsync.valueOrNull;
+    final isAdmin = group?.membership?.role == MemberRoleModel.admin;
 
     return KitScaffold(
-      appBar: KitAppBar(title: group?.name ?? 'Group overview'),
+      appBar: KitAppBar(
+        title: group?.name ?? 'Group overview',
+        actions: [
+          if (group != null)
+            _GroupOverviewMenuButton(group: group, isAdmin: isAdmin),
+        ],
+      ),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -77,20 +85,12 @@ class _GroupOverviewBody extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
           ],
-          _GroupSummaryCard(
+          _GroupInfoCard(
             group: group,
-            membersCount: membersAsync.valueOrNull?.length,
-            currentCycle: currentCycleAsync.valueOrNull,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _LotterySummaryCard(
-            groupId: group.id,
             membersAsync: membersAsync,
             currentCycleAsync: currentCycleAsync,
             cyclesAsync: cyclesAsync,
           ),
-          const SizedBox(height: AppSpacing.md),
-          _WinnerHistoryCard(groupId: group.id, cyclesAsync: cyclesAsync),
           const SizedBox(height: AppSpacing.md),
           _MembersCard(
             groupId: group.id,
@@ -98,78 +98,21 @@ class _GroupOverviewBody extends ConsumerWidget {
             canInviteMembers: group.canInviteMembers,
             membersAsync: membersAsync,
           ),
-          if (isAdmin) ...[
-            const SizedBox(height: AppSpacing.md),
-            _OverviewAdminActionsCard(
-              groupId: group.id,
-              hasOpenCycle: currentCycleAsync.valueOrNull != null,
-              canInviteMembers: group.canInviteMembers,
-              canStartCycle: group.canStartCycle,
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-class _GroupSummaryCard extends StatelessWidget {
-  const _GroupSummaryCard({
+class _GroupInfoCard extends StatelessWidget {
+  const _GroupInfoCard({
     required this.group,
-    required this.membersCount,
-    required this.currentCycle,
-  });
-
-  final GroupModel group;
-  final int? membersCount;
-  final CycleModel? currentCycle;
-
-  @override
-  Widget build(BuildContext context) {
-    final roundStatus = switch (currentCycle) {
-      null =>
-        group.status == GroupStatusModel.archived ? 'Completed' : 'Not started',
-      final cycle =>
-        cycle.status == CycleStatusModel.closed ? 'Completed' : 'In progress',
-    };
-
-    return KitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Group summary',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _SummaryRow(
-            label: 'Contribution',
-            value: formatCurrency(group.contributionAmount, group.currency),
-          ),
-          _SummaryRow(
-            label: 'Frequency',
-            value: _frequencyLabel(group.frequency),
-          ),
-          _SummaryRow(label: 'Members', value: '${membersCount ?? '-'}'),
-          const _SummaryRow(label: 'Payout mode', value: LotteryCopy.label),
-          _SummaryRow(label: 'Round status', value: roundStatus),
-        ],
-      ),
-    );
-  }
-}
-
-class _LotterySummaryCard extends StatelessWidget {
-  const _LotterySummaryCard({
-    required this.groupId,
     required this.membersAsync,
     required this.currentCycleAsync,
     required this.cyclesAsync,
   });
 
-  final String groupId;
+  final GroupModel group;
   final AsyncValue<List<MemberModel>> membersAsync;
   final AsyncValue<CycleModel?> currentCycleAsync;
   final AsyncValue<List<CycleModel>> cyclesAsync;
@@ -190,7 +133,7 @@ class _LotterySummaryCard extends StatelessWidget {
       final error =
           membersAsync.error ?? cyclesAsync.error ?? currentCycleAsync.error;
       return ErrorView(
-        message: mapFriendlyError(error ?? 'Unable to load lottery summary.'),
+        message: mapFriendlyError(error ?? 'Unable to load group info.'),
       );
     }
 
@@ -203,6 +146,7 @@ class _LotterySummaryCard extends StatelessWidget {
 
     final summary = _buildLotterySummary(
       activeMemberCount: activeMemberCount,
+      group: group,
       currentCycle: currentCycle,
       cycles: cycles,
     );
@@ -211,32 +155,25 @@ class _LotterySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            LotteryCopy.summaryTitle,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
+          Text('Group Info', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.sm),
           _SummaryRow(
-            label: LotteryCopy.turnsCompletedLabel,
-            value: '${summary.turnsCompleted} / ${summary.totalTurns}',
+            label: 'Contribution',
+            value: formatCurrency(group.contributionAmount, group.currency),
           ),
           _SummaryRow(
-            label: LotteryCopy.lastWinnerLabel,
-            value: summary.lastWinnerName,
+            label: 'Frequency',
+            value: _frequencyLabel(group.frequency),
           ),
+          _SummaryRow(label: 'Members', value: '$activeMemberCount'),
+          const _SummaryRow(label: 'Payout mode', value: LotteryCopy.label),
           _SummaryRow(
-            label: LotteryCopy.statusLabel,
-            value: summary.roundStatus,
+            label: 'Cycle progress',
+            value:
+                '${summary.turnsCompleted} / ${summary.totalTurns} completed',
           ),
-          if (summary.isCompleted) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              LotteryCopy.completedRoundMessage,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
+          _SummaryRow(label: 'Last winner', value: summary.lastWinnerName),
+          _StatusSummaryRow(status: summary.status),
         ],
       ),
     );
@@ -244,6 +181,7 @@ class _LotterySummaryCard extends StatelessWidget {
 
   _LotterySummaryData _buildLotterySummary({
     required int activeMemberCount,
+    required GroupModel group,
     required CycleModel? currentCycle,
     required List<CycleModel> cycles,
   }) {
@@ -261,13 +199,17 @@ class _LotterySummaryCard extends StatelessWidget {
     final totalTurns = activeMemberCount;
     final isCompleted =
         totalTurns > 0 && turnsCompleted >= totalTurns && currentCycle == null;
+    final hasStarted = roundCycles.isNotEmpty || currentCycle != null;
 
     return _LotterySummaryData(
       turnsCompleted: turnsCompleted,
       totalTurns: totalTurns,
-      roundStatus: isCompleted
-          ? LotteryCopy.statusCompleted
-          : LotteryCopy.statusInProgress,
+      status: _groupOverviewStatus(
+        group: group,
+        isCompleted: isCompleted,
+        hasStarted: hasStarted,
+        currentCycle: currentCycle,
+      ),
       isCompleted: isCompleted,
       lastWinnerName: roundCycles.isEmpty
           ? LotteryCopy.noWinnerYet
@@ -281,114 +223,15 @@ class _LotterySummaryData {
     required this.turnsCompleted,
     required this.totalTurns,
     required this.lastWinnerName,
-    required this.roundStatus,
+    required this.status,
     required this.isCompleted,
   });
 
   final int turnsCompleted;
   final int totalTurns;
   final String lastWinnerName;
-  final String roundStatus;
+  final _OverviewStatus status;
   final bool isCompleted;
-}
-
-class _WinnerHistoryCard extends ConsumerWidget {
-  const _WinnerHistoryCard({required this.groupId, required this.cyclesAsync});
-
-  final String groupId;
-  final AsyncValue<List<CycleModel>> cyclesAsync;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const KitSectionHeader(title: 'Winner history'),
-        cyclesAsync.when(
-          loading: () => const KitCard(
-            child: Column(
-              children: [
-                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
-                SizedBox(height: AppSpacing.sm),
-                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
-                SizedBox(height: AppSpacing.sm),
-                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
-              ],
-            ),
-          ),
-          error: (error, _) => ErrorView(
-            message: mapFriendlyError(error),
-            onRetry: () => ref.invalidate(cyclesListProvider(groupId)),
-          ),
-          data: (cycles) {
-            if (cycles.isEmpty) {
-              return const KitEmptyState(
-                icon: Icons.emoji_events_outlined,
-                title: 'No winners yet',
-                message:
-                    'Winners will appear here after cycle winner selection.',
-              );
-            }
-
-            final sortedCycles = [...cycles]
-              ..sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
-            return KitCard(
-              child: Column(
-                children: [
-                  for (var i = 0; i < sortedCycles.length; i++) ...[
-                    _WinnerHistoryRow(cycle: sortedCycles[i]),
-                    if (i != sortedCycles.length - 1)
-                      Divider(
-                        height: AppSpacing.lg,
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                  ],
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _WinnerHistoryRow extends StatelessWidget {
-  const _WinnerHistoryRow({required this.cycle});
-
-  final CycleModel cycle;
-
-  @override
-  Widget build(BuildContext context) {
-    final statusLabel = switch (cycle.status) {
-      CycleStatusModel.open => 'OPEN',
-      CycleStatusModel.closed => 'CLOSED',
-      CycleStatusModel.unknown => 'UNKNOWN',
-    };
-    final winnerLabel = _cycleWinnerLabel(cycle);
-
-    return Row(
-      children: [
-        KitAvatar(name: winnerLabel, size: KitAvatarSize.sm),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(winnerLabel, style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(
-                'Turn ${cycle.cycleNo} • Due ${formatDate(cycle.dueDate)}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        StatusPill.fromLabel(statusLabel),
-      ],
-    );
-  }
 }
 
 class _MembersCard extends ConsumerWidget {
@@ -406,32 +249,14 @@ class _MembersCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final memberCount = membersAsync.valueOrNull?.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-              const KitSectionHeader(title: 'Members'),
-        if (isAdmin) ...[
-          KitPrimaryButton(
-            label: 'Invite members',
-            icon: Icons.person_add_alt_1_rounded,
-            onPressed: canInviteMembers
-                ? () => showGroupInviteSheet(
-                      context: context,
-                      ref: ref,
-                      groupId: groupId,
-                    )
-                : () => context.push(AppRoutePaths.groupSetup(groupId)),
-          ),
-          if (!canInviteMembers)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text(
-                'Complete rules setup to enable invites.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
+        KitSectionHeader(
+          title: 'Members${memberCount == null ? '' : ' ($memberCount)'}',
+        ),
         membersAsync.when(
           loading: () => const KitCard(
             child: Column(
@@ -474,62 +299,28 @@ class _MembersCard extends ConsumerWidget {
             );
           },
         ),
-      ],
-    );
-  }
-}
-
-class _OverviewAdminActionsCard extends ConsumerWidget {
-  const _OverviewAdminActionsCard({
-    required this.groupId,
-    required this.hasOpenCycle,
-    required this.canInviteMembers,
-    required this.canStartCycle,
-  });
-
-  final String groupId;
-  final bool hasOpenCycle;
-  final bool canInviteMembers;
-  final bool canStartCycle;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const KitSectionHeader(title: 'Admin actions'),
-        KitCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              KitSecondaryButton(
-                label: 'Invite members',
-                icon: Icons.person_add_alt_1_rounded,
-                onPressed: canInviteMembers
-                    ? () => showGroupInviteSheet(
-                          context: context,
-                          ref: ref,
-                          groupId: groupId,
-                        )
-                    : () => context.push(AppRoutePaths.groupSetup(groupId)),
-              ),
-              if (!hasOpenCycle) ...[
-                const SizedBox(height: AppSpacing.sm),
-                KitPrimaryButton(
-                  label: canStartCycle
-                      ? 'Go to current turn'
-                      : 'Complete setup to start',
-                  icon: canStartCycle
-                      ? Icons.play_arrow_rounded
-                      : Icons.rule_folder_outlined,
-                  onPressed: canStartCycle
-                      ? () => context.push(AppRoutePaths.groupDetail(groupId))
-                      : () => context.push(AppRoutePaths.groupSetup(groupId)),
-                ),
-              ],
-            ],
+        if (isAdmin) ...[
+          const SizedBox(height: AppSpacing.sm),
+          KitPrimaryButton(
+            label: 'Invite member',
+            icon: Icons.person_add_alt_1_rounded,
+            onPressed: canInviteMembers
+                ? () => showGroupInviteSheet(
+                    context: context,
+                    ref: ref,
+                    groupId: groupId,
+                  )
+                : () => context.push(AppRoutePaths.groupSetup(groupId)),
           ),
-        ),
+          if (!canInviteMembers)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                'Complete rules setup to enable invites.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -612,6 +403,159 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
+class _StatusSummaryRow extends StatelessWidget {
+  const _StatusSummaryRow({required this.status});
+
+  final _OverviewStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Status',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.circle, size: 10, color: status.color),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Text(
+                    status.label,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupOverviewMenuButton extends StatelessWidget {
+  const _GroupOverviewMenuButton({required this.group, required this.isAdmin});
+
+  final GroupModel group;
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isAdmin) {
+      return GroupMoreActionsButton(groupName: group.name, isAdmin: false);
+    }
+
+    return PopupMenuButton<_OverviewMenuAction>(
+      tooltip: 'More actions',
+      offset: const Offset(0, 10),
+      onSelected: (value) => _handleSelected(context, value),
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: _OverviewMenuAction.edit,
+          child: _OverviewMenuRow(
+            icon: Icons.edit_outlined,
+            label: 'Edit group',
+          ),
+        ),
+        PopupMenuItem(
+          value: _OverviewMenuAction.close,
+          child: _OverviewMenuRow(
+            icon: Icons.lock_outline_rounded,
+            label: 'Close group',
+            isDestructive: true,
+          ),
+        ),
+      ],
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        child: Icon(
+          Icons.grid_view_rounded,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleSelected(
+    BuildContext context,
+    _OverviewMenuAction action,
+  ) async {
+    switch (action) {
+      case _OverviewMenuAction.edit:
+        context.push(AppRoutePaths.groupSetup(group.id));
+        return;
+      case _OverviewMenuAction.close:
+        KitToast.info(
+          context,
+          'Close group for "${group.name}" is coming soon.',
+        );
+        return;
+    }
+  }
+}
+
+enum _OverviewMenuAction { edit, close }
+
+class _OverviewMenuRow extends StatelessWidget {
+  const _OverviewMenuRow({
+    required this.icon,
+    required this.label,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isDestructive
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurface;
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewStatus {
+  const _OverviewStatus({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+}
+
 String _frequencyLabel(GroupFrequencyModel frequency) {
   return switch (frequency) {
     GroupFrequencyModel.weekly => 'Weekly',
@@ -632,4 +576,25 @@ String _cycleWinnerLabel(CycleModel cycle) {
   }
 
   return cycle.finalPayoutUserId ?? cycle.payoutUserId;
+}
+
+_OverviewStatus _groupOverviewStatus({
+  required GroupModel group,
+  required bool isCompleted,
+  required bool hasStarted,
+  required CycleModel? currentCycle,
+}) {
+  if (group.status == GroupStatusModel.archived) {
+    return const _OverviewStatus(label: 'Closed', color: Color(0xFF7A7F87));
+  }
+  if (isCompleted) {
+    return const _OverviewStatus(label: 'Completed', color: Color(0xFF1E8E5A));
+  }
+  if (currentCycle != null || hasStarted) {
+    return const _OverviewStatus(
+      label: 'In progress',
+      color: Color(0xFF2F6FED),
+    );
+  }
+  return const _OverviewStatus(label: 'Not started', color: Color(0xFFC77700));
 }

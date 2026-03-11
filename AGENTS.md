@@ -300,6 +300,7 @@
   - Android emulator: use `http://10.0.2.2:<port>`
   - iOS simulator and macOS app: use `http://localhost:<port>` (or `127.0.0.1`)
 - Never hardcode API URLs or secrets in Flutter source.
+- iOS image/file picker flows that access camera or photo library must declare the matching `Info.plist` privacy usage descriptions (`NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, and any additional required Apple privacy keys) before shipping or device testing.
 - Dio client must attach bearer token when present and attempt one refresh-token rotation on `401` before failing.
 - Login phone entry must use a single themed phone field with an inline country-code selector, searchable country picker sheet, and Ethiopia (`+251`) selected by default; Ethiopian local numbers should normalize to E.164 automatically.
 - Login phone number behavior must be driven by country metadata on the selector model, not hardcoded `isoCode` checks in UI or formatter logic.
@@ -321,8 +322,11 @@
 - Group detail pages should present core actions (`Members`, `Cycles`, `Payout`) as segmented in-page tabs instead of navigating to separate top-level screens by default.
 - Group invite actions should be exposed via the invite banner/CTA and menu actions, not as a default segmented tab.
 - Group detail current-turn hero is navigation-only: expose a single `View details` CTA and do not surface direct pay/verify/payout action buttons on the main group page.
+- Turn details should center payment progress on a single `paid / total` summary metric with one aligned progress bar; secondary breakdown states like `verified` and `late` should be shown only when non-zero to keep the screen scannable.
+- Group overview should stay informational rather than operational: use one merged `Group Info` summary card for configuration/high-level cycle metadata, keep member reading flow ahead of invite actions, and avoid separate activity/admin dashboard cards on that screen.
 - Group detail segmented tab controls must remain compact-width and text-scale safe (no `RenderFlex` overflow under high accessibility text scales).
 - Group detail metadata badges and invite summary blocks must adapt to compact widths (horizontal scroll and/or stacked layout) so no `RenderFlex` overflow occurs on narrow devices.
+- Group member verification summaries in the UI must use actual member totals from the loaded member list; start-readiness thresholds such as `requiredToStart` are separate readiness data and must not be used as the members-section denominator.
 - Group setup should use a multi-step wizard with a horizontally scrollable step-tab row and a visually separated details panel; step navigation must remain overflow-safe on compact widths (no RenderFlex overflow in headers).
 - Group setup step tabs should use segmented controls with numeric step identifiers and explicit lock/completion cues so progression state is readable without relying on arrow indicators.
 - Group setup step tabs should present progression visually as steps (for example numbered chips with connector lines) so flow order is obvious at a glance.
@@ -343,3 +347,4 @@
 - Notification bootstrap must not access `FirebaseMessaging.instance` before Firebase app initialization; push setup should degrade gracefully when Firebase config is unavailable.
 - Bottom tab navigation must be docked to the bottom edge (no floating/lift), span left-to-right, and use the app primary color for the active tab state (`app/app_shell.dart`) unless a product requirement explicitly overrides it.
 - Bottom tab taps should use subtle motion (reduced size delta and short animation) plus light haptic feedback (`HapticFeedback.selectionClick`) in `app/app_shell.dart`.
+- Riverpod-backed mobile screens must not read providers during `dispose`; cache client/notifier dependencies before teardown and avoid dispose-time async refresh work that can outlive the screen's provider container.

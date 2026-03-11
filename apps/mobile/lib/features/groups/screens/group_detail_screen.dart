@@ -43,16 +43,17 @@ class GroupDetailScreen extends ConsumerStatefulWidget {
 class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   bool _wasCurrentRoute = false;
   bool _hasSeenCurrentRoute = false;
+  late final _realtimeClient = ref.read(realtimeClientProvider);
 
   @override
   void initState() {
     super.initState();
-    ref.read(realtimeClientProvider).joinGroup(widget.groupId);
+    _realtimeClient.joinGroup(widget.groupId);
   }
 
   @override
   void dispose() {
-    ref.read(realtimeClientProvider).leaveGroup(widget.groupId);
+    _realtimeClient.leaveGroup(widget.groupId);
     super.dispose();
   }
 
@@ -165,10 +166,11 @@ class _GroupTurnOverview extends ConsumerWidget {
                   membersAsync: membersAsync,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _PastTurnsSection(
+                _CycleHistorySection(
                   groupId: group.id,
                   currentCycleAsync: currentCycleAsync,
                   cyclesAsync: cyclesAsync,
+                  membersAsync: membersAsync,
                 ),
                 const SizedBox(height: AppSpacing.lg),
               ],
@@ -213,10 +215,11 @@ class _PreStartGroupView extends ConsumerWidget {
             membersAsync: membersAsync,
           ),
           const SizedBox(height: AppSpacing.lg),
-          _PastTurnsSection(
+          _CycleHistorySection(
             groupId: group.id,
             currentCycleAsync: currentCycleAsync,
             cyclesAsync: cyclesAsync,
+            membersAsync: membersAsync,
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
@@ -530,7 +533,7 @@ class _PreStartMembersSectionState
         final verifiedCount = members
             .where((member) => isVerifiedMemberStatus(member.status))
             .length;
-        final requiredCount = rules?.requiredToStart ?? (rules?.roundSize ?? 0);
+        final totalMembers = members.length;
         final isAdmin = widget.group.membership?.role == MemberRoleModel.admin;
         final joinedCount = members
             .where((member) => isParticipatingMemberStatus(member.status))
@@ -541,8 +544,8 @@ class _PreStartMembersSectionState
           children: [
             KitSectionHeader(
               title: 'Members',
-              subtitle: requiredCount > 0
-                  ? '$verifiedCount of $requiredCount verified'
+              subtitle: totalMembers > 0
+                  ? '$verifiedCount of $totalMembers verified'
                   : '$joinedCount members',
             ),
             KitCard(
@@ -899,10 +902,7 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Due ${formatDate(cycle.dueDate)}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  DueCountdown(dueDate: cycle.dueDate),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     _winnerCopy(cycle, payout),
@@ -979,150 +979,246 @@ class _CurrentTurnHeroCard extends ConsumerWidget {
   }
 }
 
-class _PastTurnsSection extends StatelessWidget {
-  const _PastTurnsSection({
+class _CycleHistorySection extends StatelessWidget {
+  const _CycleHistorySection({
     required this.groupId,
     required this.currentCycleAsync,
     required this.cyclesAsync,
+    required this.membersAsync,
   });
 
   final String groupId;
   final AsyncValue<CycleModel?> currentCycleAsync;
   final AsyncValue<List<CycleModel>> cyclesAsync;
+  final AsyncValue<List<MemberModel>> membersAsync;
 
   @override
   Widget build(BuildContext context) {
-    final currentCycleId = currentCycleAsync.valueOrNull?.id;
-
-    return cyclesAsync.when(
-      loading: () => const Column(
+    if (currentCycleAsync.isLoading ||
+        cyclesAsync.isLoading ||
+        membersAsync.isLoading) {
+      return const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          KitSectionHeader(title: 'Past Turns'),
+          KitSectionHeader(
+            title: 'Cycle History',
+            subtitle: 'Cycles and turns completed by this group',
+          ),
           KitCard(
-            child: SizedBox(height: 220, child: KitSkeletonList(itemCount: 3)),
+            child: SizedBox(height: 260, child: KitSkeletonList(itemCount: 6)),
           ),
         ],
-      ),
-      error: (error, _) => KitCard(
-        child: Text(
-          mapFriendlyError(error),
-          style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
+
+    final error =
+        currentCycleAsync.error ?? cyclesAsync.error ?? membersAsync.error;
+    if (error != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const KitSectionHeader(title: 'Cycle History'),
+          KitCard(
+            child: Text(
+              mapFriendlyError(error),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final sections = _buildCycleHistorySections(
+      currentCycle: currentCycleAsync.valueOrNull,
+      cycles: cyclesAsync.valueOrNull ?? const <CycleModel>[],
+      members: membersAsync.valueOrNull ?? const <MemberModel>[],
+    );
+
+    if (sections.isEmpty) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          KitSectionHeader(
+            title: 'Cycle History',
+            subtitle: 'Cycles and turns completed by this group',
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: AppSpacing.xs),
+            child: Text('No cycle history yet'),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const KitSectionHeader(
+          title: 'Cycle History',
+          subtitle: 'Cycles and turns completed by this group',
         ),
-      ),
-      data: (cycles) {
-        final pastTurns =
-            cycles
-                .where((cycle) => cycle.id != currentCycleId)
-                .toList(growable: false)
-              ..sort((a, b) => b.cycleNo.compareTo(a.cycleNo));
-
-        if (pastTurns.isEmpty) {
-          return const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              KitSectionHeader(title: 'Past Turns'),
-              Padding(
-                padding: EdgeInsets.only(top: AppSpacing.xs),
-                child: Text('No past turns yet'),
-              ),
-            ],
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const KitSectionHeader(
-              title: 'Past Turns',
-              subtitle: 'Recent history for this group',
-            ),
-            KitCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  for (var index = 0; index < pastTurns.length; index++) ...[
-                    _PastTurnRow(groupId: groupId, cycle: pastTurns[index]),
-                    if (index != pastTurns.length - 1)
-                      const Divider(height: 1, indent: 16, endIndent: 16),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+        for (var index = 0; index < sections.length; index++) ...[
+          _CycleHistoryCard(groupId: groupId, section: sections[index]),
+          if (index != sections.length - 1)
+            const SizedBox(height: AppSpacing.md),
+        ],
+      ],
     );
   }
 }
 
-class _PastTurnRow extends ConsumerWidget {
-  const _PastTurnRow({required this.groupId, required this.cycle});
+enum _CycleTurnState { completed, current, upcoming }
+
+class _CycleTurnItem {
+  const _CycleTurnItem({
+    required this.turnNo,
+    required this.state,
+    required this.title,
+    required this.subtitle,
+    this.cycleId,
+  });
+
+  final int turnNo;
+  final _CycleTurnState state;
+  final String title;
+  final String subtitle;
+  final String? cycleId;
+}
+
+class _CycleHistoryCard extends StatelessWidget {
+  const _CycleHistoryCard({required this.groupId, required this.section});
 
   final String groupId;
-  final CycleModel cycle;
+  final _CycleHistorySectionData section;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final contributionsAsync = ref.watch(
-      cycleContributionsProvider((groupId: groupId, cycleId: cycle.id)),
+  Widget build(BuildContext context) {
+    final highlightColor = section.isCurrent
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+        : Theme.of(context).colorScheme.surfaceContainerLow;
+    final borderColor = section.isCurrent
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.24)
+        : Theme.of(context).colorScheme.outlineVariant;
+
+    return KitCard(
+      padding: EdgeInsets.zero,
+      child: Container(
+        decoration: BoxDecoration(
+          color: highlightColor,
+          borderRadius: AppRadius.cardRounded,
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'Cycle ${section.index}',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        if (section.isCurrent)
+                          const StatusPill(
+                            label: 'Current Cycle',
+                            tone: KitBadgeTone.info,
+                          ),
+                      ],
+                    ),
+                  ),
+                  StatusPill(
+                    label: section.statusLabel,
+                    tone: section.isCurrent
+                        ? KitBadgeTone.info
+                        : section.isCompleted
+                        ? KitBadgeTone.success
+                        : KitBadgeTone.neutral,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            for (var index = 0; index < section.turns.length; index++) ...[
+              _CycleTurnRow(groupId: groupId, item: section.turns[index]),
+              if (index != section.turns.length - 1)
+                const Divider(height: 1, indent: 48, endIndent: 16),
+            ],
+          ],
+        ),
+      ),
     );
-    final payoutAsync = ref.watch(cyclePayoutProvider(cycle.id));
-    final status = mapTurnStatus(
-      cycle: cycle,
-      contributionSummary: contributionsAsync.valueOrNull?.summary,
-      payout: payoutAsync.valueOrNull,
-    );
-    final winnerLabel = _turnWinnerLabel(cycle, payoutAsync.valueOrNull);
-    final hasLate = (contributionsAsync.valueOrNull?.summary.late ?? 0) > 0;
-    final hasAuction =
-        (cycle.auctionStatus ?? AuctionStatusModel.none) !=
-        AuctionStatusModel.none;
+  }
+}
+
+class _CycleTurnRow extends StatelessWidget {
+  const _CycleTurnRow({required this.groupId, required this.item});
+
+  final String groupId;
+  final _CycleTurnItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final canOpenTurn = item.cycleId != null;
+    final indicatorColor = switch (item.state) {
+      _CycleTurnState.completed => context.colors.success,
+      _CycleTurnState.current => Theme.of(context).colorScheme.primary,
+      _CycleTurnState.upcoming => Theme.of(context).colorScheme.outlineVariant,
+    };
+    final indicatorIcon = switch (item.state) {
+      _CycleTurnState.completed => Icons.check_rounded,
+      _CycleTurnState.current => Icons.circle,
+      _CycleTurnState.upcoming => Icons.radio_button_unchecked_rounded,
+    };
 
     return InkWell(
-      onTap: () =>
-          context.push(AppRoutePaths.groupTurnDetail(groupId, cycle.id)),
+      key: ValueKey('cycle-turn-${item.cycleId ?? 'upcoming-${item.turnNo}'}'),
+      onTap: canOpenTurn
+          ? () => context.push(
+              AppRoutePaths.groupTurnDetail(groupId, item.cycleId!),
+            )
+          : null,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
+            Icon(indicatorIcon, size: 18, color: indicatorColor),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Turn ${cycle.cycleNo}',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      _buildStagePill(status),
-                    ],
+                  Text(
+                    item.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xxs),
                   Text(
-                    winnerLabel == null
-                        ? 'Winner pending'
-                        : 'Winner: $winnerLabel',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  if (hasAuction || hasLate) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: AppSpacing.xs,
-                      children: [
-                        if (hasAuction) const _MiniIndicator(label: 'Auction'),
-                        if (hasLate) const _MiniIndicator(label: 'Late'),
-                      ],
+                    item.subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded),
+            if (canOpenTurn) ...[
+              const SizedBox(width: AppSpacing.sm),
+              const Icon(Icons.chevron_right_rounded),
+            ],
           ],
         ),
       ),
@@ -1353,17 +1449,6 @@ class _InlineMetric extends StatelessWidget {
         context,
       ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
     );
-  }
-}
-
-class _MiniIndicator extends StatelessWidget {
-  const _MiniIndicator({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return StatusPill(label: label, tone: KitBadgeTone.info);
   }
 }
 
@@ -1624,4 +1709,192 @@ int _turnPotSize({
     return items.fold<int>(0, (sum, item) => sum + item.amount);
   }
   return fallbackAmount * totalMembers;
+}
+
+class _CycleHistorySectionData {
+  const _CycleHistorySectionData({
+    required this.index,
+    required this.isCurrent,
+    required this.isCompleted,
+    required this.statusLabel,
+    required this.turns,
+    required this.sortAnchor,
+  });
+
+  final int index;
+  final bool isCurrent;
+  final bool isCompleted;
+  final String statusLabel;
+  final List<_CycleTurnItem> turns;
+  final DateTime sortAnchor;
+}
+
+List<_CycleHistorySectionData> _buildCycleHistorySections({
+  required CycleModel? currentCycle,
+  required List<CycleModel> cycles,
+  required List<MemberModel> members,
+}) {
+  final mergedCycles = <CycleModel>[...cycles];
+  if (currentCycle != null) {
+    mergedCycles.add(currentCycle);
+  }
+  final allCycles = <String, CycleModel>{
+    for (final cycle in mergedCycles) cycle.id: cycle,
+  }.values.toList(growable: false);
+  if (allCycles.isEmpty) {
+    return const <_CycleHistorySectionData>[];
+  }
+
+  final groupedByRound = <String, List<CycleModel>>{};
+  for (final cycle in allCycles) {
+    final roundKey = cycle.roundId ?? cycle.id;
+    groupedByRound.putIfAbsent(roundKey, () => <CycleModel>[]).add(cycle);
+  }
+
+  final orderedRounds = groupedByRound.entries.toList(growable: true)
+    ..sort((a, b) {
+      final aAnchor = _roundSortAnchor(a.value);
+      final bAnchor = _roundSortAnchor(b.value);
+      return aAnchor.compareTo(bAnchor);
+    });
+
+  final participatingCount = members
+      .where((member) => isParticipatingMemberStatus(member.status))
+      .length;
+  final sectionIndexByRound = <String, int>{};
+  for (var index = 0; index < orderedRounds.length; index++) {
+    sectionIndexByRound[orderedRounds[index].key] = index + 1;
+  }
+
+  final sections =
+      orderedRounds
+          .map((entry) {
+            final roundKey = entry.key;
+            final roundCycles = [...entry.value]
+              ..sort((a, b) => a.cycleNo.compareTo(b.cycleNo));
+            final containsCurrent =
+                currentCycle != null &&
+                roundCycles.any((cycle) => cycle.id == currentCycle.id);
+            final highestTurn = roundCycles.isEmpty
+                ? 0
+                : roundCycles.last.cycleNo;
+            final totalTurns = containsCurrent
+                ? [
+                    participatingCount,
+                    highestTurn,
+                  ].reduce((a, b) => a > b ? a : b)
+                : highestTurn;
+            final turnItems = <_CycleTurnItem>[];
+
+            for (final cycle in roundCycles) {
+              if (containsCurrent && cycle.id == currentCycle.id) {
+                turnItems.add(
+                  _CycleTurnItem(
+                    turnNo: cycle.cycleNo,
+                    state: _CycleTurnState.current,
+                    title: 'Turn ${cycle.cycleNo}',
+                    subtitle: _cycleHistoryCurrentCopy(cycle),
+                    cycleId: cycle.id,
+                  ),
+                );
+                continue;
+              }
+
+              turnItems.add(
+                _CycleTurnItem(
+                  turnNo: cycle.cycleNo,
+                  state: _CycleTurnState.completed,
+                  title: 'Turn ${cycle.cycleNo}',
+                  subtitle:
+                      _turnWinnerLabel(cycle, null) ?? 'Winner unavailable',
+                  cycleId: cycle.id,
+                ),
+              );
+            }
+
+            if (containsCurrent && totalTurns > highestTurn) {
+              for (
+                var turnNo = highestTurn + 1;
+                turnNo <= totalTurns;
+                turnNo++
+              ) {
+                turnItems.add(
+                  _CycleTurnItem(
+                    turnNo: turnNo,
+                    state: _CycleTurnState.upcoming,
+                    title: 'Turn $turnNo',
+                    subtitle: 'Upcoming',
+                  ),
+                );
+              }
+            }
+
+    turnItems.sort((a, b) {
+      int stateOrder(_CycleTurnItem item) => switch (item.state) {
+        _CycleTurnState.current => 0,
+        _CycleTurnState.upcoming => 1,
+        _CycleTurnState.completed => 2,
+      };
+      final orderCompare = stateOrder(a).compareTo(stateOrder(b));
+      if (orderCompare != 0) {
+        return orderCompare;
+      }
+      if (a.state == _CycleTurnState.completed &&
+          b.state == _CycleTurnState.completed) {
+        return b.turnNo.compareTo(a.turnNo);
+      }
+      return a.turnNo.compareTo(b.turnNo);
+    });
+            return _CycleHistorySectionData(
+              index: sectionIndexByRound[roundKey]!,
+              isCurrent: containsCurrent,
+              isCompleted: !containsCurrent,
+              statusLabel: containsCurrent ? 'Active' : 'Completed',
+              turns: turnItems,
+              sortAnchor: _roundSortAnchor(roundCycles),
+            );
+          })
+          .toList(growable: true)
+        ..sort((a, b) {
+          if (a.isCurrent != b.isCurrent) {
+            return a.isCurrent ? -1 : 1;
+          }
+          return b.sortAnchor.compareTo(a.sortAnchor);
+        });
+
+  return sections;
+}
+
+DateTime _roundSortAnchor(List<CycleModel> cycles) {
+  if (cycles.isEmpty) {
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+  final dates =
+      cycles
+          .map((cycle) => cycle.createdAt ?? cycle.dueDate)
+          .toList(growable: false)
+        ..sort();
+  return dates.last;
+}
+
+String _cycleHistoryCurrentCopy(CycleModel cycle) {
+  final winnerLabel = _turnWinnerLabel(cycle, null);
+  if (winnerLabel != null) {
+    return 'Winner selected: $winnerLabel';
+  }
+
+  final auctionStatus = cycle.auctionStatus ?? AuctionStatusModel.none;
+  if (auctionStatus == AuctionStatusModel.open) {
+    return 'Auction in progress';
+  }
+
+  return switch (cycle.state) {
+    CycleStateModel.collecting => 'Winner will be drawn after collection',
+    CycleStateModel.readyForWinnerSelection => 'Waiting for draw',
+    CycleStateModel.readyForPayout => 'Winner selected. Ready for payout',
+    CycleStateModel.payoutSent =>
+      'Payout sent. Waiting for winner confirmation',
+    CycleStateModel.completed => 'Completed',
+    _ => 'Current turn in progress',
+  };
 }
