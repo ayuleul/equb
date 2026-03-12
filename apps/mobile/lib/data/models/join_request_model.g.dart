@@ -12,6 +12,11 @@ _JoinRequestUserModel _$JoinRequestUserModelFromJson(
   id: json['id'] as String,
   phone: json['phone'] as String?,
   fullName: json['fullName'] as String?,
+  reputation: json['reputation'] == null
+      ? null
+      : MemberReputationSummaryModel.fromJson(
+          json['reputation'] as Map<String, dynamic>,
+        ),
 );
 
 Map<String, dynamic> _$JoinRequestUserModelToJson(
@@ -20,6 +25,7 @@ Map<String, dynamic> _$JoinRequestUserModelToJson(
   'id': instance.id,
   'phone': instance.phone,
   'fullName': instance.fullName,
+  'reputation': instance.reputation,
 };
 
 _JoinRequestModel _$JoinRequestModelFromJson(Map<String, dynamic> json) =>

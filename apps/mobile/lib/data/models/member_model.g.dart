@@ -35,6 +35,11 @@ _MemberModel _$MemberModelFromJson(Map<String, dynamic> json) => _MemberModel(
     json['status'],
     unknownValue: MemberStatusModel.unknown,
   ),
+  reputation: json['reputation'] == null
+      ? null
+      : MemberReputationSummaryModel.fromJson(
+          json['reputation'] as Map<String, dynamic>,
+        ),
   payoutPosition: _toNullableInt(json['payoutPosition']),
   joinedAt: json['joinedAt'] == null
       ? null
@@ -53,6 +58,7 @@ Map<String, dynamic> _$MemberModelToJson(_MemberModel instance) =>
       'user': instance.user,
       'role': _$MemberRoleModelEnumMap[instance.role]!,
       'status': _$MemberStatusModelEnumMap[instance.status]!,
+      'reputation': instance.reputation,
       'payoutPosition': instance.payoutPosition,
       'joinedAt': instance.joinedAt?.toIso8601String(),
       'verifiedAt': instance.verifiedAt?.toIso8601String(),

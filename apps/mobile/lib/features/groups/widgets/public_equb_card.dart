@@ -7,6 +7,7 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/public_group_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
+import '../../../shared/widgets/reputation_badge.dart';
 import '../public_group_action_state.dart';
 import '../public_groups_controller.dart';
 
@@ -54,6 +55,22 @@ class PublicEqubCard extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
+          if (group.host != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Host: ${group.hostName ?? 'Group admin'}',
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ReputationBadge(trustLevel: group.host!.trustLevel),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,

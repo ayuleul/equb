@@ -29,6 +29,15 @@ describe('GroupsService', () => {
   const notificationsService = { notifyGroupAdmins: jest.fn() };
   const roundEligibilityService = {};
   const winnerSelectionService = {};
+  const reputationService = {
+    assertCanHostPublicGroup: jest.fn(),
+    assertCanCreatePublicEqub: jest.fn(),
+    assertCanJoinHighValuePublicGroup: jest.fn(),
+    applyEvent: jest.fn(),
+    getReliabilitySummaries: jest.fn().mockResolvedValue(new Map()),
+    getHostSummary: jest.fn(),
+    getGroupTrustSummary: jest.fn(),
+  };
   const realtimeService = { emitGroupEvent: jest.fn() };
 
   const createService = (overrides?: Record<string, unknown>) => {
@@ -39,6 +48,13 @@ describe('GroupsService', () => {
       equbGroup: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
+        create: jest.fn(),
+        count: jest.fn(),
+        update: jest.fn(),
+      },
+      groupRules: {
+        create: jest.fn(),
+        upsert: jest.fn(),
       },
       equbCycle: {
         findFirst: jest.fn(),
@@ -66,6 +82,7 @@ describe('GroupsService', () => {
       notificationsService as never,
       roundEligibilityService as never,
       winnerSelectionService as never,
+      reputationService as never,
       realtimeService as never,
     );
 
@@ -74,6 +91,259 @@ describe('GroupsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    reputationService.assertCanCreatePublicEqub.mockResolvedValue({
+      trustScore: 50,
+      trustLevel: 'New',
+      hostTier: 'starter',
+      allowedPublicEqubLimits: {
+        maxMembers: 10,
+        maxContributionAmount: 1000,
+        maxDurationDays: 30,
+        maxActivePublicEqubs: 1,
+      },
+    });
+    reputationService.getReliabilitySummaries.mockResolvedValue(new Map());
+    reputationService.getHostSummary.mockResolvedValue({
+      userId: 'user-1',
+      trustScore: 50,
+      trustLevel: 'New',
+      summaryLabel: 'New Member',
+      equbsHosted: 0,
+      hostedEqubsCompleted: 0,
+      turnsParticipated: 0,
+      hostedCompletionRate: null,
+      cancelledGroupsCount: 0,
+      hostDisputesCount: 0,
+    });
+    reputationService.getGroupTrustSummary.mockResolvedValue({
+      groupId: 'group-1',
+      hostScore: 50,
+      averageMemberScore: 50,
+      verifiedMembersPercent: null,
+      groupTrustLevel: 'Medium',
+      host: {
+        userId: 'user-1',
+        trustScore: 50,
+        trustLevel: 'New',
+        summaryLabel: 'New Member',
+        equbsHosted: 0,
+        hostedEqubsCompleted: 0,
+        turnsParticipated: 0,
+        hostedCompletionRate: null,
+        cancelledGroupsCount: 0,
+        hostDisputesCount: 0,
+      },
+    });
+  });
+
+  it('allows a new user to create a starter public Equb', async () => {
+    const { service, prisma } = createService();
+    jest.spyOn(service, 'getGroupDetails').mockResolvedValue({
+      id: 'group-1',
+      name: 'Starter',
+      description: null,
+      currency: 'ETB',
+      contributionAmount: 500,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: new Date('2026-03-12T00:00:00.000Z'),
+      status: GroupStatus.ACTIVE,
+      visibility: GroupVisibility.PUBLIC,
+      rulesetConfigured: false,
+      canInviteMembers: false,
+      canStartCycle: false,
+      hostTier: 'starter',
+      hostReputationAtCreation: 50,
+      hostReputationLevel: 'New',
+      createdByUserId: actor.id,
+      createdAt: new Date('2026-03-12T00:00:00.000Z'),
+      strictPayout: false,
+      timezone: 'Africa/Addis_Ababa',
+      membership: {
+        role: MemberRole.ADMIN,
+        status: MemberStatus.VERIFIED,
+      },
+      trustSummary: {} as never,
+    } as never);
+    prisma.equbGroup.create.mockResolvedValue({
+      id: 'group-1',
+      visibility: GroupVisibility.PUBLIC,
+    });
+    prisma.equbMember.create.mockResolvedValue({});
+    prisma.equbGroup.count.mockResolvedValue(0);
+
+    await service.createGroup(actor, {
+      name: 'Starter',
+      visibility: GroupVisibility.PUBLIC,
+      contributionAmount: 500,
+      frequency: GroupFrequency.MONTHLY,
+      startDate: '2026-03-12',
+    });
+
+    expect(reputationService.assertCanCreatePublicEqub).toHaveBeenCalledWith(
+      actor.id,
+      expect.objectContaining({
+        contributionAmount: 500,
+      }),
+    );
+    expect(prisma.equbGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          hostTier: 'starter',
+          hostReputationAtCreation: 50,
+        }),
+      }),
+    );
+  });
+
+  it('keeps a score-55 user limited to starter public Equb rules', async () => {
+    const { service, prisma } = createService();
+    reputationService.assertCanCreatePublicEqub.mockRejectedValue(
+      new Error(
+        'Your trust score allows only starter public Equbs with up to 10 members.',
+      ),
+    );
+    prisma.equbGroup.findUnique.mockResolvedValue({
+      id: 'group-1',
+      frequency: GroupFrequency.MONTHLY,
+      visibility: GroupVisibility.PUBLIC,
+      createdByUserId: actor.id,
+    });
+
+    await expect(
+      service.updateGroupRules(actor, 'group-1', {
+        contributionAmount: 500,
+        frequency: 'MONTHLY' as never,
+        graceDays: 0,
+        fineType: 'NONE' as never,
+        fineAmount: 0,
+        payoutMode: 'LOTTERY' as never,
+        winnerSelectionTiming: 'BEFORE_COLLECTION' as never,
+        paymentMethods: ['CASH_ACK'] as never,
+        requiresMemberVerification: false,
+        strictCollection: false,
+        roundSize: 12,
+        startPolicy: 'WHEN_FULL' as never,
+      }),
+    ).rejects.toThrow(
+      'Your trust score allows only starter public Equbs with up to 10 members.',
+    );
+  });
+
+  it('allows a score-65 user to create a standard public Equb', async () => {
+    const { service, prisma } = createService();
+    reputationService.assertCanCreatePublicEqub.mockResolvedValue({
+      trustScore: 65,
+      trustLevel: 'Reliable',
+      hostTier: 'standard',
+      allowedPublicEqubLimits: {
+        maxMembers: null,
+        maxContributionAmount: null,
+        maxDurationDays: null,
+        maxActivePublicEqubs: null,
+      },
+    });
+    jest.spyOn(service, 'getGroupDetails').mockResolvedValue({} as never);
+    prisma.equbGroup.create.mockResolvedValue({
+      id: 'group-2',
+      visibility: GroupVisibility.PUBLIC,
+    });
+    prisma.equbMember.create.mockResolvedValue({});
+    prisma.equbGroup.count.mockResolvedValue(0);
+
+    await service.createGroup(actor, {
+      name: 'Standard',
+      visibility: GroupVisibility.PUBLIC,
+    });
+
+    expect(prisma.equbGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          hostTier: 'standard',
+          hostReputationAtCreation: 65,
+        }),
+      }),
+    );
+  });
+
+  it('allows a score-80 user to create a high value public Equb', async () => {
+    const { service, prisma } = createService();
+    reputationService.assertCanCreatePublicEqub.mockResolvedValue({
+      trustScore: 80,
+      trustLevel: 'Trusted',
+      hostTier: 'high_value',
+      allowedPublicEqubLimits: {
+        maxMembers: null,
+        maxContributionAmount: null,
+        maxDurationDays: null,
+        maxActivePublicEqubs: null,
+      },
+    });
+    jest.spyOn(service, 'getGroupDetails').mockResolvedValue({} as never);
+    prisma.equbGroup.create.mockResolvedValue({
+      id: 'group-3',
+      visibility: GroupVisibility.PUBLIC,
+    });
+    prisma.equbMember.create.mockResolvedValue({});
+    prisma.equbGroup.count.mockResolvedValue(0);
+
+    await service.createGroup(actor, {
+      name: 'High Value',
+      visibility: GroupVisibility.PUBLIC,
+    });
+
+    expect(prisma.equbGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          hostTier: 'high_value',
+          hostReputationAtCreation: 80,
+        }),
+      }),
+    );
+  });
+
+  it('rejects public starter hosts when starter limits are exceeded', async () => {
+    const { service, prisma } = createService();
+    reputationService.assertCanCreatePublicEqub.mockRejectedValue(
+      new Error(
+        'Your trust score allows only starter public Equbs with up to 10 members.',
+      ),
+    );
+    prisma.equbGroup.count.mockResolvedValue(0);
+
+    await expect(
+      service.createGroup(actor, {
+        name: 'Too Large',
+        visibility: GroupVisibility.PUBLIC,
+      }),
+    ).rejects.toThrow(
+      'Your trust score allows only starter public Equbs with up to 10 members.',
+    );
+  });
+
+  it('keeps private Equb creation unaffected by hosting tiers', async () => {
+    const { service, prisma } = createService();
+    jest.spyOn(service, 'getGroupDetails').mockResolvedValue({} as never);
+    prisma.equbGroup.create.mockResolvedValue({
+      id: 'group-private',
+      visibility: GroupVisibility.PRIVATE,
+    });
+    prisma.equbMember.create.mockResolvedValue({});
+
+    await service.createGroup(actor, {
+      name: 'Private',
+      visibility: GroupVisibility.PRIVATE,
+    });
+
+    expect(reputationService.assertCanCreatePublicEqub).not.toHaveBeenCalled();
+    expect(prisma.equbGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          visibility: GroupVisibility.PRIVATE,
+          hostTier: null,
+          hostReputationAtCreation: null,
+        }),
+      }),
+    );
   });
 
   it('creates a join request for a public group', async () => {
@@ -230,6 +500,13 @@ describe('GroupsService', () => {
       { joinRequestId: 'request-1' },
       'group-1',
     );
+    expect(reputationService.applyEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        userId: 'user-2',
+        eventType: 'MEMBER_JOINED',
+      }),
+    );
   });
 
   it('lists only public groups in discovery summaries', async () => {
@@ -249,6 +526,9 @@ describe('GroupsService', () => {
         _count: {
           members: 3,
           cycles: 1,
+        },
+        createdByUser: {
+          id: 'user-1',
         },
       },
     ]);

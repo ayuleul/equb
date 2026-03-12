@@ -13,8 +13,10 @@ import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/utils/formatters.dart';
+import '../../../shared/utils/reputation_presenter.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../../shared/widgets/reputation_badge.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
 import '../group_detail_controller.dart';
@@ -101,6 +103,8 @@ class _GroupOverviewBody extends ConsumerWidget {
             currentCycleAsync: currentCycleAsync,
             cyclesAsync: cyclesAsync,
           ),
+          const SizedBox(height: AppSpacing.md),
+          _GroupTrustCard(group: group),
           const SizedBox(height: AppSpacing.md),
           _MembersCard(
             groupId: group.id,
@@ -340,6 +344,48 @@ class _MembersCard extends ConsumerWidget {
   }
 }
 
+class _GroupTrustCard extends StatelessWidget {
+  const _GroupTrustCard({required this.group});
+
+  final GroupModel group;
+
+  @override
+  Widget build(BuildContext context) {
+    final trust = group.trustSummary;
+    if (trust == null) {
+      return const SizedBox.shrink();
+    }
+
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Group trust', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryRow(
+                  label: 'Group trust level',
+                  value: trust.groupTrustLevel,
+                ),
+              ),
+              ReputationBadge(trustLevel: trust.host.trustLevel),
+            ],
+          ),
+          _SummaryRow(label: 'Host score', value: '${trust.hostScore}'),
+          _SummaryRow(
+            label: 'Average member score',
+            value: trust.averageMemberScore == null
+                ? 'Not enough data'
+                : '${trust.averageMemberScore!.round()}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MemberListRow extends StatelessWidget {
   const _MemberListRow({required this.member});
 
@@ -361,12 +407,28 @@ class _MemberListRow extends StatelessWidget {
         KitAvatar(name: member.displayName, size: KitAvatarSize.sm),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: Text(
-            member.displayName,
-            style: Theme.of(context).textTheme.titleSmall,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                member.displayName,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (member.reputation != null) ...[
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Score ${member.reputation!.trustScore}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(width: AppSpacing.xs),
+        if (member.reputation != null) ...[
+          ReputationBadge(trustLevel: member.reputation!.trustLevel),
+          const SizedBox(width: AppSpacing.xs),
+        ],
         StatusPill.fromLabel(roleLabel),
         if (!isParticipatingMemberStatus(member.status)) ...[
           const SizedBox(width: AppSpacing.xs),
@@ -477,13 +539,36 @@ class _JoinRequestRowState extends ConsumerState<_JoinRequestRow> {
 
   @override
   Widget build(BuildContext context) {
+    final reputation = widget.request.user?.reputation;
+    final onTimeRate = formatOnTimeRate(reputation?.onTimePaymentRate);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.request.requesterName,
-          style: Theme.of(context).textTheme.titleSmall,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.request.requesterName,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            if (reputation != null)
+              ReputationBadge(trustLevel: reputation.trustLevel),
+          ],
         ),
+        if (reputation != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Trust score: ${reputation.trustScore} • ${reputation.trustLevel}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            'Completed Equbs: ${reputation.equbsCompleted} • On-time payments: $onTimeRate • Hosted Equbs: ${reputation.equbsHosted}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
         if ((widget.request.message ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xs),
           Text(widget.request.message!),

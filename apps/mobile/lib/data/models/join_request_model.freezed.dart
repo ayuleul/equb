@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$JoinRequestUserModel {
 
- String get id; String? get phone; String? get fullName;
+ String get id; String? get phone; String? get fullName; MemberReputationSummaryModel? get reputation;
 /// Create a copy of JoinRequestUserModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $JoinRequestUserModelCopyWith<JoinRequestUserModel> get copyWith => _$JoinReques
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JoinRequestUserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.fullName, fullName) || other.fullName == fullName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JoinRequestUserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.reputation, reputation) || other.reputation == reputation));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,phone,fullName);
+int get hashCode => Object.hash(runtimeType,id,phone,fullName,reputation);
 
 @override
 String toString() {
-  return 'JoinRequestUserModel(id: $id, phone: $phone, fullName: $fullName)';
+  return 'JoinRequestUserModel(id: $id, phone: $phone, fullName: $fullName, reputation: $reputation)';
 }
 
 
@@ -48,11 +48,11 @@ abstract mixin class $JoinRequestUserModelCopyWith<$Res>  {
   factory $JoinRequestUserModelCopyWith(JoinRequestUserModel value, $Res Function(JoinRequestUserModel) _then) = _$JoinRequestUserModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String? phone, String? fullName
+ String id, String? phone, String? fullName, MemberReputationSummaryModel? reputation
 });
 
 
-
+$MemberReputationSummaryModelCopyWith<$Res>? get reputation;
 
 }
 /// @nodoc
@@ -65,15 +65,28 @@ class _$JoinRequestUserModelCopyWithImpl<$Res>
 
 /// Create a copy of JoinRequestUserModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? phone = freezed,Object? fullName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? phone = freezed,Object? fullName = freezed,Object? reputation = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
 as String?,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,reputation: freezed == reputation ? _self.reputation : reputation // ignore: cast_nullable_to_non_nullable
+as MemberReputationSummaryModel?,
   ));
 }
+/// Create a copy of JoinRequestUserModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MemberReputationSummaryModelCopyWith<$Res>? get reputation {
+    if (_self.reputation == null) {
+    return null;
+  }
 
+  return $MemberReputationSummaryModelCopyWith<$Res>(_self.reputation!, (value) {
+    return _then(_self.copyWith(reputation: value));
+  });
+}
 }
 
 
@@ -152,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? phone,  String? fullName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? phone,  String? fullName,  MemberReputationSummaryModel? reputation)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _JoinRequestUserModel() when $default != null:
-return $default(_that.id,_that.phone,_that.fullName);case _:
+return $default(_that.id,_that.phone,_that.fullName,_that.reputation);case _:
   return orElse();
 
 }
@@ -173,10 +186,10 @@ return $default(_that.id,_that.phone,_that.fullName);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? phone,  String? fullName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? phone,  String? fullName,  MemberReputationSummaryModel? reputation)  $default,) {final _that = this;
 switch (_that) {
 case _JoinRequestUserModel():
-return $default(_that.id,_that.phone,_that.fullName);}
+return $default(_that.id,_that.phone,_that.fullName,_that.reputation);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -190,10 +203,10 @@ return $default(_that.id,_that.phone,_that.fullName);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? phone,  String? fullName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? phone,  String? fullName,  MemberReputationSummaryModel? reputation)?  $default,) {final _that = this;
 switch (_that) {
 case _JoinRequestUserModel() when $default != null:
-return $default(_that.id,_that.phone,_that.fullName);case _:
+return $default(_that.id,_that.phone,_that.fullName,_that.reputation);case _:
   return null;
 
 }
@@ -205,12 +218,13 @@ return $default(_that.id,_that.phone,_that.fullName);case _:
 @JsonSerializable()
 
 class _JoinRequestUserModel implements JoinRequestUserModel {
-  const _JoinRequestUserModel({required this.id, this.phone, this.fullName});
+  const _JoinRequestUserModel({required this.id, this.phone, this.fullName, this.reputation});
   factory _JoinRequestUserModel.fromJson(Map<String, dynamic> json) => _$JoinRequestUserModelFromJson(json);
 
 @override final  String id;
 @override final  String? phone;
 @override final  String? fullName;
+@override final  MemberReputationSummaryModel? reputation;
 
 /// Create a copy of JoinRequestUserModel
 /// with the given fields replaced by the non-null parameter values.
@@ -225,16 +239,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _JoinRequestUserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.fullName, fullName) || other.fullName == fullName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _JoinRequestUserModel&&(identical(other.id, id) || other.id == id)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.reputation, reputation) || other.reputation == reputation));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,phone,fullName);
+int get hashCode => Object.hash(runtimeType,id,phone,fullName,reputation);
 
 @override
 String toString() {
-  return 'JoinRequestUserModel(id: $id, phone: $phone, fullName: $fullName)';
+  return 'JoinRequestUserModel(id: $id, phone: $phone, fullName: $fullName, reputation: $reputation)';
 }
 
 
@@ -245,11 +259,11 @@ abstract mixin class _$JoinRequestUserModelCopyWith<$Res> implements $JoinReques
   factory _$JoinRequestUserModelCopyWith(_JoinRequestUserModel value, $Res Function(_JoinRequestUserModel) _then) = __$JoinRequestUserModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? phone, String? fullName
+ String id, String? phone, String? fullName, MemberReputationSummaryModel? reputation
 });
 
 
-
+@override $MemberReputationSummaryModelCopyWith<$Res>? get reputation;
 
 }
 /// @nodoc
@@ -262,16 +276,29 @@ class __$JoinRequestUserModelCopyWithImpl<$Res>
 
 /// Create a copy of JoinRequestUserModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? phone = freezed,Object? fullName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? phone = freezed,Object? fullName = freezed,Object? reputation = freezed,}) {
   return _then(_JoinRequestUserModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
 as String?,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,reputation: freezed == reputation ? _self.reputation : reputation // ignore: cast_nullable_to_non_nullable
+as MemberReputationSummaryModel?,
   ));
 }
 
+/// Create a copy of JoinRequestUserModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MemberReputationSummaryModelCopyWith<$Res>? get reputation {
+    if (_self.reputation == null) {
+    return null;
+  }
 
+  return $MemberReputationSummaryModelCopyWith<$Res>(_self.reputation!, (value) {
+    return _then(_self.copyWith(reputation: value));
+  });
+}
 }
 
 

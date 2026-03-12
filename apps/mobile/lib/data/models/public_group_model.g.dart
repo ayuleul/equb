@@ -81,33 +81,51 @@ const _$WinnerSelectionTimingModelEnumMap = {
   WinnerSelectionTimingModel.unknown: 'unknown',
 };
 
-_PublicGroupModel _$PublicGroupModelFromJson(Map<String, dynamic> json) =>
-    _PublicGroupModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String?,
-      currency: json['currency'] as String,
-      contributionAmount: _toInt(json['contributionAmount']),
-      frequency: $enumDecode(
-        _$PublicGroupFrequencyModelEnumMap,
-        json['frequency'],
-        unknownValue: PublicGroupFrequencyModel.unknown,
-      ),
-      payoutMode: $enumDecodeNullable(
-        _$PublicGroupPayoutModeModelEnumMap,
-        json['payoutMode'],
-        unknownValue: PublicGroupPayoutModeModel.unknown,
-      ),
-      memberCount: _toInt(json['memberCount']),
-      alreadyStarted: json['alreadyStarted'] as bool,
-      rulesetConfigured: json['rulesetConfigured'] as bool?,
-      isCurrentUserMember: json['isCurrentUserMember'] as bool?,
-      rules: json['rules'] == null
-          ? null
-          : PublicGroupRulesModel.fromJson(
-              json['rules'] as Map<String, dynamic>,
-            ),
-    );
+_PublicGroupModel _$PublicGroupModelFromJson(
+  Map<String, dynamic> json,
+) => _PublicGroupModel(
+  id: json['id'] as String,
+  name: json['name'] as String,
+  description: json['description'] as String?,
+  currency: json['currency'] as String,
+  contributionAmount: _toInt(json['contributionAmount']),
+  frequency: $enumDecode(
+    _$PublicGroupFrequencyModelEnumMap,
+    json['frequency'],
+    unknownValue: PublicGroupFrequencyModel.unknown,
+  ),
+  payoutMode: $enumDecodeNullable(
+    _$PublicGroupPayoutModeModelEnumMap,
+    json['payoutMode'],
+    unknownValue: PublicGroupPayoutModeModel.unknown,
+  ),
+  memberCount: _toInt(json['memberCount']),
+  alreadyStarted: json['alreadyStarted'] as bool,
+  hostName: json['hostName'] as String?,
+  hostTier: json['hostTier'] as String?,
+  hostReputationAtCreation: _toNullableInt(json['hostReputationAtCreation']),
+  hostReputationLevel: json['hostReputationLevel'] as String?,
+  allowedPublicEqubLimits: json['allowedPublicEqubLimits'] == null
+      ? null
+      : AllowedPublicEqubLimitsModel.fromJson(
+          json['allowedPublicEqubLimits'] as Map<String, dynamic>,
+        ),
+  host: json['host'] == null
+      ? null
+      : HostReputationSummaryModel.fromJson(
+          json['host'] as Map<String, dynamic>,
+        ),
+  trustSummary: json['trustSummary'] == null
+      ? null
+      : GroupTrustSummaryModel.fromJson(
+          json['trustSummary'] as Map<String, dynamic>,
+        ),
+  rulesetConfigured: json['rulesetConfigured'] as bool?,
+  isCurrentUserMember: json['isCurrentUserMember'] as bool?,
+  rules: json['rules'] == null
+      ? null
+      : PublicGroupRulesModel.fromJson(json['rules'] as Map<String, dynamic>),
+);
 
 Map<String, dynamic> _$PublicGroupModelToJson(_PublicGroupModel instance) =>
     <String, dynamic>{
@@ -120,6 +138,13 @@ Map<String, dynamic> _$PublicGroupModelToJson(_PublicGroupModel instance) =>
       'payoutMode': _$PublicGroupPayoutModeModelEnumMap[instance.payoutMode],
       'memberCount': instance.memberCount,
       'alreadyStarted': instance.alreadyStarted,
+      'hostName': instance.hostName,
+      'hostTier': instance.hostTier,
+      'hostReputationAtCreation': instance.hostReputationAtCreation,
+      'hostReputationLevel': instance.hostReputationLevel,
+      'allowedPublicEqubLimits': instance.allowedPublicEqubLimits,
+      'host': instance.host,
+      'trustSummary': instance.trustSummary,
       'rulesetConfigured': instance.rulesetConfigured,
       'isCurrentUserMember': instance.isCurrentUserMember,
       'rules': instance.rules,

@@ -10,11 +10,14 @@ import '../../../data/models/group_rules_model.dart';
 import '../../../data/models/update_group_rules_request.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
+import '../../../shared/utils/api_error_mapper.dart';
+import '../../../shared/utils/reputation_presenter.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../group_rules_provider.dart';
 import '../group_detail_controller.dart';
+import '../../profile/profile_reputation_provider.dart';
 
 class GroupSetupScreen extends ConsumerStatefulWidget {
   const GroupSetupScreen({
@@ -42,13 +45,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _SetupTab(
       key: 'timing',
       label: 'Timing',
-      description: 'Choose round size, frequency, start policy, and start timing.',
+      description:
+          'Choose round size, frequency, start policy, and start timing.',
       section: _RulesSection.timing,
     ),
     _SetupTab(
       key: 'policy',
       label: 'Policy',
-      description: 'Set visibility, payout, fine, payment, and verification rules.',
+      description:
+          'Set visibility, payout, fine, payment, and verification rules.',
       section: _RulesSection.policy,
     ),
   ];
@@ -107,10 +112,12 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _fineAmountController = TextEditingController(text: '0');
     _contributionAmountFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
-    _groupNameFocusNode = FocusNode()..addListener(_handleRulesInputFocusChanged);
+    _groupNameFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
     _groupDescriptionFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
-    _currencyFocusNode = FocusNode()..addListener(_handleRulesInputFocusChanged);
+    _currencyFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
     _minToStartFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
     _customIntervalDaysFocusNode = FocusNode()
@@ -198,7 +205,10 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
     try {
       final repository = ref.read(groupsRepositoryProvider);
-      final group = await repository.getGroup(widget.groupId, forceRefresh: true);
+      final group = await repository.getGroup(
+        widget.groupId,
+        forceRefresh: true,
+      );
       final rules = await repository.getGroupRules(widget.groupId);
       _groupNameController.text = group.name;
       _groupDescriptionController.text = group.description ?? '';
@@ -597,6 +607,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     final requiredToStart = _startPolicy == StartPolicyModel.whenFull
         ? roundSize
         : (int.tryParse(_minToStartController.text.trim()) ?? roundSize);
+    final reputationAsync = ref.watch(currentUserReputationProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -810,6 +821,41 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           ),
         ],
         if (section == _RulesSection.policy) ...[
+          if (_visibility == GroupVisibilityModel.public)
+            reputationAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.md),
+                child: KitBanner(
+                  title: 'Checking hosting access',
+                  message: 'Loading your public Equb limits.',
+                  tone: KitBadgeTone.info,
+                  icon: Icons.shield_outlined,
+                ),
+              ),
+              error: (error, _) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: KitBanner(
+                  title: 'Unable to load hosting access',
+                  message: mapApiErrorToMessage(error),
+                  tone: KitBadgeTone.warning,
+                  icon: Icons.info_outline_rounded,
+                ),
+              ),
+              data: (profile) => profile == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: KitBanner(
+                        title: 'Public hosting access',
+                        message:
+                            '${hostRestrictionMessage(profile)} Improve your score by completing Equbs and paying contributions on time.',
+                        tone: profile.eligibility.hostTier == null
+                            ? KitBadgeTone.warning
+                            : KitBadgeTone.info,
+                        icon: Icons.shield_outlined,
+                      ),
+                    ),
+            ),
           KitDropdownField<GroupVisibilityModel>(
             value: _visibility,
             label: 'Visibility',

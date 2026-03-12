@@ -56,6 +56,79 @@
 - `profileComplete` is true only when `firstName` and `middleName` are non-empty after trim/whitespace normalization; `lastName` is optional.
 - Auth flows (`verify-otp`, session bootstrap, and refresh-backed user payloads) must expose the latest name fields and `profileComplete` so clients can enforce profile gating.
 
+## Reputation rules
+- Reputation is explainable and Equb-driven only; v1 trust score updates must come from stored Equb lifecycle events and metrics, never from hidden/manual admin edits.
+- New users start at the neutral reputation baseline of `50` and trust level `New`; absence of history must not count as a penalty.
+- Trust levels are locked to score bands:
+  - `0..39` -> `Risky`
+  - `40..59` -> `New`
+  - `60..74` -> `Reliable`
+  - `75..89` -> `Trusted`
+  - `90..100` -> `Elite`
+- Reputation scoring is centralized in the backend reputation service; controllers and feature services must not scatter score math, confidence logic, decay logic, or trust-band mapping.
+- Reputation scoring pipeline is locked to five steps:
+  - Step 1 component scores (`0..100` each):
+    - payment reliability `P = 100 * onTime / (onTime + 2*late + 4*missed)`, default `50` when total payments `< 3`
+    - Equb completion `C = 100 * equbsCompleted / (equbsJoined + equbsLeftEarly)`, default `50` when `equbsJoined == 0`
+    - community behavior `B = clamp(100 - 5*removalsCount - 10*disputesCount + 3*hostedEqubsCompleted, 0, 100)`
+    - experience `E = min(100, 20 * log(1 + equbsCompleted) + 0.3 * turnsParticipated)`
+  - Step 2 base score:
+    - `baseScore = 0.4*P + 0.3*C + 0.2*B + 0.1*E`
+  - Step 3 inactivity decay:
+    - `monthsInactive = floor((now - lastEqubActivityAt) / 30 days)`
+    - `activityFactor = max(0.7, 1 - 0.02 * monthsInactive)`
+    - `adjustedScore = baseScore * activityFactor`
+  - Step 4 confidence factor:
+    - `confidenceFactor = totalPayments / (totalPayments + 10)`
+    - `trustScore = clamp(50 * (1 - confidenceFactor) + adjustedScore * confidenceFactor, 0, 100)`
+  - Step 5 trust level:
+    - map the clamped final score to `Risky | New | Reliable | Trusted | Elite`
+- Reputation rows must store both raw counters and derived scoring fields: `paymentScore`, `completionScore`, `behaviorScore`, `experienceScore`, `baseScore`, `activityFactor`, `adjustedScore`, `confidenceFactor`, `trustScore`, `trustLevel`, and `lastEqubActivityAt`.
+- Confidence logic is mandatory anti-abuse protection: very small payment histories must remain anchored near the neutral baseline until a user accumulates real Equb behavior.
+- Inactivity decay is mandatory: trust weakens gradually with inactivity, bottoms out at `70%` of the base score, and should refresh without recomputing on every read.
+- Reputation recovery remains deterministic: sustained on-time payments, completed Equbs, hosted completions, and turn participation improve the component scores over time.
+- Reputation event processing must be idempotent and retry-safe through unique idempotency keys stored in reputation history; duplicate domain retries must never double-count joins, completions, payments, disputes, or payouts.
+- Reputation history must record every applied reputation event with metric deltas, score delta, related group/cycle references, and metadata sufficient for support/debugging.
+- Reputation recalculation triggers are locked to Equb lifecycle updates only:
+  - contribution paid/on-time verification
+  - contribution late
+  - contribution missed
+  - Equb joined
+  - Equb completed
+  - member removed/left early
+  - dispute created/resolved
+  - hosted Equb completed
+  - payout confirmed
+  - turn participation completion
+- Any reputation event must also refresh `lastEqubActivityAt` so decay is based on real Equb activity timestamps.
+- Public/private group flows remain backward-compatible: reputation may gate public hosting and high-value public join eligibility, but must not hard-block new users from normal/private Equb usage.
+- Public-host and high-value public-join reputation thresholds must stay centralized in reputation constants/config and must not be copied into controllers or feature-specific conditionals.
+- Public Equb hosting is tiered by current trust score:
+  - private groups: no reputation requirement
+  - starter public host: `trustScore >= 50`
+  - standard public host: `trustScore >= 60`
+  - high-value public host: `trustScore >= 75`
+- Starter public hosts are allowed for onboarding growth but must stay within configured starter limits:
+  - `STARTER_PUBLIC_EQUB_MAX_MEMBERS`
+  - `STARTER_PUBLIC_EQUB_MAX_CONTRIBUTION`
+  - `STARTER_PUBLIC_EQUB_MAX_DURATION`
+  - `MAX_ACTIVE_PUBLIC_EQUBS_FOR_STARTER_HOST`
+- Starter-host restrictions must be enforced both when a public group is created and when its ruleset is configured/updated, so a starter host cannot bypass public-host limits by creating first and enlarging the rules later.
+- Public groups must persist `hostTier` and `hostReputationAtCreation` for auditability; current eligibility may evolve later, but creation-time host tier/reputation must remain stored on the group record.
+- Host trust summaries and group trust summaries must stay explainable:
+  - host summary derives from the host user’s reputation metrics
+  - group trust summary derives from host score, average participating-member score, and verified-member percentage
+  - group trust level bands are `Low | Medium | High`
+- Reputation UI exposure is product-facing and locked to explainable signals only:
+  - show trust score, trust level, progress to next level, activity highlights, badges, and trust summaries
+  - do not expose the raw scoring formula or weighting details in end-user UI copy
+  - profile/account surfaces should show the trust identity card and most-recent reputation timeline entries
+  - member lists and join-request review should use lightweight trust badges plus small supporting stats, not full metric dumps
+  - public-group cards/details should show host trust and group trust summary where members make join decisions
+- Reputation badges are computed from reputation metrics at read time; they must never be manually assigned or persisted as standalone admin-managed records.
+- Reputation timeline UI must read from reputation history ordered newest-first and present human-readable event labels without exposing internal metric keys directly.
+- Reputation-based future hooks for wallet/lending/marketplace eligibility must read from centralized eligibility helpers rather than introducing feature-local score checks.
+
 ## Testing rules
 - Add unit tests for services that implement business rules.
 - Add e2e tests for auth and 1 critical group/cycle flow.

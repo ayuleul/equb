@@ -16,6 +16,11 @@ import {
   WinnerSelectionTiming,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  GroupTrustSummaryDto,
+  HostReputationSummaryDto,
+  MemberReliabilitySummaryDto,
+} from '../../reputation/entities/reputation.entities';
 
 export class GroupSummaryResponseDto {
   @ApiProperty()
@@ -53,6 +58,23 @@ export class GroupSummaryResponseDto {
 
   @ApiProperty()
   canStartCycle!: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostTier!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostReputationAtCreation!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostReputationLevel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: Object })
+  allowedPublicEqubLimits!: {
+    maxMembers: number | null;
+    maxContributionAmount: number | null;
+    maxDurationDays: number | null;
+    maxActivePublicEqubs: number | null;
+  } | null;
 }
 
 export class CurrentMembershipResponseDto {
@@ -78,6 +100,9 @@ export class GroupDetailResponseDto extends GroupSummaryResponseDto {
 
   @ApiProperty({ type: () => CurrentMembershipResponseDto })
   membership!: CurrentMembershipResponseDto;
+
+  @ApiProperty({ type: () => GroupTrustSummaryDto })
+  trustSummary!: GroupTrustSummaryDto;
 }
 
 export class GroupStartReadinessDto {
@@ -234,6 +259,32 @@ export class PublicGroupSummaryResponseDto {
 
   @ApiProperty()
   alreadyStarted!: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostName!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostTier!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostReputationAtCreation!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostReputationLevel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: Object })
+  allowedPublicEqubLimits!: {
+    maxMembers: number | null;
+    maxContributionAmount: number | null;
+    maxDurationDays: number | null;
+    maxActivePublicEqubs: number | null;
+  } | null;
+
+  @ApiProperty({ type: () => HostReputationSummaryDto })
+  host!: HostReputationSummaryDto;
+
+  @ApiProperty({ type: () => GroupTrustSummaryDto })
+  trustSummary!: GroupTrustSummaryDto;
 }
 
 export class PublicGroupDetailResponseDto extends PublicGroupSummaryResponseDto {
@@ -265,6 +316,9 @@ export class JoinRequestUserResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   fullName!: string | null;
+
+  @ApiPropertyOptional({ type: () => MemberReliabilitySummaryDto })
+  reputation?: MemberReliabilitySummaryDto;
 }
 
 export class JoinRequestResponseDto {
@@ -334,6 +388,9 @@ export class GroupMemberResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   verifiedByUserId!: string | null;
+
+  @ApiPropertyOptional({ type: () => MemberReliabilitySummaryDto })
+  reputation?: MemberReliabilitySummaryDto;
 }
 
 export class CyclePayoutUserResponseDto {

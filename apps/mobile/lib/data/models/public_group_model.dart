@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'reputation_model.dart';
+
 part 'public_group_model.freezed.dart';
 part 'public_group_model.g.dart';
 
@@ -79,6 +81,13 @@ sealed class PublicGroupModel with _$PublicGroupModel {
     PublicGroupPayoutModeModel? payoutMode,
     @JsonKey(fromJson: _toInt) required int memberCount,
     required bool alreadyStarted,
+    String? hostName,
+    String? hostTier,
+    @JsonKey(fromJson: _toNullableInt) int? hostReputationAtCreation,
+    String? hostReputationLevel,
+    AllowedPublicEqubLimitsModel? allowedPublicEqubLimits,
+    HostReputationSummaryModel? host,
+    GroupTrustSummaryModel? trustSummary,
     bool? rulesetConfigured,
     bool? isCurrentUserMember,
     PublicGroupRulesModel? rules,
@@ -97,4 +106,11 @@ int _toInt(Object? value) {
   }
 
   return 0;
+}
+
+int? _toNullableInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return _toInt(value);
 }

@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'reputation_model.dart';
+
 part 'group_model.freezed.dart';
 part 'group_model.g.dart';
 
@@ -88,6 +90,11 @@ sealed class GroupModel with _$GroupModel {
     bool? strictPayout,
     String? timezone,
     GroupMembershipModel? membership,
+    String? hostTier,
+    @JsonKey(fromJson: _toNullableInt) int? hostReputationAtCreation,
+    String? hostReputationLevel,
+    AllowedPublicEqubLimitsModel? allowedPublicEqubLimits,
+    GroupTrustSummaryModel? trustSummary,
     @Default(false) bool rulesetConfigured,
     @Default(false) bool canInviteMembers,
     @Default(false) bool canStartCycle,
@@ -106,4 +113,11 @@ int _toInt(Object? value) {
   }
 
   return 0;
+}
+
+int? _toNullableInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return _toInt(value);
 }

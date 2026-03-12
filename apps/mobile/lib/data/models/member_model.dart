@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'group_model.dart';
+import 'reputation_model.dart';
 
 part 'member_model.freezed.dart';
 part 'member_model.g.dart';
@@ -30,6 +31,7 @@ sealed class MemberModel with _$MemberModel {
     required MemberRoleModel role,
     @JsonKey(unknownEnumValue: MemberStatusModel.unknown)
     required MemberStatusModel status,
+    MemberReputationSummaryModel? reputation,
     @JsonKey(fromJson: _toNullableInt) int? payoutPosition,
     DateTime? joinedAt,
     DateTime? verifiedAt,

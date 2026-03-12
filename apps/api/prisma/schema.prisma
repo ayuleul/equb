@@ -204,6 +204,8 @@ model User {
   reviewedJoinRequests JoinRequest[] @relation("JoinRequestReviewer")
   deviceTokens      DeviceToken[]
   notifications     Notification[]
+  reputationMetrics UserReputationMetrics?
+  reputationHistory ReputationHistory[]
 }
 
 model OtpCode {
@@ -241,6 +243,8 @@ model EqubGroup {
   visibility         GroupVisibility @default(PRIVATE)
   strictPayout       Boolean        @default(false)
   timezone           String         @default("Africa/Addis_Ababa")
+  hostTier           String?
+  hostReputationAtCreation Int?
   createdByUserId    String
   createdAt          DateTime       @default(now())
   createdByUser      User           @relation("GroupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -257,6 +261,7 @@ model EqubGroup {
   joinRequests       JoinRequest[]
   notifications      Notification[]
   rules              GroupRules?
+  reputationHistory  ReputationHistory[] @relation("ReputationHistoryGroup")
 
   @@index([createdByUserId])
   @@index([visibility, status])
@@ -421,6 +426,7 @@ model EqubCycle {
   payout          Payout?
   auction         CycleAuction?
   bids            CycleBid[]
+  reputationHistory ReputationHistory[] @relation("ReputationHistoryCycle")
 
   @@unique([roundId, cycleNo])
   @@unique([roundId, selectedWinnerUserId])
@@ -429,6 +435,62 @@ model EqubCycle {
   @@index([selectedWinnerUserId])
   @@index([payoutSentByUserId])
   @@index([payoutReceivedConfirmedByUserId])
+}
+
+model UserReputationMetrics {
+  userId                  String   @id
+  trustScore              Int      @default(50)
+  trustLevel              String   @default("New")
+  paymentScore            Float    @default(50)
+  completionScore         Float    @default(50)
+  behaviorScore           Float    @default(100)
+  experienceScore         Float    @default(0)
+  baseScore               Float    @default(55)
+  activityFactor          Float    @default(1)
+  adjustedScore           Float    @default(55)
+  confidenceFactor        Float    @default(0)
+  equbsJoined             Int      @default(0)
+  equbsCompleted          Int      @default(0)
+  equbsLeftEarly          Int      @default(0)
+  equbsHosted             Int      @default(0)
+  hostedEqubsCompleted    Int      @default(0)
+  onTimePayments          Int      @default(0)
+  latePayments            Int      @default(0)
+  missedPayments          Int      @default(0)
+  turnsParticipated       Int      @default(0)
+  payoutsReceived         Int      @default(0)
+  payoutsConfirmed        Int      @default(0)
+  removalsCount           Int      @default(0)
+  disputesCount           Int      @default(0)
+  cancelledGroupsCount    Int      @default(0)
+  hostDisputesCount       Int      @default(0)
+  lastEqubActivityAt      DateTime?
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([trustScore])
+  @@index([updatedAt(sort: Desc)])
+}
+
+model ReputationHistory {
+  id             String   @id @default(uuid())
+  userId         String
+  eventType      String
+  scoreDelta     Int
+  metricChanges  Json
+  relatedGroupId String?
+  relatedCycleId String?
+  idempotencyKey String   @unique
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedGroup   EqubGroup? @relation("ReputationHistoryGroup", fields: [relatedGroupId], references: [id], onDelete: SetNull)
+  relatedCycle   EqubCycle? @relation("ReputationHistoryCycle", fields: [relatedCycleId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([relatedGroupId])
+  @@index([eventType, createdAt(sort: Desc)])
 }
 
 model CycleAuction {

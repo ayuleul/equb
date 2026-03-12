@@ -57,6 +57,9 @@ describe('PayoutsService realtime emissions', () => {
           selectionMetadata: null,
         }),
       } as never,
+      {
+        applyEvent: jest.fn(),
+      } as never,
       realtimeService as never,
     );
 
@@ -158,6 +161,9 @@ describe('PayoutsService realtime emissions', () => {
         listCompletedWinnerUserIds: jest.fn().mockResolvedValue([]),
       } as never,
       {} as never,
+      {
+        applyEvent: jest.fn(),
+      } as never,
       realtimeService as never,
     );
 

@@ -6,6 +6,7 @@ import '../../../data/models/public_group_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/utils/formatters.dart';
+import '../../../shared/widgets/reputation_badge.dart';
 import '../public_group_action_state.dart';
 import '../public_groups_controller.dart';
 
@@ -114,14 +115,62 @@ class _PublicGroupDetailScreenState
                         label: 'Members',
                         value: '${group.memberCount}',
                       ),
+                      if (group.host != null)
+                        _DetailRow(
+                          label: 'Host score',
+                          value: '${group.host!.trustScore}',
+                        ),
                       _DetailRow(
                         label: 'Started',
                         value: group.alreadyStarted ? 'Yes' : 'No',
                       ),
+                      if (group.host != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Host: ${group.hostName ?? 'Group admin'}',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                            ReputationBadge(trustLevel: group.host!.trustLevel),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
+                if (group.trustSummary != null) ...[
+                  KitCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Group trust summary',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _DetailRow(
+                          label: 'Group trust level',
+                          value: group.trustSummary!.groupTrustLevel,
+                        ),
+                        _DetailRow(
+                          label: 'Host score',
+                          value: '${group.trustSummary!.hostScore}',
+                        ),
+                        _DetailRow(
+                          label: 'Average member score',
+                          value: group.trustSummary!.averageMemberScore == null
+                              ? 'Not enough data'
+                              : '${group.trustSummary!.averageMemberScore!.round()}',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 KitCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

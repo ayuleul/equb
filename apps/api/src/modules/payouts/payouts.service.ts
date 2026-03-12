@@ -27,6 +27,7 @@ import { isPayoutProofKeyScopedTo } from '../contributions/utils/proof-key.util'
 import { GroupCycleResponseDto } from '../groups/entities/groups.entities';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReputationService } from '../reputation/reputation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CloseCycleDto } from './dto/close-cycle.dto';
 import { ConfirmPayoutDto } from './dto/confirm-payout.dto';
@@ -70,6 +71,7 @@ export class PayoutsService {
     private readonly groupsService: GroupsService,
     private readonly roundEligibilityService: RoundEligibilityService,
     private readonly winnerSelectionService: WinnerSelectionService,
+    private readonly reputationService: ReputationService,
     private readonly realtimeService: RealtimeService,
   ) {}
 
@@ -406,6 +408,21 @@ export class PayoutsService {
         });
       }
 
+      await this.reputationService.applyEvent(tx, {
+        userId: payout.toUserId,
+        eventType: 'PAYOUT_RECEIVED',
+        metricChanges: {
+          payoutsReceived: 1,
+        },
+        idempotencyKey: `reputation:payout-received:${payout.cycleId}:${payout.toUserId}`,
+        relatedGroupId: payout.groupId,
+        relatedCycleId: payout.cycleId,
+        metadata: {
+          payoutId: payout.id,
+          amount: payout.amount,
+        },
+      });
+
       return payout;
     });
 
@@ -622,6 +639,92 @@ export class PayoutsService {
             roundId: cycle.roundId,
             closedAt: now,
           });
+        }
+
+        await this.reputationService.applyEvent(tx, {
+          userId: currentUser.id,
+          eventType: 'PAYOUT_CONFIRMED',
+          metricChanges: {
+            payoutsConfirmed: 1,
+          },
+          idempotencyKey: `reputation:payout-confirmed:${confirmedPayout.cycleId}:${currentUser.id}`,
+          relatedGroupId: confirmedPayout.groupId,
+          relatedCycleId: confirmedPayout.cycleId,
+          metadata: {
+            payoutId: confirmedPayout.id,
+          },
+        });
+
+        for (const participantUserId of roundParticipantUserIds) {
+          await this.reputationService.applyEvent(tx, {
+            userId: participantUserId,
+            eventType: 'TURN_PARTICIPATED',
+            metricChanges: {
+              turnsParticipated: 1,
+            },
+            idempotencyKey: `reputation:turn-participated:${cycle.id}:${participantUserId}`,
+            relatedGroupId: cycle.groupId,
+            relatedCycleId: cycle.id,
+            metadata: {
+              roundId: cycle.roundId,
+            },
+          });
+        }
+
+        for (const missingUserId of strictEligibility.missingMemberIds) {
+          await this.reputationService.applyEvent(tx, {
+            userId: missingUserId,
+            eventType: 'CONTRIBUTION_MISSED',
+            metricChanges: {
+              missedPayments: 1,
+            },
+            idempotencyKey: `reputation:contribution-missed:${cycle.id}:${missingUserId}`,
+            relatedGroupId: cycle.groupId,
+            relatedCycleId: cycle.id,
+            metadata: {
+              reason: 'payout_confirmed_without_verified_contribution',
+            },
+          });
+        }
+
+        if (remainingEligibleWinnerUserIds.length === 0) {
+          for (const participantUserId of roundParticipantUserIds) {
+            await this.reputationService.applyEvent(tx, {
+              userId: participantUserId,
+              eventType: 'ROUND_COMPLETED',
+              metricChanges: {
+                equbsCompleted: 1,
+              },
+              idempotencyKey: `reputation:round-completed:${cycle.roundId}:${participantUserId}`,
+              relatedGroupId: cycle.groupId,
+              relatedCycleId: cycle.id,
+              metadata: {
+                roundId: cycle.roundId,
+              },
+            });
+          }
+
+          const groupHost = await tx.equbGroup.findUnique({
+            where: { id: cycle.groupId },
+            select: {
+              createdByUserId: true,
+            },
+          });
+          if (groupHost) {
+            await this.reputationService.applyEvent(tx, {
+              userId: groupHost.createdByUserId,
+              eventType: 'HOSTED_ROUND_COMPLETED',
+              metricChanges: {
+                hostedEqubsCompleted: 1,
+              },
+              idempotencyKey: `reputation:hosted-round-completed:${cycle.roundId}:${groupHost.createdByUserId}`,
+              relatedGroupId: cycle.groupId,
+              relatedCycleId: cycle.id,
+              metadata: {
+                roundId: cycle.roundId,
+              },
+            });
+          }
         }
 
         await this.auditService.log(

@@ -79,6 +79,11 @@ import {
   GROUP_RULESET_REQUIRED_REASON_CODE,
 } from './groups.constants';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  GroupTrustSummaryDto,
+  MemberReliabilitySummaryDto,
+} from '../reputation/entities/reputation.entities';
+import { ReputationService } from '../reputation/reputation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 
 @Injectable()
@@ -91,6 +96,7 @@ export class GroupsService {
     private readonly notificationsService: NotificationsService,
     private readonly roundEligibilityService: RoundEligibilityService,
     private readonly winnerSelectionService: WinnerSelectionService,
+    private readonly reputationService: ReputationService,
     private readonly realtimeService: RealtimeService,
   ) {}
 
@@ -98,6 +104,23 @@ export class GroupsService {
     currentUser: AuthenticatedUser,
     dto: CreateGroupDto,
   ): Promise<GroupDetailResponseDto> {
+    let publicHosting: Awaited<
+      ReturnType<typeof this.reputationService.getPublicHostingEligibility>
+    > | null = null;
+    if (dto.visibility === GroupVisibility.PUBLIC) {
+      publicHosting = await this.reputationService.assertCanCreatePublicEqub(
+        currentUser.id,
+        {
+          contributionAmount: dto.contributionAmount ?? null,
+          durationDays:
+            dto.frequency != null ? this.resolveLegacyDurationDays(dto.frequency) : null,
+          activePublicEqubCount: await this.countActivePublicGroupsForHost(
+            currentUser.id,
+          ),
+        },
+      );
+    }
+
     const legacyFieldCount =
       (dto.contributionAmount != null ? 1 : 0) +
       (dto.frequency != null ? 1 : 0) +
@@ -125,8 +148,16 @@ export class GroupsService {
           frequency: dto.frequency ?? GroupFrequency.MONTHLY,
           startDate,
           visibility: dto.visibility ?? GroupVisibility.PRIVATE,
+          hostTier:
+            dto.visibility === GroupVisibility.PUBLIC
+              ? publicHosting?.hostTier ?? null
+              : null,
+          hostReputationAtCreation:
+            dto.visibility === GroupVisibility.PUBLIC
+              ? publicHosting?.trustScore ?? null
+              : null,
           createdByUserId: currentUser.id,
-        },
+        } as Prisma.EqubGroupUncheckedCreateInput,
       });
 
       if (hasLegacyRulesPayload) {
@@ -164,6 +195,19 @@ export class GroupsService {
           joinedAt: new Date(),
           verifiedAt: new Date(),
           verifiedByUserId: currentUser.id,
+        },
+      });
+
+      await this.reputationService.applyEvent(tx, {
+        userId: currentUser.id,
+        eventType: 'GROUP_HOSTED',
+        metricChanges: {
+          equbsHosted: 1,
+        },
+        idempotencyKey: `reputation:group-hosted:${createdGroup.id}:${currentUser.id}`,
+        relatedGroupId: createdGroup.id,
+        metadata: {
+          visibility: createdGroup.visibility,
         },
       });
 
@@ -234,6 +278,13 @@ export class GroupsService {
         status: GroupStatus.ACTIVE,
       },
       include: {
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+          },
+        },
         rules: {
           select: {
             contributionAmount: true,
@@ -263,7 +314,15 @@ export class GroupsService {
       orderBy: [{ createdAt: 'desc' }],
     });
 
-    return groups.map((group) => this.toPublicGroupSummaryResponse(group));
+    return Promise.all(
+      groups.map(async (group) =>
+        this.toPublicGroupSummaryResponse(
+          group,
+          await this.reputationService.getHostSummary(group.createdByUser.id),
+          await this.reputationService.getGroupTrustSummary(group.id),
+        ),
+      ),
+    );
   }
 
   async getPublicGroupDetails(
@@ -321,7 +380,12 @@ export class GroupsService {
       throw new NotFoundException('Public group not found');
     }
 
-    return this.toPublicGroupDetailResponse(group);
+    const [host, trustSummary] = await Promise.all([
+      this.reputationService.getHostSummary(group.createdByUserId),
+      this.reputationService.getGroupTrustSummary(group.id),
+    ]);
+
+    return this.toPublicGroupDetailResponse(group, host, trustSummary);
   }
 
   async getGroupDetails(
@@ -367,11 +431,16 @@ export class GroupsService {
       throw new NotFoundException('Membership not found');
     }
 
+    const trustSummary = await this.reputationService.getGroupTrustSummary(
+      groupId,
+    );
+
     return this.toGroupDetailResponse(
       group,
       membership,
       group.rules,
       (group.members ?? []).map((member) => member.status),
+      trustSummary,
     );
   }
 
@@ -391,11 +460,29 @@ export class GroupsService {
 
     const group = await this.prisma.equbGroup.findUnique({
       where: { id: groupId },
-      select: { id: true },
+      select: {
+        id: true,
+        visibility: true,
+      },
     });
 
     if (!group) {
       throw new NotFoundException('Group not found');
+    }
+
+    let publicHosting: Awaited<
+      ReturnType<typeof this.reputationService.getPublicHostingEligibility>
+    > | null = null;
+    if (dto.visibility === GroupVisibility.PUBLIC) {
+      publicHosting = await this.reputationService.assertCanCreatePublicEqub(
+        currentUser.id,
+        {
+          activePublicEqubCount: await this.countActivePublicGroupsForHost(
+            currentUser.id,
+            group.id,
+          ),
+        },
+      );
     }
 
     await this.prisma.equbGroup.update({
@@ -407,6 +494,13 @@ export class GroupsService {
           : {}),
         ...(dto.currency != null ? { currency: dto.currency.trim() } : {}),
         ...(dto.visibility != null ? { visibility: dto.visibility } : {}),
+        ...(dto.visibility === GroupVisibility.PUBLIC &&
+        group.visibility !== GroupVisibility.PUBLIC
+          ? {
+              hostTier: publicHosting?.hostTier ?? null,
+              hostReputationAtCreation: publicHosting?.trustScore ?? null,
+            }
+          : {}),
       },
     });
 
@@ -484,11 +578,28 @@ export class GroupsService {
         select: {
           id: true,
           frequency: true,
+          visibility: true,
+          createdByUserId: true,
         },
       });
 
       if (!group) {
         throw new NotFoundException('Group not found');
+      }
+
+      if (group.visibility === GroupVisibility.PUBLIC) {
+        await this.reputationService.assertCanCreatePublicEqub(
+          group.createdByUserId,
+          {
+            maxMembers: dto.roundSize,
+            contributionAmount: dto.contributionAmount,
+            durationDays: this.resolveRulesDurationDays(dto),
+            activePublicEqubCount: await this.countActivePublicGroupsForHost(
+              group.createdByUserId,
+              groupId,
+            ),
+          },
+        );
       }
 
       const updatedRules = await tx.groupRules.upsert({
@@ -823,6 +934,18 @@ export class GroupsService {
       result.groupId,
     );
 
+    await this.prisma.$transaction(async (tx) => {
+      await this.reputationService.applyEvent(tx, {
+        userId: currentUser.id,
+        eventType: 'MEMBER_JOINED',
+        metricChanges: {
+          equbsJoined: 1,
+        },
+        idempotencyKey: `reputation:member-joined:${result.groupId}:${currentUser.id}`,
+        relatedGroupId: result.groupId,
+      });
+    });
+
     await this.notificationsService.notifyGroupAdmins(
       result.groupId,
       {
@@ -874,6 +997,12 @@ export class GroupsService {
         select: {
           id: true,
           visibility: true,
+          contributionAmount: true,
+          rules: {
+            select: {
+              contributionAmount: true,
+            },
+          },
         },
       });
 
@@ -886,6 +1015,11 @@ export class GroupsService {
           'Only public groups accept join requests',
         );
       }
+
+      await this.reputationService.assertCanJoinHighValuePublicGroup(
+        currentUser.id,
+        group.rules?.contributionAmount ?? group.contributionAmount,
+      );
 
       await this.assertJoinRequestsOpen(groupId, tx);
 
@@ -1037,8 +1171,16 @@ export class GroupsService {
       },
       orderBy: [{ createdAt: 'asc' }],
     });
+    const reputationByUserId = await this.reputationService.getReliabilitySummaries(
+      requests.map((request) => request.userId),
+    );
 
-    return requests.map((request) => this.toJoinRequestResponse(request));
+    return requests.map((request) =>
+      this.toJoinRequestResponse(
+        request,
+        reputationByUserId.get(request.userId) ?? null,
+      ),
+    );
   }
 
   async approveJoinRequest(
@@ -1128,8 +1270,20 @@ export class GroupsService {
         createdAt: 'asc',
       },
     });
+    const reputationByUserId = await this.reputationService.getReliabilitySummaries(
+      memberships.map((membership) => membership.userId),
+    );
 
-    return memberships.map((membership) => this.toMemberResponse(membership));
+    return memberships.map((membership) =>
+      this.toMemberResponse(
+        membership,
+        reputationByUserId.get(membership.userId) ?? null,
+      ),
+    );
+  }
+
+  async getGroupTrustSummary(groupId: string): Promise<GroupTrustSummaryDto> {
+    return this.reputationService.getGroupTrustSummary(groupId);
   }
 
   async verifyMember(
@@ -1408,6 +1562,26 @@ export class GroupsService {
       },
       groupId,
     );
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.reputationService.applyEvent(tx, {
+        userId: targetUserId,
+        eventType:
+          isSelfAction === true ? 'MEMBER_LEFT_GROUP' : 'MEMBER_REMOVED_FROM_GROUP',
+        metricChanges: {
+          removalsCount: 1,
+          ...(isSelfAction ? { equbsLeftEarly: 1 } : {}),
+        },
+        idempotencyKey: `reputation:member-suspended:${groupId}:${targetUserId}:${isSelfAction ? 'self' : 'admin'}`,
+        relatedGroupId: groupId,
+        metadata: {
+          actorUserId: currentUser.id,
+          previousStatus: targetMembership.status,
+          nextStatus: requestedStatus,
+          selfAction: isSelfAction,
+        },
+      });
+    });
 
     this.realtimeService.emitGroupEvent(
       groupId,
@@ -1911,6 +2085,8 @@ export class GroupsService {
       startDate: Date;
       status: GroupStatus;
       visibility?: GroupVisibility;
+      hostTier?: string | null;
+      hostReputationAtCreation?: number | null;
     },
     rules: {
       groupId: string;
@@ -1934,6 +2110,17 @@ export class GroupsService {
       startDate: group.startDate,
       status: group.status,
       visibility: group.visibility ?? GroupVisibility.PRIVATE,
+      hostTier: group.hostTier ?? null,
+      hostReputationAtCreation: group.hostReputationAtCreation ?? null,
+      hostReputationLevel:
+        group.hostReputationAtCreation != null
+          ? this.reputationService.deriveTrustLevel(
+              group.hostReputationAtCreation,
+            )
+          : null,
+      allowedPublicEqubLimits: this.toAllowedPublicEqubLimits(
+        group.hostTier ?? null,
+      ),
       ...flags,
     };
   }
@@ -1949,6 +2136,8 @@ export class GroupsService {
       startDate: Date;
       status: GroupStatus;
       visibility?: GroupVisibility;
+      hostTier?: string | null;
+      hostReputationAtCreation?: number | null;
       createdByUserId: string;
       createdAt: Date;
       strictPayout: boolean;
@@ -1967,6 +2156,7 @@ export class GroupsService {
       minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
+    trustSummary: GroupTrustSummaryDto,
   ): GroupDetailResponseDto {
     const summary = this.toGroupSummaryResponse(group, rules, memberStatuses);
 
@@ -1980,6 +2170,7 @@ export class GroupsService {
         role: membership.role,
         status: normalizeMemberStatus(membership.status),
       },
+      trustSummary,
     };
   }
 
@@ -2070,6 +2261,8 @@ export class GroupsService {
     currency: string;
     contributionAmount: number;
     frequency: GroupFrequency;
+    hostTier?: string | null;
+    hostReputationAtCreation?: number | null;
     rules: {
       contributionAmount: number;
       frequency: GroupRuleFrequency;
@@ -2085,7 +2278,14 @@ export class GroupsService {
       members: number;
       cycles: number;
     };
-  }): PublicGroupSummaryResponseDto {
+    createdByUser?: {
+      fullName: string | null;
+      phone: string;
+    };
+  },
+  host: GroupTrustSummaryDto['host'],
+  trustSummary: GroupTrustSummaryDto,
+  ): PublicGroupSummaryResponseDto {
     return {
       id: group.id,
       name: group.name,
@@ -2101,6 +2301,20 @@ export class GroupsService {
       payoutMode: group.rules?.payoutMode ?? null,
       memberCount: group._count.members,
       alreadyStarted: group._count.cycles > 0,
+      hostName: group.createdByUser?.fullName ?? group.createdByUser?.phone ?? null,
+      hostTier: group.hostTier ?? null,
+      hostReputationAtCreation: group.hostReputationAtCreation ?? null,
+      hostReputationLevel:
+        group.hostReputationAtCreation != null
+          ? this.reputationService.deriveTrustLevel(
+              group.hostReputationAtCreation,
+            )
+          : null,
+      allowedPublicEqubLimits: this.toAllowedPublicEqubLimits(
+        group.hostTier ?? null,
+      ),
+      host,
+      trustSummary,
     };
   }
 
@@ -2111,6 +2325,8 @@ export class GroupsService {
     currency: string;
     contributionAmount: number;
     frequency: GroupFrequency;
+    hostTier?: string | null;
+    hostReputationAtCreation?: number | null;
     status: GroupStatus;
     visibility: GroupVisibility;
     rules: {
@@ -2129,9 +2345,16 @@ export class GroupsService {
       members: number;
       cycles: number;
     };
-  }): PublicGroupDetailResponseDto {
+    createdByUser?: {
+      fullName: string | null;
+      phone: string;
+    };
+  },
+  host: GroupTrustSummaryDto['host'],
+  trustSummary: GroupTrustSummaryDto,
+  ): PublicGroupDetailResponseDto {
     return {
-      ...this.toPublicGroupSummaryResponse(group),
+      ...this.toPublicGroupSummaryResponse(group, host, trustSummary),
       visibility: group.visibility,
       status: group.status,
       rulesetConfigured: group.rules != null,
@@ -2139,6 +2362,8 @@ export class GroupsService {
       rules: group.rules
         ? this.toPublicGroupRulesSummaryResponse(group.rules)
         : null,
+      host,
+      trustSummary,
     };
   }
 
@@ -2307,7 +2532,9 @@ export class GroupsService {
     joinedAt: Date | null;
     verifiedAt?: Date | null;
     verifiedByUserId?: string | null;
-  }): GroupMemberResponseDto {
+  },
+  reputation: MemberReliabilitySummaryDto | null = null,
+  ): GroupMemberResponseDto {
     return {
       id: member.id,
       user: member.user,
@@ -2317,6 +2544,7 @@ export class GroupsService {
       joinedAt: member.joinedAt,
       verifiedAt: member.verifiedAt ?? null,
       verifiedByUserId: member.verifiedByUserId ?? null,
+      ...(reputation ? { reputation } : {}),
     };
   }
 
@@ -2334,7 +2562,9 @@ export class GroupsService {
       phone: string;
       fullName: string | null;
     };
-  }): JoinRequestResponseDto {
+  },
+  reputation: MemberReliabilitySummaryDto | null = null,
+  ): JoinRequestResponseDto {
     const retryAvailableAt =
       request.status === JoinRequestStatus.REJECTED
         ? this.resolveJoinRequestRetryAvailableAt(
@@ -2352,8 +2582,86 @@ export class GroupsService {
       reviewedAt: request.reviewedAt ?? null,
       reviewedByUserId: request.reviewedByUserId ?? null,
       retryAvailableAt,
-      ...(request.user ? { user: request.user } : {}),
+      ...(request.user
+        ? {
+            user: {
+              ...request.user,
+              ...(reputation ? { reputation } : {}),
+            },
+          }
+        : {}),
     };
+  }
+
+  private async countActivePublicGroupsForHost(
+    userId: string,
+    excludeGroupId?: string,
+  ): Promise<number> {
+    return this.prisma.equbGroup.count({
+      where: {
+        createdByUserId: userId,
+        visibility: GroupVisibility.PUBLIC,
+        status: GroupStatus.ACTIVE,
+        ...(excludeGroupId ? { id: { not: excludeGroupId } } : {}),
+      },
+    });
+  }
+
+  private resolveLegacyDurationDays(frequency: GroupFrequency): number {
+    return frequency === GroupFrequency.WEEKLY ? 7 : 30;
+  }
+
+  private resolveRulesDurationDays(dto: UpdateGroupRulesDto): number | null {
+    if (dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL) {
+      return dto.customIntervalDays ?? null;
+    }
+
+    if (dto.frequency === GroupRuleFrequency.WEEKLY) {
+      return 7;
+    }
+
+    if (dto.frequency === GroupRuleFrequency.MONTHLY) {
+      return 30;
+    }
+
+    return null;
+  }
+
+  private toAllowedPublicEqubLimits(hostTier: string | null): {
+    maxMembers: number | null;
+    maxContributionAmount: number | null;
+    maxDurationDays: number | null;
+    maxActivePublicEqubs: number | null;
+  } | null {
+    if (hostTier !== 'starter') {
+      return null;
+    }
+
+    return {
+      maxMembers: this.getNumericConfig('STARTER_PUBLIC_EQUB_MAX_MEMBERS', 10),
+      maxContributionAmount: this.getNumericConfig(
+        'STARTER_PUBLIC_EQUB_MAX_CONTRIBUTION',
+        1000,
+      ),
+      maxDurationDays: this.getNumericConfig(
+        'STARTER_PUBLIC_EQUB_MAX_DURATION',
+        30,
+      ),
+      maxActivePublicEqubs: this.getNumericConfig(
+        'MAX_ACTIVE_PUBLIC_EQUBS_FOR_STARTER_HOST',
+        1,
+      ),
+    };
+  }
+
+  private getNumericConfig(name: string, fallback: number): number {
+    const value = this.configService.get<string | number>(name);
+    if (value == null || value === '') {
+      return fallback;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
   }
 
   private async countActiveAdmins(groupId: string): Promise<number> {
@@ -2425,6 +2733,18 @@ export class GroupsService {
       if (nextStatus === JoinRequestStatus.APPROVED) {
         await this.assertGroupMembershipOpen(groupId, tx);
         await this.upsertJoinedMembership(tx, groupId, request.userId);
+        await this.reputationService.applyEvent(tx, {
+          userId: request.userId,
+          eventType: 'MEMBER_JOINED',
+          metricChanges: {
+            equbsJoined: 1,
+          },
+          idempotencyKey: `reputation:member-joined:${groupId}:${request.userId}`,
+          relatedGroupId: groupId,
+          metadata: {
+            approvalSource: 'join_request',
+          },
+        });
       }
 
       const updated = await tx.joinRequest.update({

@@ -24,6 +24,7 @@ import type { AuthenticatedUser } from '../../common/types/authenticated-user.ty
 import { CreateContributionDisputeDto } from './dto/create-contribution-dispute.dto';
 import { MediateDisputeDto } from './dto/mediate-dispute.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReputationService } from '../reputation/reputation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RejectContributionDto } from './dto/reject-contribution.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
@@ -89,6 +90,7 @@ export class ContributionsService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
+    private readonly reputationService: ReputationService,
     private readonly realtimeService: RealtimeService,
   ) {}
 
@@ -370,13 +372,40 @@ export class ContributionsService {
         }
 
         const normalizedNote = note?.trim();
+        const cycle = await tx.equbCycle.findUnique({
+          where: { id: existing.cycleId },
+          select: {
+            id: true,
+            dueAt: true,
+            group: {
+              select: {
+                rules: {
+                  select: {
+                    graceDays: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!cycle) {
+          throw new NotFoundException('Cycle not found');
+        }
+
+        const confirmedAt = new Date();
+        const graceDays = cycle.group.rules?.graceDays ?? 0;
+        const graceDeadline = this.addDays(cycle.dueAt, Math.max(graceDays, 0));
+        const paidOnTime =
+          existing.status !== ContributionStatus.LATE &&
+          confirmedAt.getTime() <= graceDeadline.getTime();
 
         const updated = await tx.contribution.update({
           where: { id: contributionId },
           data: {
             status: ContributionStatus.VERIFIED,
             note: normalizedNote ?? existing.note,
-            confirmedAt: new Date(),
+            confirmedAt,
             confirmedByUserId: currentUser.id,
             rejectedAt: null,
             rejectedByUserId: null,
@@ -405,10 +434,27 @@ export class ContributionsService {
             reference: updated.paymentRef,
             receiptFileKey: updated.proofFileKey,
             note: normalizedNote ?? null,
-            confirmedAt: new Date(),
+            confirmedAt,
             confirmedByUserId: currentUser.id,
           },
         });
+
+        if (paidOnTime) {
+          await this.reputationService.applyEvent(tx, {
+            userId: updated.userId,
+            eventType: 'ON_TIME_PAYMENT_VERIFIED',
+            metricChanges: {
+              onTimePayments: 1,
+            },
+            idempotencyKey: `reputation:payment-on-time:${updated.cycleId}:${updated.userId}`,
+            relatedGroupId: updated.groupId,
+            relatedCycleId: updated.cycleId,
+            metadata: {
+              confirmedAt: confirmedAt.toISOString(),
+              graceDeadline: graceDeadline.toISOString(),
+            },
+          });
+        }
 
         await this.syncCycleContributionCounts(tx, updated.cycleId);
         await this.recomputeCycleCollectionState(tx, updated.cycleId);
@@ -629,6 +675,20 @@ export class ContributionsService {
               data: {
                 status: ContributionStatus.LATE,
                 lateMarkedAt: evaluatedAt,
+              },
+            });
+            await this.reputationService.applyEvent(tx, {
+              userId: contribution.userId,
+              eventType: 'CONTRIBUTION_LATE_MARKED',
+              metricChanges: {
+                latePayments: 1,
+              },
+              idempotencyKey: `reputation:contribution-late:${cycle.id}:${contribution.userId}`,
+              relatedGroupId: cycle.groupId,
+              relatedCycleId: cycle.id,
+              metadata: {
+                contributionId: contribution.id,
+                evaluatedAt: evaluatedAt.toISOString(),
               },
             });
             lateMarkedCount += 1;
@@ -863,7 +923,7 @@ export class ContributionsService {
         );
       }
 
-      return tx.contributionDispute.create({
+      const createdDispute = await tx.contributionDispute.create({
         data: {
           groupId: contribution.groupId,
           cycleId: contribution.cycleId,
@@ -893,6 +953,45 @@ export class ContributionsService {
           updatedAt: true,
         },
       });
+
+      await this.reputationService.applyEvent(tx, {
+        userId: contribution.userId,
+        eventType: 'DISPUTE_OPENED',
+        metricChanges: {
+          disputesCount: 1,
+        },
+        idempotencyKey: `reputation:dispute-open:${createdDispute.id}:${contribution.userId}`,
+        relatedGroupId: contribution.groupId,
+        relatedCycleId: contribution.cycleId,
+        metadata: {
+          disputeId: createdDispute.id,
+          reportedByUserId: currentUser.id,
+        },
+      });
+
+      const group = await tx.equbGroup.findUnique({
+        where: { id: contribution.groupId },
+        select: {
+          createdByUserId: true,
+        },
+      });
+      if (group) {
+        await this.reputationService.applyEvent(tx, {
+          userId: group.createdByUserId,
+          eventType: 'HOST_DISPUTE_OPENED',
+          metricChanges: {
+            hostDisputesCount: 1,
+          },
+          idempotencyKey: `reputation:host-dispute-open:${createdDispute.id}:${group.createdByUserId}`,
+          relatedGroupId: contribution.groupId,
+          relatedCycleId: contribution.cycleId,
+          metadata: {
+            disputeId: createdDispute.id,
+          },
+        });
+      }
+
+      return createdDispute;
     });
 
     await this.auditService.log(
@@ -1185,7 +1284,7 @@ export class ContributionsService {
         );
       }
 
-      return tx.contributionDispute.update({
+      const resolvedDispute = await tx.contributionDispute.update({
         where: { id: disputeId },
         data: {
           status: DisputeStatus.RESOLVED,
@@ -1214,6 +1313,52 @@ export class ContributionsService {
           updatedAt: true,
         },
       });
+
+      const contribution = await tx.contribution.findUnique({
+        where: { id: existing.contributionId },
+        select: {
+          userId: true,
+        },
+      });
+      if (contribution) {
+        await this.reputationService.applyEvent(tx, {
+          userId: contribution.userId,
+          eventType: 'DISPUTE_RESOLVED',
+          metricChanges: {
+            disputesCount: -1,
+          },
+          idempotencyKey: `reputation:dispute-resolved:${resolvedDispute.id}:${contribution.userId}`,
+          relatedGroupId: existing.groupId,
+          relatedCycleId: existing.cycleId,
+          metadata: {
+            outcome: normalizedOutcome,
+          },
+        });
+      }
+
+      const group = await tx.equbGroup.findUnique({
+        where: { id: existing.groupId },
+        select: {
+          createdByUserId: true,
+        },
+      });
+      if (group) {
+        await this.reputationService.applyEvent(tx, {
+          userId: group.createdByUserId,
+          eventType: 'HOST_DISPUTE_RESOLVED',
+          metricChanges: {
+            hostDisputesCount: -1,
+          },
+          idempotencyKey: `reputation:host-dispute-resolved:${resolvedDispute.id}:${group.createdByUserId}`,
+          relatedGroupId: existing.groupId,
+          relatedCycleId: existing.cycleId,
+          metadata: {
+            outcome: normalizedOutcome,
+          },
+        });
+      }
+
+      return resolvedDispute;
     });
 
     await this.auditService.log(

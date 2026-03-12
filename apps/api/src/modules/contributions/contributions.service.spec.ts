@@ -164,6 +164,9 @@ describe('ContributionsService.evaluateCycleCollection', () => {
         notifyUser: jest.fn(),
         notifyGroupAdmins: jest.fn(),
       } as never,
+      {
+        applyEvent: jest.fn(),
+      } as never,
       { emitTurnEvent: jest.fn() } as never,
     );
 
@@ -238,11 +241,13 @@ describe('ContributionsService.verifyContribution realtime emissions', () => {
       equbCycle: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'cycle-1',
+          dueAt: new Date('3026-03-12T00:00:00.000Z'),
           status: CycleStatus.OPEN,
           state: CycleState.COLLECTING,
           selectedWinnerUserId: null,
           group: {
             rules: {
+              graceDays: 0,
               strictCollection: true,
               winnerSelectionTiming: 'AFTER_COLLECTION',
             },
@@ -266,6 +271,9 @@ describe('ContributionsService.verifyContribution realtime emissions', () => {
     const realtimeService = {
       emitTurnEvent: jest.fn(),
     };
+    const reputationService = {
+      applyEvent: jest.fn(),
+    };
     const service = new ContributionsService(
       prismaMock,
       { log: jest.fn() } as never,
@@ -273,6 +281,7 @@ describe('ContributionsService.verifyContribution realtime emissions', () => {
         notifyUser: jest.fn(),
         notifyGroupAdmins: jest.fn(),
       } as never,
+      reputationService as never,
       realtimeService as never,
     );
 
@@ -294,6 +303,13 @@ describe('ContributionsService.verifyContribution realtime emissions', () => {
       expect.objectContaining({
         eventType: 'turn.updated',
         entityId: 'cycle-1',
+      }),
+    );
+    expect(reputationService.applyEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'ON_TIME_PAYMENT_VERIFIED',
+        userId: 'user-member',
       }),
     );
   });

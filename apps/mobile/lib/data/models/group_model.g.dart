@@ -80,6 +80,19 @@ _GroupModel _$GroupModelFromJson(Map<String, dynamic> json) => _GroupModel(
       : GroupMembershipModel.fromJson(
           json['membership'] as Map<String, dynamic>,
         ),
+  hostTier: json['hostTier'] as String?,
+  hostReputationAtCreation: _toNullableInt(json['hostReputationAtCreation']),
+  hostReputationLevel: json['hostReputationLevel'] as String?,
+  allowedPublicEqubLimits: json['allowedPublicEqubLimits'] == null
+      ? null
+      : AllowedPublicEqubLimitsModel.fromJson(
+          json['allowedPublicEqubLimits'] as Map<String, dynamic>,
+        ),
+  trustSummary: json['trustSummary'] == null
+      ? null
+      : GroupTrustSummaryModel.fromJson(
+          json['trustSummary'] as Map<String, dynamic>,
+        ),
   rulesetConfigured: json['rulesetConfigured'] as bool? ?? false,
   canInviteMembers: json['canInviteMembers'] as bool? ?? false,
   canStartCycle: json['canStartCycle'] as bool? ?? false,
@@ -101,6 +114,11 @@ Map<String, dynamic> _$GroupModelToJson(_GroupModel instance) =>
       'strictPayout': instance.strictPayout,
       'timezone': instance.timezone,
       'membership': instance.membership,
+      'hostTier': instance.hostTier,
+      'hostReputationAtCreation': instance.hostReputationAtCreation,
+      'hostReputationLevel': instance.hostReputationLevel,
+      'allowedPublicEqubLimits': instance.allowedPublicEqubLimits,
+      'trustSummary': instance.trustSummary,
       'rulesetConfigured': instance.rulesetConfigured,
       'canInviteMembers': instance.canInviteMembers,
       'canStartCycle': instance.canStartCycle,

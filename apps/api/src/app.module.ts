@@ -17,6 +17,7 @@ import { MeModule } from './modules/me/me.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { ReputationModule } from './modules/reputation/reputation.module';
 import { SystemModule } from './modules/system/system.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { SystemModule } from './modules/system/system.module';
     BullMqModule,
     NotificationsModule,
     RealtimeModule,
+    ReputationModule,
     SystemModule,
     AuthModule,
     AuctionsModule,

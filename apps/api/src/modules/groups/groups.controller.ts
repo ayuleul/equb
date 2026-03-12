@@ -49,6 +49,7 @@ import {
   PublicGroupSummaryResponseDto,
 } from './entities/groups.entities';
 import { GroupsService } from './groups.service';
+import { GroupTrustSummaryDto } from '../reputation/entities/reputation.entities';
 
 @ApiTags('Groups')
 @ApiBearerAuth()
@@ -333,6 +334,30 @@ export class GroupsController {
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupMemberResponseDto[]> {
     return this.groupsService.listMembers(groupId);
+  }
+
+  @Get(':id/members/reputation')
+  @UseGuards(GroupMemberGuard)
+  @SkipThrottle()
+  @ApiTags('Members')
+  @ApiOperation({ summary: 'List members with reliability summaries for a group' })
+  @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Joined group membership required' })
+  listMemberReputations(
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<GroupMemberResponseDto[]> {
+    return this.groupsService.listMembers(groupId);
+  }
+
+  @Get(':id/trust-summary')
+  @SkipThrottle()
+  @ApiOperation({ summary: 'Get aggregated trust summary for a group' })
+  @ApiOkResponse({ type: GroupTrustSummaryDto })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  getGroupTrustSummary(
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<GroupTrustSummaryDto> {
+    return this.groupsService.getGroupTrustSummary(groupId);
   }
 
   @Post(':id/members/:memberId/verify')

@@ -296,7 +296,7 @@ as WinnerSelectionTimingModel,
 /// @nodoc
 mixin _$PublicGroupModel {
 
- String get id; String get name; String? get description; String get currency;@JsonKey(fromJson: _toInt) int get contributionAmount;@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel get frequency;@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel? get payoutMode;@JsonKey(fromJson: _toInt) int get memberCount; bool get alreadyStarted; bool? get rulesetConfigured; bool? get isCurrentUserMember; PublicGroupRulesModel? get rules;
+ String get id; String get name; String? get description; String get currency;@JsonKey(fromJson: _toInt) int get contributionAmount;@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel get frequency;@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel? get payoutMode;@JsonKey(fromJson: _toInt) int get memberCount; bool get alreadyStarted; String? get hostName; String? get hostTier;@JsonKey(fromJson: _toNullableInt) int? get hostReputationAtCreation; String? get hostReputationLevel; AllowedPublicEqubLimitsModel? get allowedPublicEqubLimits; HostReputationSummaryModel? get host; GroupTrustSummaryModel? get trustSummary; bool? get rulesetConfigured; bool? get isCurrentUserMember; PublicGroupRulesModel? get rules;
 /// Create a copy of PublicGroupModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -309,16 +309,16 @@ $PublicGroupModelCopyWith<PublicGroupModel> get copyWith => _$PublicGroupModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PublicGroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.memberCount, memberCount) || other.memberCount == memberCount)&&(identical(other.alreadyStarted, alreadyStarted) || other.alreadyStarted == alreadyStarted)&&(identical(other.rulesetConfigured, rulesetConfigured) || other.rulesetConfigured == rulesetConfigured)&&(identical(other.isCurrentUserMember, isCurrentUserMember) || other.isCurrentUserMember == isCurrentUserMember)&&(identical(other.rules, rules) || other.rules == rules));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PublicGroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.memberCount, memberCount) || other.memberCount == memberCount)&&(identical(other.alreadyStarted, alreadyStarted) || other.alreadyStarted == alreadyStarted)&&(identical(other.hostName, hostName) || other.hostName == hostName)&&(identical(other.hostTier, hostTier) || other.hostTier == hostTier)&&(identical(other.hostReputationAtCreation, hostReputationAtCreation) || other.hostReputationAtCreation == hostReputationAtCreation)&&(identical(other.hostReputationLevel, hostReputationLevel) || other.hostReputationLevel == hostReputationLevel)&&(identical(other.allowedPublicEqubLimits, allowedPublicEqubLimits) || other.allowedPublicEqubLimits == allowedPublicEqubLimits)&&(identical(other.host, host) || other.host == host)&&(identical(other.trustSummary, trustSummary) || other.trustSummary == trustSummary)&&(identical(other.rulesetConfigured, rulesetConfigured) || other.rulesetConfigured == rulesetConfigured)&&(identical(other.isCurrentUserMember, isCurrentUserMember) || other.isCurrentUserMember == isCurrentUserMember)&&(identical(other.rules, rules) || other.rules == rules));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,currency,contributionAmount,frequency,payoutMode,memberCount,alreadyStarted,rulesetConfigured,isCurrentUserMember,rules);
+int get hashCode => Object.hashAll([runtimeType,id,name,description,currency,contributionAmount,frequency,payoutMode,memberCount,alreadyStarted,hostName,hostTier,hostReputationAtCreation,hostReputationLevel,allowedPublicEqubLimits,host,trustSummary,rulesetConfigured,isCurrentUserMember,rules]);
 
 @override
 String toString() {
-  return 'PublicGroupModel(id: $id, name: $name, description: $description, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, payoutMode: $payoutMode, memberCount: $memberCount, alreadyStarted: $alreadyStarted, rulesetConfigured: $rulesetConfigured, isCurrentUserMember: $isCurrentUserMember, rules: $rules)';
+  return 'PublicGroupModel(id: $id, name: $name, description: $description, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, payoutMode: $payoutMode, memberCount: $memberCount, alreadyStarted: $alreadyStarted, hostName: $hostName, hostTier: $hostTier, hostReputationAtCreation: $hostReputationAtCreation, hostReputationLevel: $hostReputationLevel, allowedPublicEqubLimits: $allowedPublicEqubLimits, host: $host, trustSummary: $trustSummary, rulesetConfigured: $rulesetConfigured, isCurrentUserMember: $isCurrentUserMember, rules: $rules)';
 }
 
 
@@ -329,11 +329,11 @@ abstract mixin class $PublicGroupModelCopyWith<$Res>  {
   factory $PublicGroupModelCopyWith(PublicGroupModel value, $Res Function(PublicGroupModel) _then) = _$PublicGroupModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? description, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel? payoutMode,@JsonKey(fromJson: _toInt) int memberCount, bool alreadyStarted, bool? rulesetConfigured, bool? isCurrentUserMember, PublicGroupRulesModel? rules
+ String id, String name, String? description, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel? payoutMode,@JsonKey(fromJson: _toInt) int memberCount, bool alreadyStarted, String? hostName, String? hostTier,@JsonKey(fromJson: _toNullableInt) int? hostReputationAtCreation, String? hostReputationLevel, AllowedPublicEqubLimitsModel? allowedPublicEqubLimits, HostReputationSummaryModel? host, GroupTrustSummaryModel? trustSummary, bool? rulesetConfigured, bool? isCurrentUserMember, PublicGroupRulesModel? rules
 });
 
 
-$PublicGroupRulesModelCopyWith<$Res>? get rules;
+$AllowedPublicEqubLimitsModelCopyWith<$Res>? get allowedPublicEqubLimits;$HostReputationSummaryModelCopyWith<$Res>? get host;$GroupTrustSummaryModelCopyWith<$Res>? get trustSummary;$PublicGroupRulesModelCopyWith<$Res>? get rules;
 
 }
 /// @nodoc
@@ -346,7 +346,7 @@ class _$PublicGroupModelCopyWithImpl<$Res>
 
 /// Create a copy of PublicGroupModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? payoutMode = freezed,Object? memberCount = null,Object? alreadyStarted = null,Object? rulesetConfigured = freezed,Object? isCurrentUserMember = freezed,Object? rules = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? payoutMode = freezed,Object? memberCount = null,Object? alreadyStarted = null,Object? hostName = freezed,Object? hostTier = freezed,Object? hostReputationAtCreation = freezed,Object? hostReputationLevel = freezed,Object? allowedPublicEqubLimits = freezed,Object? host = freezed,Object? trustSummary = freezed,Object? rulesetConfigured = freezed,Object? isCurrentUserMember = freezed,Object? rules = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -357,13 +357,56 @@ as int,frequency: null == frequency ? _self.frequency : frequency // ignore: cas
 as PublicGroupFrequencyModel,payoutMode: freezed == payoutMode ? _self.payoutMode : payoutMode // ignore: cast_nullable_to_non_nullable
 as PublicGroupPayoutModeModel?,memberCount: null == memberCount ? _self.memberCount : memberCount // ignore: cast_nullable_to_non_nullable
 as int,alreadyStarted: null == alreadyStarted ? _self.alreadyStarted : alreadyStarted // ignore: cast_nullable_to_non_nullable
-as bool,rulesetConfigured: freezed == rulesetConfigured ? _self.rulesetConfigured : rulesetConfigured // ignore: cast_nullable_to_non_nullable
+as bool,hostName: freezed == hostName ? _self.hostName : hostName // ignore: cast_nullable_to_non_nullable
+as String?,hostTier: freezed == hostTier ? _self.hostTier : hostTier // ignore: cast_nullable_to_non_nullable
+as String?,hostReputationAtCreation: freezed == hostReputationAtCreation ? _self.hostReputationAtCreation : hostReputationAtCreation // ignore: cast_nullable_to_non_nullable
+as int?,hostReputationLevel: freezed == hostReputationLevel ? _self.hostReputationLevel : hostReputationLevel // ignore: cast_nullable_to_non_nullable
+as String?,allowedPublicEqubLimits: freezed == allowedPublicEqubLimits ? _self.allowedPublicEqubLimits : allowedPublicEqubLimits // ignore: cast_nullable_to_non_nullable
+as AllowedPublicEqubLimitsModel?,host: freezed == host ? _self.host : host // ignore: cast_nullable_to_non_nullable
+as HostReputationSummaryModel?,trustSummary: freezed == trustSummary ? _self.trustSummary : trustSummary // ignore: cast_nullable_to_non_nullable
+as GroupTrustSummaryModel?,rulesetConfigured: freezed == rulesetConfigured ? _self.rulesetConfigured : rulesetConfigured // ignore: cast_nullable_to_non_nullable
 as bool?,isCurrentUserMember: freezed == isCurrentUserMember ? _self.isCurrentUserMember : isCurrentUserMember // ignore: cast_nullable_to_non_nullable
 as bool?,rules: freezed == rules ? _self.rules : rules // ignore: cast_nullable_to_non_nullable
 as PublicGroupRulesModel?,
   ));
 }
 /// Create a copy of PublicGroupModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AllowedPublicEqubLimitsModelCopyWith<$Res>? get allowedPublicEqubLimits {
+    if (_self.allowedPublicEqubLimits == null) {
+    return null;
+  }
+
+  return $AllowedPublicEqubLimitsModelCopyWith<$Res>(_self.allowedPublicEqubLimits!, (value) {
+    return _then(_self.copyWith(allowedPublicEqubLimits: value));
+  });
+}/// Create a copy of PublicGroupModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$HostReputationSummaryModelCopyWith<$Res>? get host {
+    if (_self.host == null) {
+    return null;
+  }
+
+  return $HostReputationSummaryModelCopyWith<$Res>(_self.host!, (value) {
+    return _then(_self.copyWith(host: value));
+  });
+}/// Create a copy of PublicGroupModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GroupTrustSummaryModelCopyWith<$Res>? get trustSummary {
+    if (_self.trustSummary == null) {
+    return null;
+  }
+
+  return $GroupTrustSummaryModelCopyWith<$Res>(_self.trustSummary!, (value) {
+    return _then(_self.copyWith(trustSummary: value));
+  });
+}/// Create a copy of PublicGroupModel
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -454,10 +497,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? description,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel? payoutMode, @JsonKey(fromJson: _toInt)  int memberCount,  bool alreadyStarted,  bool? rulesetConfigured,  bool? isCurrentUserMember,  PublicGroupRulesModel? rules)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? description,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel? payoutMode, @JsonKey(fromJson: _toInt)  int memberCount,  bool alreadyStarted,  String? hostName,  String? hostTier, @JsonKey(fromJson: _toNullableInt)  int? hostReputationAtCreation,  String? hostReputationLevel,  AllowedPublicEqubLimitsModel? allowedPublicEqubLimits,  HostReputationSummaryModel? host,  GroupTrustSummaryModel? trustSummary,  bool? rulesetConfigured,  bool? isCurrentUserMember,  PublicGroupRulesModel? rules)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PublicGroupModel() when $default != null:
-return $default(_that.id,_that.name,_that.description,_that.currency,_that.contributionAmount,_that.frequency,_that.payoutMode,_that.memberCount,_that.alreadyStarted,_that.rulesetConfigured,_that.isCurrentUserMember,_that.rules);case _:
+return $default(_that.id,_that.name,_that.description,_that.currency,_that.contributionAmount,_that.frequency,_that.payoutMode,_that.memberCount,_that.alreadyStarted,_that.hostName,_that.hostTier,_that.hostReputationAtCreation,_that.hostReputationLevel,_that.allowedPublicEqubLimits,_that.host,_that.trustSummary,_that.rulesetConfigured,_that.isCurrentUserMember,_that.rules);case _:
   return orElse();
 
 }
@@ -475,10 +518,10 @@ return $default(_that.id,_that.name,_that.description,_that.currency,_that.contr
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? description,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel? payoutMode, @JsonKey(fromJson: _toInt)  int memberCount,  bool alreadyStarted,  bool? rulesetConfigured,  bool? isCurrentUserMember,  PublicGroupRulesModel? rules)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? description,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel? payoutMode, @JsonKey(fromJson: _toInt)  int memberCount,  bool alreadyStarted,  String? hostName,  String? hostTier, @JsonKey(fromJson: _toNullableInt)  int? hostReputationAtCreation,  String? hostReputationLevel,  AllowedPublicEqubLimitsModel? allowedPublicEqubLimits,  HostReputationSummaryModel? host,  GroupTrustSummaryModel? trustSummary,  bool? rulesetConfigured,  bool? isCurrentUserMember,  PublicGroupRulesModel? rules)  $default,) {final _that = this;
 switch (_that) {
 case _PublicGroupModel():
-return $default(_that.id,_that.name,_that.description,_that.currency,_that.contributionAmount,_that.frequency,_that.payoutMode,_that.memberCount,_that.alreadyStarted,_that.rulesetConfigured,_that.isCurrentUserMember,_that.rules);}
+return $default(_that.id,_that.name,_that.description,_that.currency,_that.contributionAmount,_that.frequency,_that.payoutMode,_that.memberCount,_that.alreadyStarted,_that.hostName,_that.hostTier,_that.hostReputationAtCreation,_that.hostReputationLevel,_that.allowedPublicEqubLimits,_that.host,_that.trustSummary,_that.rulesetConfigured,_that.isCurrentUserMember,_that.rules);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -492,10 +535,10 @@ return $default(_that.id,_that.name,_that.description,_that.currency,_that.contr
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? description,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel? payoutMode, @JsonKey(fromJson: _toInt)  int memberCount,  bool alreadyStarted,  bool? rulesetConfigured,  bool? isCurrentUserMember,  PublicGroupRulesModel? rules)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? description,  String currency, @JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel? payoutMode, @JsonKey(fromJson: _toInt)  int memberCount,  bool alreadyStarted,  String? hostName,  String? hostTier, @JsonKey(fromJson: _toNullableInt)  int? hostReputationAtCreation,  String? hostReputationLevel,  AllowedPublicEqubLimitsModel? allowedPublicEqubLimits,  HostReputationSummaryModel? host,  GroupTrustSummaryModel? trustSummary,  bool? rulesetConfigured,  bool? isCurrentUserMember,  PublicGroupRulesModel? rules)?  $default,) {final _that = this;
 switch (_that) {
 case _PublicGroupModel() when $default != null:
-return $default(_that.id,_that.name,_that.description,_that.currency,_that.contributionAmount,_that.frequency,_that.payoutMode,_that.memberCount,_that.alreadyStarted,_that.rulesetConfigured,_that.isCurrentUserMember,_that.rules);case _:
+return $default(_that.id,_that.name,_that.description,_that.currency,_that.contributionAmount,_that.frequency,_that.payoutMode,_that.memberCount,_that.alreadyStarted,_that.hostName,_that.hostTier,_that.hostReputationAtCreation,_that.hostReputationLevel,_that.allowedPublicEqubLimits,_that.host,_that.trustSummary,_that.rulesetConfigured,_that.isCurrentUserMember,_that.rules);case _:
   return null;
 
 }
@@ -507,7 +550,7 @@ return $default(_that.id,_that.name,_that.description,_that.currency,_that.contr
 @JsonSerializable()
 
 class _PublicGroupModel implements PublicGroupModel {
-  const _PublicGroupModel({required this.id, required this.name, this.description, required this.currency, @JsonKey(fromJson: _toInt) required this.contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) required this.frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) this.payoutMode, @JsonKey(fromJson: _toInt) required this.memberCount, required this.alreadyStarted, this.rulesetConfigured, this.isCurrentUserMember, this.rules});
+  const _PublicGroupModel({required this.id, required this.name, this.description, required this.currency, @JsonKey(fromJson: _toInt) required this.contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) required this.frequency, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) this.payoutMode, @JsonKey(fromJson: _toInt) required this.memberCount, required this.alreadyStarted, this.hostName, this.hostTier, @JsonKey(fromJson: _toNullableInt) this.hostReputationAtCreation, this.hostReputationLevel, this.allowedPublicEqubLimits, this.host, this.trustSummary, this.rulesetConfigured, this.isCurrentUserMember, this.rules});
   factory _PublicGroupModel.fromJson(Map<String, dynamic> json) => _$PublicGroupModelFromJson(json);
 
 @override final  String id;
@@ -519,6 +562,13 @@ class _PublicGroupModel implements PublicGroupModel {
 @override@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) final  PublicGroupPayoutModeModel? payoutMode;
 @override@JsonKey(fromJson: _toInt) final  int memberCount;
 @override final  bool alreadyStarted;
+@override final  String? hostName;
+@override final  String? hostTier;
+@override@JsonKey(fromJson: _toNullableInt) final  int? hostReputationAtCreation;
+@override final  String? hostReputationLevel;
+@override final  AllowedPublicEqubLimitsModel? allowedPublicEqubLimits;
+@override final  HostReputationSummaryModel? host;
+@override final  GroupTrustSummaryModel? trustSummary;
 @override final  bool? rulesetConfigured;
 @override final  bool? isCurrentUserMember;
 @override final  PublicGroupRulesModel? rules;
@@ -536,16 +586,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PublicGroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.memberCount, memberCount) || other.memberCount == memberCount)&&(identical(other.alreadyStarted, alreadyStarted) || other.alreadyStarted == alreadyStarted)&&(identical(other.rulesetConfigured, rulesetConfigured) || other.rulesetConfigured == rulesetConfigured)&&(identical(other.isCurrentUserMember, isCurrentUserMember) || other.isCurrentUserMember == isCurrentUserMember)&&(identical(other.rules, rules) || other.rules == rules));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PublicGroupModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.memberCount, memberCount) || other.memberCount == memberCount)&&(identical(other.alreadyStarted, alreadyStarted) || other.alreadyStarted == alreadyStarted)&&(identical(other.hostName, hostName) || other.hostName == hostName)&&(identical(other.hostTier, hostTier) || other.hostTier == hostTier)&&(identical(other.hostReputationAtCreation, hostReputationAtCreation) || other.hostReputationAtCreation == hostReputationAtCreation)&&(identical(other.hostReputationLevel, hostReputationLevel) || other.hostReputationLevel == hostReputationLevel)&&(identical(other.allowedPublicEqubLimits, allowedPublicEqubLimits) || other.allowedPublicEqubLimits == allowedPublicEqubLimits)&&(identical(other.host, host) || other.host == host)&&(identical(other.trustSummary, trustSummary) || other.trustSummary == trustSummary)&&(identical(other.rulesetConfigured, rulesetConfigured) || other.rulesetConfigured == rulesetConfigured)&&(identical(other.isCurrentUserMember, isCurrentUserMember) || other.isCurrentUserMember == isCurrentUserMember)&&(identical(other.rules, rules) || other.rules == rules));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,currency,contributionAmount,frequency,payoutMode,memberCount,alreadyStarted,rulesetConfigured,isCurrentUserMember,rules);
+int get hashCode => Object.hashAll([runtimeType,id,name,description,currency,contributionAmount,frequency,payoutMode,memberCount,alreadyStarted,hostName,hostTier,hostReputationAtCreation,hostReputationLevel,allowedPublicEqubLimits,host,trustSummary,rulesetConfigured,isCurrentUserMember,rules]);
 
 @override
 String toString() {
-  return 'PublicGroupModel(id: $id, name: $name, description: $description, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, payoutMode: $payoutMode, memberCount: $memberCount, alreadyStarted: $alreadyStarted, rulesetConfigured: $rulesetConfigured, isCurrentUserMember: $isCurrentUserMember, rules: $rules)';
+  return 'PublicGroupModel(id: $id, name: $name, description: $description, currency: $currency, contributionAmount: $contributionAmount, frequency: $frequency, payoutMode: $payoutMode, memberCount: $memberCount, alreadyStarted: $alreadyStarted, hostName: $hostName, hostTier: $hostTier, hostReputationAtCreation: $hostReputationAtCreation, hostReputationLevel: $hostReputationLevel, allowedPublicEqubLimits: $allowedPublicEqubLimits, host: $host, trustSummary: $trustSummary, rulesetConfigured: $rulesetConfigured, isCurrentUserMember: $isCurrentUserMember, rules: $rules)';
 }
 
 
@@ -556,11 +606,11 @@ abstract mixin class _$PublicGroupModelCopyWith<$Res> implements $PublicGroupMod
   factory _$PublicGroupModelCopyWith(_PublicGroupModel value, $Res Function(_PublicGroupModel) _then) = __$PublicGroupModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? description, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel? payoutMode,@JsonKey(fromJson: _toInt) int memberCount, bool alreadyStarted, bool? rulesetConfigured, bool? isCurrentUserMember, PublicGroupRulesModel? rules
+ String id, String name, String? description, String currency,@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel? payoutMode,@JsonKey(fromJson: _toInt) int memberCount, bool alreadyStarted, String? hostName, String? hostTier,@JsonKey(fromJson: _toNullableInt) int? hostReputationAtCreation, String? hostReputationLevel, AllowedPublicEqubLimitsModel? allowedPublicEqubLimits, HostReputationSummaryModel? host, GroupTrustSummaryModel? trustSummary, bool? rulesetConfigured, bool? isCurrentUserMember, PublicGroupRulesModel? rules
 });
 
 
-@override $PublicGroupRulesModelCopyWith<$Res>? get rules;
+@override $AllowedPublicEqubLimitsModelCopyWith<$Res>? get allowedPublicEqubLimits;@override $HostReputationSummaryModelCopyWith<$Res>? get host;@override $GroupTrustSummaryModelCopyWith<$Res>? get trustSummary;@override $PublicGroupRulesModelCopyWith<$Res>? get rules;
 
 }
 /// @nodoc
@@ -573,7 +623,7 @@ class __$PublicGroupModelCopyWithImpl<$Res>
 
 /// Create a copy of PublicGroupModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? payoutMode = freezed,Object? memberCount = null,Object? alreadyStarted = null,Object? rulesetConfigured = freezed,Object? isCurrentUserMember = freezed,Object? rules = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? currency = null,Object? contributionAmount = null,Object? frequency = null,Object? payoutMode = freezed,Object? memberCount = null,Object? alreadyStarted = null,Object? hostName = freezed,Object? hostTier = freezed,Object? hostReputationAtCreation = freezed,Object? hostReputationLevel = freezed,Object? allowedPublicEqubLimits = freezed,Object? host = freezed,Object? trustSummary = freezed,Object? rulesetConfigured = freezed,Object? isCurrentUserMember = freezed,Object? rules = freezed,}) {
   return _then(_PublicGroupModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -584,7 +634,14 @@ as int,frequency: null == frequency ? _self.frequency : frequency // ignore: cas
 as PublicGroupFrequencyModel,payoutMode: freezed == payoutMode ? _self.payoutMode : payoutMode // ignore: cast_nullable_to_non_nullable
 as PublicGroupPayoutModeModel?,memberCount: null == memberCount ? _self.memberCount : memberCount // ignore: cast_nullable_to_non_nullable
 as int,alreadyStarted: null == alreadyStarted ? _self.alreadyStarted : alreadyStarted // ignore: cast_nullable_to_non_nullable
-as bool,rulesetConfigured: freezed == rulesetConfigured ? _self.rulesetConfigured : rulesetConfigured // ignore: cast_nullable_to_non_nullable
+as bool,hostName: freezed == hostName ? _self.hostName : hostName // ignore: cast_nullable_to_non_nullable
+as String?,hostTier: freezed == hostTier ? _self.hostTier : hostTier // ignore: cast_nullable_to_non_nullable
+as String?,hostReputationAtCreation: freezed == hostReputationAtCreation ? _self.hostReputationAtCreation : hostReputationAtCreation // ignore: cast_nullable_to_non_nullable
+as int?,hostReputationLevel: freezed == hostReputationLevel ? _self.hostReputationLevel : hostReputationLevel // ignore: cast_nullable_to_non_nullable
+as String?,allowedPublicEqubLimits: freezed == allowedPublicEqubLimits ? _self.allowedPublicEqubLimits : allowedPublicEqubLimits // ignore: cast_nullable_to_non_nullable
+as AllowedPublicEqubLimitsModel?,host: freezed == host ? _self.host : host // ignore: cast_nullable_to_non_nullable
+as HostReputationSummaryModel?,trustSummary: freezed == trustSummary ? _self.trustSummary : trustSummary // ignore: cast_nullable_to_non_nullable
+as GroupTrustSummaryModel?,rulesetConfigured: freezed == rulesetConfigured ? _self.rulesetConfigured : rulesetConfigured // ignore: cast_nullable_to_non_nullable
 as bool?,isCurrentUserMember: freezed == isCurrentUserMember ? _self.isCurrentUserMember : isCurrentUserMember // ignore: cast_nullable_to_non_nullable
 as bool?,rules: freezed == rules ? _self.rules : rules // ignore: cast_nullable_to_non_nullable
 as PublicGroupRulesModel?,
@@ -592,6 +649,42 @@ as PublicGroupRulesModel?,
 }
 
 /// Create a copy of PublicGroupModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AllowedPublicEqubLimitsModelCopyWith<$Res>? get allowedPublicEqubLimits {
+    if (_self.allowedPublicEqubLimits == null) {
+    return null;
+  }
+
+  return $AllowedPublicEqubLimitsModelCopyWith<$Res>(_self.allowedPublicEqubLimits!, (value) {
+    return _then(_self.copyWith(allowedPublicEqubLimits: value));
+  });
+}/// Create a copy of PublicGroupModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$HostReputationSummaryModelCopyWith<$Res>? get host {
+    if (_self.host == null) {
+    return null;
+  }
+
+  return $HostReputationSummaryModelCopyWith<$Res>(_self.host!, (value) {
+    return _then(_self.copyWith(host: value));
+  });
+}/// Create a copy of PublicGroupModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GroupTrustSummaryModelCopyWith<$Res>? get trustSummary {
+    if (_self.trustSummary == null) {
+    return null;
+  }
+
+  return $GroupTrustSummaryModelCopyWith<$Res>(_self.trustSummary!, (value) {
+    return _then(_self.copyWith(trustSummary: value));
+  });
+}/// Create a copy of PublicGroupModel
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')

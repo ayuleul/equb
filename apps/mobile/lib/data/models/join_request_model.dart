@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'reputation_model.dart';
+
 part 'join_request_model.freezed.dart';
 part 'join_request_model.g.dart';
 
@@ -21,6 +23,7 @@ sealed class JoinRequestUserModel with _$JoinRequestUserModel {
     required String id,
     String? phone,
     String? fullName,
+    MemberReputationSummaryModel? reputation,
   }) = _JoinRequestUserModel;
 
   factory JoinRequestUserModel.fromJson(Map<String, dynamic> json) =>

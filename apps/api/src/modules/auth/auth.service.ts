@@ -114,11 +114,20 @@ export class AuthService {
 
     const user = await this.prisma.$transaction(async (tx) => {
       await tx.otpCode.deleteMany({ where: { phone: normalizedPhone } });
-      return tx.user.upsert({
+      const createdUser = await tx.user.upsert({
         where: { phone: normalizedPhone },
         update: {},
         create: { phone: normalizedPhone },
       });
+      await tx.userReputationMetrics.upsert({
+        where: { userId: createdUser.id },
+        update: {},
+        create: {
+          userId: createdUser.id,
+          trustScore: 50,
+        },
+      });
+      return createdUser;
     });
 
     const tokens = await this.issueTokenPair(this.prisma, user);
