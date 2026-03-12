@@ -4,14 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/theme/app_spacing.dart';
-import '../../data/models/group_model.dart';
-import '../../data/models/notification_model.dart';
+import '../../data/models/public_group_model.dart';
 import '../../shared/kit/kit.dart';
-import '../../shared/ui/ui.dart';
-import '../../shared/utils/formatters.dart';
-import '../groups/groups_list_controller.dart';
-import '../notifications/notifications_list_provider.dart';
+import '../../shared/utils/api_error_mapper.dart';
 import '../auth/auth_controller.dart';
+import '../groups/groups_list_controller.dart';
+import '../groups/public_groups_controller.dart';
+import '../groups/widgets/my_equb_card.dart';
+import '../groups/widgets/public_equb_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -21,185 +21,67 @@ class HomeScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final user = ref.watch(currentUserProvider);
     final groupsState = ref.watch(groupsListProvider);
-    final notificationsState = ref.watch(notificationsListProvider);
+    final publicGroupsAsync = ref.watch(publicGroupsProvider);
     final displayName = user?.firstName ?? user?.phone ?? 'there';
-    final activeGroupsCount = groupsState.items
-        .where((group) => group.status == GroupStatusModel.active)
-        .length;
-    final pendingContributionsCount = notificationsState.items
-        .where(
-          (notification) =>
-              notification.isUnread &&
-              _isPendingContributionType(notification.type),
-        )
-        .length;
-    final upcomingGroup = _resolveUpcomingGroup(groupsState.items);
-    final nextDueLabel = upcomingGroup == null
-        ? 'No due date'
-        : formatDate(upcomingGroup.startDate);
 
     return KitScaffold(
       child: RefreshIndicator(
-        onRefresh: () => ref.read(groupsListProvider.notifier).refresh(),
+        onRefresh: () => Future.wait([
+          ref.read(groupsListProvider.notifier).refresh(),
+          ref.read(publicGroupsControllerProvider).refreshPublicGroups(),
+        ]),
         child: ListView(
           children: [
             KitSectionHeader(
-              title: 'Dashboard',
-              subtitle: 'Track your groups, contributions, and due dates.',
+              title: 'Hi, $displayName',
+              titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+              subtitle: 'Your groups first, then public equbs worth joining.',
               action: IconButton(
                 tooltip: 'Notifications',
                 onPressed: () => context.push(AppRoutePaths.notifications),
                 icon: const Icon(Icons.notifications_outlined),
               ),
             ),
-            KitCard(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primary.withValues(alpha: 0.05),
-                      colorScheme.secondary.withValues(alpha: 0.04),
-                    ],
-                  ),
-                  borderRadius: AppRadius.inputRounded,
-                ),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hi, $displayName',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'Your Equb dashboard at a glance.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface.withValues(alpha: 0.8),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colorScheme.primary.withValues(alpha: 0.28),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: colorScheme.primary,
-                        size: 28,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            KitSectionHeader(
+              title: 'My Equbs',
+              subtitle: 'Swipe through your groups and jump back in quickly.',
+              actionLabel: 'View all',
+              onActionPressed: () => context.go(AppRoutePaths.groups),
             ),
-            const SizedBox(height: AppSpacing.md),
+            _MyEqubsRail(state: groupsState),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Expanded(
-                  child: _StatCard(
-                    label: 'Active equbs',
-                    value: '$activeGroupsCount',
-                    icon: Icons.groups_2_outlined,
+                  child: KitPrimaryButton(
+                    label: 'Create Equb',
+                    icon: Icons.add_rounded,
+                    expand: false,
+                    onPressed: () => context.push(AppRoutePaths.groupsCreate),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: _StatCard(
-                    label: 'Pending contributions',
-                    value: '$pendingContributionsCount',
-                    icon: Icons.pending_actions_outlined,
+                  child: KitSecondaryButton(
+                    label: 'Join by Code',
+                    icon: Icons.group_add_outlined,
+                    expand: false,
+                    onPressed: () => context.push(AppRoutePaths.groupsJoin),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            _StatCard(
-              label: 'Next due',
-              value: nextDueLabel,
-              icon: Icons.event_note_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             KitSectionHeader(
-              title: 'Upcoming due cycle',
-              kicker: 'Next',
-              actionLabel: 'View equbs',
-              onActionPressed: () => context.go(AppRoutePaths.groups),
+              title: 'Discover Public Equbs',
+              subtitle: 'Browse open groups that accept join requests.',
+              actionLabel: 'See all',
+              onActionPressed: () => context.push(AppRoutePaths.groupsDiscover),
             ),
-            if (groupsState.isLoading && groupsState.items.isEmpty)
-              const KitCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    KitSkeletonBox(height: 18, width: 180),
-                    SizedBox(height: AppSpacing.sm),
-                    KitSkeletonBox(height: 14, width: 120),
-                  ],
-                ),
-              )
-            else if (upcomingGroup != null)
-              KitCard(
-                onTap: () =>
-                    context.push(AppRoutePaths.groupDetail(upcomingGroup.id)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      upcomingGroup.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    AmountText(
-                      amount: upcomingGroup.contributionAmount,
-                      currency: upcomingGroup.currency,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Start date: ${formatDate(upcomingGroup.startDate)}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              )
-            else
-              const KitCard(
-                child: Text(
-                  'No cycle data yet. Create or join an equb to see upcoming cycles.',
-                ),
-              ),
-            const SizedBox(height: AppSpacing.md),
-            const KitSectionHeader(title: 'Recent activity', kicker: 'Feed'),
-            const KitCard(
-              child: Text(
-                'Activity feed will appear here as members contribute and payouts are confirmed.',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (groupsState.items.isEmpty && !groupsState.isLoading)
-              KitEmptyState(
-                icon: Icons.dashboard_outlined,
-                title: 'No equbs yet',
-                message: 'Create a new equb or join one with an invite code.',
-                ctaLabel: 'Go to My Equbs',
-                onCtaPressed: () => context.go(AppRoutePaths.groups),
-              )
-            else
-              KitPrimaryButton(
-                label: 'Go to My Equbs',
-                onPressed: () => context.go(AppRoutePaths.groups),
-              ),
+            _DiscoverPublicGroupsList(publicGroupsAsync: publicGroupsAsync),
           ],
         ),
       ),
@@ -207,68 +89,149 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-GroupModel? _resolveUpcomingGroup(List<GroupModel> groups) {
-  if (groups.isEmpty) {
-    return null;
-  }
+class _MyEqubsRail extends StatelessWidget {
+  const _MyEqubsRail({required this.state});
 
-  final activeGroups = groups
-      .where((group) => group.status == GroupStatusModel.active)
-      .toList(growable: false);
-  if (activeGroups.isEmpty) {
-    return groups.first;
-  }
-
-  activeGroups.sort((a, b) => a.startDate.compareTo(b.startDate));
-  final now = DateTime.now();
-  for (final group in activeGroups) {
-    if (group.startDate.isAfter(now)) {
-      return group;
-    }
-  }
-
-  return activeGroups.first;
-}
-
-bool _isPendingContributionType(NotificationTypeModel type) {
-  return type == NotificationTypeModel.dueReminder ||
-      type == NotificationTypeModel.contributionRejected;
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
+  final GroupsListState state;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return KitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+    if (state.isLoading && !state.hasData) {
+      return SizedBox(
+        height: 188,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: 3,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+          itemBuilder: (context, index) => const SizedBox(
+            width: 286,
+            child: KitCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  KitSkeletonBox(height: 20, width: 150),
+                  SizedBox(height: AppSpacing.sm),
+                  KitSkeletonBox(height: 14, width: 90),
+                  SizedBox(height: AppSpacing.md),
+                  KitSkeletonBox(height: 16, width: 190),
+                  SizedBox(height: AppSpacing.sm),
+                  KitSkeletonBox(height: 14, width: 160),
+                ],
+              ),
             ),
-            child: Icon(icon, size: 18, color: colorScheme.primary),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(value, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ],
+        ),
+      );
+    }
+
+    if (state.errorMessage != null && !state.hasData) {
+      return KitCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unable to load your groups',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(state.errorMessage!),
+          ],
+        ),
+      );
+    }
+
+    if (!state.hasData) {
+      return KitEmptyState(
+        icon: Icons.groups_2_outlined,
+        title: 'No equbs yet',
+        message:
+            'Create a group or join one with an invite code to get started.',
+        ctaLabel: 'Create Equb',
+        onCtaPressed: () => context.push(AppRoutePaths.groupsCreate),
+      );
+    }
+
+    return SizedBox(
+      height: 188,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: state.items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, index) =>
+            MyEqubCard(group: state.items[index], width: 320, compact: true),
       ),
+    );
+  }
+}
+
+class _DiscoverPublicGroupsList extends StatelessWidget {
+  const _DiscoverPublicGroupsList({required this.publicGroupsAsync});
+
+  final AsyncValue<List<PublicGroupModel>> publicGroupsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return publicGroupsAsync.when(
+      loading: () => const _PublicGroupsLoadingState(),
+      error: (error, _) => KitEmptyState(
+        icon: Icons.travel_explore_outlined,
+        title: 'Unable to load public groups',
+        message: mapApiErrorToMessage(error),
+        ctaLabel: 'Open discover',
+        onCtaPressed: () => context.push(AppRoutePaths.groupsDiscover),
+      ),
+      data: (groups) {
+        if (groups.isEmpty) {
+          return const KitEmptyState(
+            icon: Icons.travel_explore_outlined,
+            title: 'No public equbs yet',
+            message:
+                'Public Equbs will appear here when admins make them discoverable.',
+          );
+        }
+
+        final visibleGroups = groups.take(4).toList(growable: false);
+        return Column(
+          children: [
+            for (var i = 0; i < visibleGroups.length; i++) ...[
+              PublicEqubCard(group: visibleGroups[i]),
+              if (i != visibleGroups.length - 1)
+                const SizedBox(height: AppSpacing.sm),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PublicGroupsLoadingState extends StatelessWidget {
+  const _PublicGroupsLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List<Widget>.generate(3, (index) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: index == 2 ? 0 : AppSpacing.sm),
+          child: const KitCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                KitSkeletonBox(height: 18, width: 190),
+                SizedBox(height: AppSpacing.sm),
+                KitSkeletonBox(height: 14, width: 240),
+                SizedBox(height: AppSpacing.md),
+                KitSkeletonBox(height: 32),
+                SizedBox(height: AppSpacing.md),
+                KitSkeletonBox(height: 14, width: 180),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

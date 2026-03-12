@@ -344,6 +344,7 @@
 - Group setup step transitions should avoid side-by-side page reveal clutter during swipe; use responsive container-level swipe detection on the details `KitCard` with fast programmatic page snaps and synchronized tab/header state.
 - Feature screens should use `KitScaffold` + `KitCard` as the default page/surface primitives so gradient background treatment, width constraints, spacing rhythm, and card styling stay consistent app-wide.
 - Root tab screens should start with a `KitSectionHeader` title/subtitle row and place top-right utility actions (for example notifications) in the header `action` slot for consistent page chrome.
+- Home should prioritize a member’s own groups as the primary content (`My Equbs`) and treat public-group discovery as a secondary browse section below it, rather than leading with generic stats.
 - Decorative/motif colors should come from `AppBrandDecor` theme extension (`app/theme/app_theme_extensions.dart`) rather than hardcoded values in widgets.
 - Decorative backgrounds must remain low-contrast with surfaces (subtle motif lines/glows and near-surface gradients) so content cards and form controls remain the visual focus.
 - Default expanded CTA buttons in shared kit should be width-capped (not full-bleed on wide layouts) to keep action controls compact and readable.

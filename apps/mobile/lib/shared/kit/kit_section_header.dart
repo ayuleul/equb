@@ -36,6 +36,7 @@ class KitSectionHeader extends StatelessWidget {
   const KitSectionHeader({
     super.key,
     required this.title,
+    this.titleStyle,
     this.subtitle,
     this.kicker,
     this.actionLabel,
@@ -45,6 +46,7 @@ class KitSectionHeader extends StatelessWidget {
   });
 
   final String title;
+  final TextStyle? titleStyle;
   final String? subtitle;
   final String? kicker;
   final String? actionLabel;
@@ -92,6 +94,7 @@ class KitSectionHeader extends StatelessWidget {
                   Expanded(
                     child: _KitSectionHeaderCopy(
                       title: title,
+                      titleStyle: titleStyle,
                       subtitle: subtitle,
                       kicker: kicker,
                     ),
@@ -128,11 +131,13 @@ class KitSectionHeader extends StatelessWidget {
 class _KitSectionHeaderCopy extends StatelessWidget {
   const _KitSectionHeaderCopy({
     required this.title,
+    required this.titleStyle,
     required this.subtitle,
     required this.kicker,
   });
 
   final String title;
+  final TextStyle? titleStyle;
   final String? subtitle;
   final String? kicker;
 
@@ -146,9 +151,11 @@ class _KitSectionHeaderCopy extends StatelessWidget {
       children: [
         Text(
           title,
-          style: theme.textTheme.titleLarge?.copyWith(
-            color: colorScheme.onSurface,
-          ),
+          style:
+              titleStyle ??
+              theme.textTheme.titleLarge?.copyWith(
+                color: colorScheme.onSurface,
+              ),
         ),
         if (kicker != null && kicker!.trim().isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xxs),
