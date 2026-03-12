@@ -52,6 +52,11 @@ enum GroupStatus {
   ARCHIVED
 }
 
+enum GroupVisibility {
+  PRIVATE
+  PUBLIC
+}
+
 enum MemberRole {
   ADMIN
   MEMBER
@@ -118,6 +123,13 @@ enum DisputeStatus {
   OPEN
   MEDIATING
   RESOLVED
+}
+
+enum JoinRequestStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
 }
 
 enum Platform {
@@ -188,6 +200,8 @@ model User {
   createdPayouts Payout[] @relation("PayoutCreatedBy")
   confirmedPayouts Payout[] @relation("PayoutConfirmedBy")
   closedCycles EqubCycle[] @relation("CycleClosedBy")
+  joinRequests      JoinRequest[] @relation("JoinRequestUser")
+  reviewedJoinRequests JoinRequest[] @relation("JoinRequestReviewer")
   deviceTokens      DeviceToken[]
   notifications     Notification[]
 }
@@ -218,11 +232,13 @@ model RefreshToken {
 model EqubGroup {
   id                 String         @id @default(uuid())
   name               String
+  description        String?
   currency           String         @default("ETB")
   contributionAmount Int
   frequency          GroupFrequency
   startDate          DateTime       @db.Date
   status             GroupStatus    @default(ACTIVE)
+  visibility         GroupVisibility @default(PRIVATE)
   strictPayout       Boolean        @default(false)
   timezone           String         @default("Africa/Addis_Ababa")
   createdByUserId    String
@@ -238,10 +254,29 @@ model EqubGroup {
   payouts            Payout[]
   contributionDisputes ContributionDispute[]
   rounds             EqubRound[]
+  joinRequests       JoinRequest[]
   notifications      Notification[]
   rules              GroupRules?
 
   @@index([createdByUserId])
+  @@index([visibility, status])
+}
+
+model JoinRequest {
+  id               String            @id @default(cuid())
+  groupId          String
+  userId           String
+  status           JoinRequestStatus @default(REQUESTED)
+  message          String?
+  createdAt        DateTime          @default(now())
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  group            EqubGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user             User              @relation("JoinRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedByUser   User?             @relation("JoinRequestReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, status, createdAt(sort: Desc)])
+  @@index([userId, status, createdAt(sort: Desc)])
 }
 
 model GroupRules {

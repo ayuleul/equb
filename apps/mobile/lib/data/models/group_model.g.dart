@@ -48,6 +48,7 @@ const _$MemberStatusModelEnumMap = {
 _GroupModel _$GroupModelFromJson(Map<String, dynamic> json) => _GroupModel(
   id: json['id'] as String,
   name: json['name'] as String,
+  description: json['description'] as String?,
   currency: json['currency'] as String,
   contributionAmount: _toInt(json['contributionAmount']),
   frequency: $enumDecode(
@@ -61,6 +62,13 @@ _GroupModel _$GroupModelFromJson(Map<String, dynamic> json) => _GroupModel(
     json['status'],
     unknownValue: GroupStatusModel.unknown,
   ),
+  visibility:
+      $enumDecodeNullable(
+        _$GroupVisibilityModelEnumMap,
+        json['visibility'],
+        unknownValue: GroupVisibilityModel.unknown,
+      ) ??
+      GroupVisibilityModel.private,
   createdByUserId: json['createdByUserId'] as String?,
   createdAt: json['createdAt'] == null
       ? null
@@ -81,11 +89,13 @@ Map<String, dynamic> _$GroupModelToJson(_GroupModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
+      'description': instance.description,
       'currency': instance.currency,
       'contributionAmount': instance.contributionAmount,
       'frequency': _$GroupFrequencyModelEnumMap[instance.frequency]!,
       'startDate': instance.startDate.toIso8601String(),
       'status': _$GroupStatusModelEnumMap[instance.status]!,
+      'visibility': _$GroupVisibilityModelEnumMap[instance.visibility]!,
       'createdByUserId': instance.createdByUserId,
       'createdAt': instance.createdAt?.toIso8601String(),
       'strictPayout': instance.strictPayout,
@@ -106,4 +116,10 @@ const _$GroupStatusModelEnumMap = {
   GroupStatusModel.active: 'ACTIVE',
   GroupStatusModel.archived: 'ARCHIVED',
   GroupStatusModel.unknown: 'unknown',
+};
+
+const _$GroupVisibilityModelEnumMap = {
+  GroupVisibilityModel.private: 'PRIVATE',
+  GroupVisibilityModel.public: 'PUBLIC',
+  GroupVisibilityModel.unknown: 'unknown',
 };

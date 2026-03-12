@@ -81,10 +81,17 @@
 
 ## Groups rules
 - Authenticated landing route is locked to `/home`.
+- Public group discovery lives under the Groups tab (`/groups/discover`), and public-group detail screens must drive request-to-join state from the backend request status rather than local optimistic labels.
+- Public group detail must treat rejection retry timing as backend-authored: after `REJECTED`, the CTA stays disabled until the backend-reported retry timestamp passes, then it re-enables for a new request.
+- Admin review for public join requests belongs on the existing Group Overview surface; do not create a separate top-level admin request screen for the same workflow without a product change.
 - Admin group creation must route directly into full-screen group setup (`/groups/:id/setup`) with Rules step before normal group actions continue.
 - Group setup flow is locked to a two-step gate:
   - Step 1: `Rules`
   - Step 2: `Invite & Verify` (member status pills + admin verify action)
+- Group setup wizard field ownership is locked by step:
+  - `Basics` -> group identity/metadata and contribution amount
+  - `Timing` -> round size, frequency, start policy, and start timing
+  - `Policy` -> visibility, payout, fine, payment, and verification rules
 - Group setup Step 1 must expose start configuration with only these canonical controls:
   - `Round size`
   - `Start policy` (`WHEN_FULL`, `ON_DATE`, `MANUAL`)

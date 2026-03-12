@@ -47,6 +47,9 @@ class _FakeGroupsApi implements GroupsApi {
   Future<List<Map<String, dynamic>>> listGroups() async => groupsPayload;
 
   @override
+  Future<List<Map<String, dynamic>>> listPublicGroups() async => const [];
+
+  @override
   Future<Map<String, dynamic>> createGroup(CreateGroupRequest request) {
     throw UnimplementedError();
   }
@@ -62,12 +65,62 @@ class _FakeGroupsApi implements GroupsApi {
   }
 
   @override
+  Future<Map<String, dynamic>> getPublicGroup(String groupId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateGroup(
+    String groupId, {
+    String? name,
+    String? description,
+    String? currency,
+    GroupVisibilityModel? visibility,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Map<String, dynamic>?> getGroupRules(String groupId) async {
     return null;
   }
 
   @override
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> requestToJoin(
+    String groupId, {
+    String? message,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getMyJoinRequest(String groupId) async {
+    return null;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listJoinRequests(String groupId) async {
+    return const [];
+  }
+
+  @override
+  Future<Map<String, dynamic>> approveJoinRequest(
+    String groupId,
+    String joinRequestId,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> rejectJoinRequest(
+    String groupId,
+    String joinRequestId,
+  ) {
     throw UnimplementedError();
   }
 

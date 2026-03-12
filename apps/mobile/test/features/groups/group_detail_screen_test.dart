@@ -16,6 +16,7 @@ import 'package:mobile/data/models/confirm_payout_request.dart';
 import 'package:mobile/data/models/create_group_request.dart';
 import 'package:mobile/data/models/create_payout_request.dart';
 import 'package:mobile/data/models/create_contribution_dispute_request.dart';
+import 'package:mobile/data/models/group_model.dart';
 import 'package:mobile/data/models/group_rules_model.dart';
 import 'package:mobile/data/models/join_group_request.dart';
 import 'package:mobile/data/models/mediate_dispute_request.dart';
@@ -302,6 +303,11 @@ class _FakeGroupsApi implements GroupsApi {
   final int memberCount;
 
   @override
+  Future<List<Map<String, dynamic>>> listPublicGroups() async {
+    return const <Map<String, dynamic>>[];
+  }
+
+  @override
   Future<Map<String, dynamic>> createGroup(CreateGroupRequest request) async {
     throw UnimplementedError();
   }
@@ -332,6 +338,22 @@ class _FakeGroupsApi implements GroupsApi {
       'canStartCycle': true,
       'membership': {'role': 'ADMIN', 'status': 'ACTIVE'},
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getPublicGroup(String groupId) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateGroup(
+    String groupId, {
+    String? name,
+    String? description,
+    String? currency,
+    GroupVisibilityModel? visibility,
+  }) async {
+    throw UnimplementedError();
   }
 
   @override
@@ -366,6 +388,40 @@ class _FakeGroupsApi implements GroupsApi {
 
   @override
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> requestToJoin(
+    String groupId, {
+    String? message,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getMyJoinRequest(String groupId) async {
+    return null;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listJoinRequests(String groupId) async {
+    return const <Map<String, dynamic>>[];
+  }
+
+  @override
+  Future<Map<String, dynamic>> approveJoinRequest(
+    String groupId,
+    String joinRequestId,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> rejectJoinRequest(
+    String groupId,
+    String joinRequestId,
+  ) async {
     throw UnimplementedError();
   }
 

@@ -529,7 +529,6 @@ class _PreStartMembersSectionState
         ),
       ),
       data: (members) {
-        final rules = widget.rulesAsync.valueOrNull;
         final verifiedCount = members
             .where((member) => isVerifiedMemberStatus(member.status))
             .length;

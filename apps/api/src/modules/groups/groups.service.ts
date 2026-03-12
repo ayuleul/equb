@@ -17,6 +17,8 @@ import {
   GroupRuleFrequency,
   GroupRulePayoutMode,
   GroupStatus,
+  GroupVisibility,
+  JoinRequestStatus,
   MemberRole,
   MemberStatus,
   NotificationType,
@@ -46,7 +48,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
+import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
@@ -58,8 +62,17 @@ import {
   GroupRulesResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
+  JoinRequestResponseDto,
+  PublicGroupDetailResponseDto,
+  PublicGroupRulesSummaryResponseDto,
+  PublicGroupSummaryResponseDto,
 } from './entities/groups.entities';
 import {
+  GROUP_JOIN_REQUEST_COOLDOWN_MESSAGE,
+  GROUP_JOIN_REQUEST_COOLDOWN_REASON_CODE,
+  GROUP_JOIN_REQUEST_RETRY_COOLDOWN_DAYS,
+  GROUP_JOIN_REQUESTS_BLOCKED_MESSAGE,
+  GROUP_JOIN_REQUESTS_BLOCKED_REASON_CODE,
   GROUP_LOCKED_OPEN_CYCLE_MESSAGE,
   GROUP_LOCKED_OPEN_CYCLE_REASON_CODE,
   GROUP_RULESET_REQUIRED_MESSAGE,
@@ -106,10 +119,12 @@ export class GroupsService {
       const createdGroup = await tx.equbGroup.create({
         data: {
           name: dto.name.trim(),
+          description: dto.description?.trim() || null,
           currency,
           contributionAmount: dto.contributionAmount ?? 0,
           frequency: dto.frequency ?? GroupFrequency.MONTHLY,
           startDate,
+          visibility: dto.visibility ?? GroupVisibility.PRIVATE,
           createdByUserId: currentUser.id,
         },
       });
@@ -212,6 +227,103 @@ export class GroupsService {
     );
   }
 
+  async listPublicGroups(): Promise<PublicGroupSummaryResponseDto[]> {
+    const groups = await this.prisma.equbGroup.findMany({
+      where: {
+        visibility: GroupVisibility.PUBLIC,
+        status: GroupStatus.ACTIVE,
+      },
+      include: {
+        rules: {
+          select: {
+            contributionAmount: true,
+            frequency: true,
+            customIntervalDays: true,
+            payoutMode: true,
+            roundSize: true,
+            startPolicy: true,
+            startAt: true,
+            minToStart: true,
+            winnerSelectionTiming: true,
+          },
+        },
+        _count: {
+          select: {
+            members: {
+              where: {
+                status: {
+                  in: PARTICIPATING_MEMBER_STATUSES,
+                },
+              },
+            },
+            cycles: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    });
+
+    return groups.map((group) => this.toPublicGroupSummaryResponse(group));
+  }
+
+  async getPublicGroupDetails(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+  ): Promise<PublicGroupDetailResponseDto> {
+    const group = await this.prisma.equbGroup.findFirst({
+      where: {
+        id: groupId,
+        visibility: GroupVisibility.PUBLIC,
+        status: GroupStatus.ACTIVE,
+      },
+      include: {
+        rules: {
+          select: {
+            contributionAmount: true,
+            frequency: true,
+            customIntervalDays: true,
+            payoutMode: true,
+            roundSize: true,
+            startPolicy: true,
+            startAt: true,
+            minToStart: true,
+            winnerSelectionTiming: true,
+          },
+        },
+        _count: {
+          select: {
+            members: {
+              where: {
+                status: {
+                  in: PARTICIPATING_MEMBER_STATUSES,
+                },
+              },
+            },
+            cycles: true,
+          },
+        },
+        members: {
+          where: {
+            userId: currentUser.id,
+            status: {
+              in: PARTICIPATING_MEMBER_STATUSES,
+            },
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Public group not found');
+    }
+
+    return this.toPublicGroupDetailResponse(group);
+  }
+
   async getGroupDetails(
     currentUser: AuthenticatedUser,
     groupId: string,
@@ -261,6 +373,58 @@ export class GroupsService {
       group.rules,
       (group.members ?? []).map((member) => member.status),
     );
+  }
+
+  async updateGroup(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    dto: UpdateGroupDto,
+  ): Promise<GroupDetailResponseDto> {
+    if (
+      dto.name == null &&
+      dto.description == null &&
+      dto.currency == null &&
+      dto.visibility == null
+    ) {
+      throw new BadRequestException('No supported group fields were provided');
+    }
+
+    const group = await this.prisma.equbGroup.findUnique({
+      where: { id: groupId },
+      select: { id: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    await this.prisma.equbGroup.update({
+      where: { id: groupId },
+      data: {
+        ...(dto.name != null ? { name: dto.name.trim() } : {}),
+        ...(dto.description != null
+          ? { description: dto.description.trim() || null }
+          : {}),
+        ...(dto.currency != null ? { currency: dto.currency.trim() } : {}),
+        ...(dto.visibility != null ? { visibility: dto.visibility } : {}),
+      },
+    });
+
+    await this.auditService.log(
+      'GROUP_UPDATED',
+      currentUser.id,
+      {
+        ...(dto.name != null ? { name: dto.name.trim() } : {}),
+        ...(dto.description != null
+          ? { description: dto.description.trim() || null }
+          : {}),
+        ...(dto.currency != null ? { currency: dto.currency.trim() } : {}),
+        ...(dto.visibility != null ? { visibility: dto.visibility } : {}),
+      },
+      groupId,
+    );
+
+    return this.getGroupDetails(currentUser, groupId);
   }
 
   async getGroupRules(groupId: string): Promise<GroupRulesResponseDto | null> {
@@ -587,6 +751,10 @@ export class GroupsService {
             userId: currentUser.id,
           },
         },
+        select: {
+          id: true,
+          status: true,
+        },
       });
 
       if (isSuspendedMemberStatus(existingMembership?.status)) {
@@ -601,44 +769,24 @@ export class GroupsService {
         );
       }
 
-      const joinedAt = new Date();
+      await this.upsertJoinedMembership(tx, invite.groupId, currentUser.id);
 
-      let membership: {
-        role: MemberRole;
-        status: MemberStatus;
-        joinedAt: Date | null;
-      };
-
-      if (existingMembership) {
-        membership = await tx.equbMember.update({
-          where: { id: existingMembership.id },
-          data: {
-            status: MemberStatus.JOINED,
-            joinedAt,
-            verifiedAt: null,
-            verifiedByUserId: null,
-          },
-          select: {
-            role: true,
-            status: true,
-            joinedAt: true,
-          },
-        });
-      } else {
-        membership = await tx.equbMember.create({
-          data: {
+      const membership = await tx.equbMember.findUnique({
+        where: {
+          groupId_userId: {
             groupId: invite.groupId,
             userId: currentUser.id,
-            role: MemberRole.MEMBER,
-            status: MemberStatus.JOINED,
-            joinedAt,
           },
-          select: {
-            role: true,
-            status: true,
-            joinedAt: true,
-          },
-        });
+        },
+        select: {
+          role: true,
+          status: true,
+          joinedAt: true,
+        },
+      });
+
+      if (!membership) {
+        throw new NotFoundException('Membership not found after join');
       }
 
       const inviteUpdate = await tx.inviteCode.updateMany({
@@ -713,6 +861,253 @@ export class GroupsService {
         expectedGroupId: groupId,
       },
     );
+  }
+
+  async createJoinRequest(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    dto: CreateJoinRequestDto,
+  ): Promise<JoinRequestResponseDto> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const group = await tx.equbGroup.findUnique({
+        where: { id: groupId },
+        select: {
+          id: true,
+          visibility: true,
+        },
+      });
+
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      if (group.visibility !== GroupVisibility.PUBLIC) {
+        throw new BadRequestException(
+          'Only public groups accept join requests',
+        );
+      }
+
+      await this.assertJoinRequestsOpen(groupId, tx);
+
+      const existingMembership = await tx.equbMember.findUnique({
+        where: {
+          groupId_userId: {
+            groupId,
+            userId: currentUser.id,
+          },
+        },
+        select: {
+          id: true,
+          status: true,
+        },
+      });
+
+      if (isParticipatingMemberStatus(existingMembership?.status)) {
+        throw new BadRequestException('You are already a member of this group');
+      }
+
+      const existingRequest = await tx.joinRequest.findFirst({
+        where: {
+          groupId,
+          userId: currentUser.id,
+          status: JoinRequestStatus.REQUESTED,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingRequest) {
+        throw new ConflictException('You already have an open join request');
+      }
+
+      const latestRejectedRequest = await tx.joinRequest.findFirst({
+        where: {
+          groupId,
+          userId: currentUser.id,
+          status: JoinRequestStatus.REJECTED,
+        },
+        orderBy: [{ reviewedAt: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          reviewedAt: true,
+          createdAt: true,
+        },
+      });
+
+      if (latestRejectedRequest) {
+        const rejectedAt =
+          latestRejectedRequest.reviewedAt ?? latestRejectedRequest.createdAt;
+        const retryAvailableAt = new Date(rejectedAt);
+        retryAvailableAt.setDate(
+          retryAvailableAt.getDate() + GROUP_JOIN_REQUEST_RETRY_COOLDOWN_DAYS,
+        );
+
+        if (new Date() < retryAvailableAt) {
+          throw new ConflictException({
+            message: GROUP_JOIN_REQUEST_COOLDOWN_MESSAGE,
+            reasonCode: GROUP_JOIN_REQUEST_COOLDOWN_REASON_CODE,
+            retryAvailableAt,
+          });
+        }
+      }
+
+      const joinRequest = await tx.joinRequest.create({
+        data: {
+          groupId,
+          userId: currentUser.id,
+          status: JoinRequestStatus.REQUESTED,
+          message: dto.message?.trim() || null,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+        },
+      });
+
+      return this.toJoinRequestResponse(joinRequest);
+    });
+
+    await this.auditService.log(
+      'GROUP_JOIN_REQUEST_CREATED',
+      currentUser.id,
+      {
+        joinRequestId: result.id,
+        status: result.status,
+      },
+      groupId,
+    );
+
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('join-request.updated', groupId, {
+        entityId: result.id,
+      }),
+    );
+
+    return result;
+  }
+
+  async getMyJoinRequest(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+  ): Promise<JoinRequestResponseDto | null> {
+    await this.assertGroupExists(groupId);
+
+    const request = await this.prisma.joinRequest.findFirst({
+      where: {
+        groupId,
+        userId: currentUser.id,
+      },
+      orderBy: [{ createdAt: 'desc' }],
+      include: {
+        user: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    return request ? this.toJoinRequestResponse(request) : null;
+  }
+
+  async listJoinRequests(groupId: string): Promise<JoinRequestResponseDto[]> {
+    await this.assertGroupExists(groupId);
+
+    const requests = await this.prisma.joinRequest.findMany({
+      where: {
+        groupId,
+        status: JoinRequestStatus.REQUESTED,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            phone: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+
+    return requests.map((request) => this.toJoinRequestResponse(request));
+  }
+
+  async approveJoinRequest(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    joinRequestId: string,
+  ): Promise<JoinRequestResponseDto> {
+    const result = await this.reviewJoinRequest(
+      currentUser,
+      groupId,
+      joinRequestId,
+      JoinRequestStatus.APPROVED,
+    );
+
+    await this.auditService.log(
+      'GROUP_JOIN_REQUEST_APPROVED',
+      currentUser.id,
+      {
+        joinRequestId,
+      },
+      groupId,
+    );
+
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('join-request.updated', groupId, {
+        entityId: joinRequestId,
+      }),
+    );
+
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('member.updated', groupId, {
+        entityId: result.userId,
+      }),
+    );
+
+    return result;
+  }
+
+  async rejectJoinRequest(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    joinRequestId: string,
+  ): Promise<JoinRequestResponseDto> {
+    const result = await this.reviewJoinRequest(
+      currentUser,
+      groupId,
+      joinRequestId,
+      JoinRequestStatus.REJECTED,
+    );
+
+    await this.auditService.log(
+      'GROUP_JOIN_REQUEST_REJECTED',
+      currentUser.id,
+      {
+        joinRequestId,
+      },
+      groupId,
+    );
+
+    this.realtimeService.emitGroupEvent(
+      groupId,
+      this.buildRealtimeEvent('join-request.updated', groupId, {
+        entityId: joinRequestId,
+      }),
+    );
+
+    return result;
   }
 
   async listMembers(groupId: string): Promise<GroupMemberResponseDto[]> {
@@ -1509,11 +1904,13 @@ export class GroupsService {
     group: {
       id: string;
       name: string;
+      description?: string | null;
       currency: string;
       contributionAmount: number;
       frequency: GroupFrequency;
       startDate: Date;
       status: GroupStatus;
+      visibility?: GroupVisibility;
     },
     rules: {
       groupId: string;
@@ -1530,11 +1927,13 @@ export class GroupsService {
     return {
       id: group.id,
       name: group.name,
+      description: group.description ?? null,
       currency: group.currency,
       contributionAmount: group.contributionAmount,
       frequency: group.frequency,
       startDate: group.startDate,
       status: group.status,
+      visibility: group.visibility ?? GroupVisibility.PRIVATE,
       ...flags,
     };
   }
@@ -1543,11 +1942,13 @@ export class GroupsService {
     group: {
       id: string;
       name: string;
+      description?: string | null;
       currency: string;
       contributionAmount: number;
       frequency: GroupFrequency;
       startDate: Date;
       status: GroupStatus;
+      visibility?: GroupVisibility;
       createdByUserId: string;
       createdAt: Date;
       strictPayout: boolean;
@@ -1635,6 +2036,109 @@ export class GroupsService {
       readiness,
       createdAt: rules.createdAt,
       updatedAt: rules.updatedAt,
+    };
+  }
+
+  private toPublicGroupRulesSummaryResponse(rules: {
+    contributionAmount: number;
+    frequency: GroupRuleFrequency;
+    customIntervalDays: number | null;
+    payoutMode: GroupRulePayoutMode;
+    roundSize: number;
+    startPolicy: StartPolicy;
+    startAt: Date | null;
+    minToStart: number | null;
+    winnerSelectionTiming: WinnerSelectionTiming;
+  }): PublicGroupRulesSummaryResponseDto {
+    return {
+      contributionAmount: rules.contributionAmount,
+      frequency: rules.frequency,
+      customIntervalDays: rules.customIntervalDays,
+      payoutMode: rules.payoutMode,
+      roundSize: rules.roundSize,
+      startPolicy: rules.startPolicy,
+      startAt: rules.startAt,
+      minToStart: rules.minToStart,
+      winnerSelectionTiming: rules.winnerSelectionTiming,
+    };
+  }
+
+  private toPublicGroupSummaryResponse(group: {
+    id: string;
+    name: string;
+    description: string | null;
+    currency: string;
+    contributionAmount: number;
+    frequency: GroupFrequency;
+    rules: {
+      contributionAmount: number;
+      frequency: GroupRuleFrequency;
+      customIntervalDays: number | null;
+      payoutMode: GroupRulePayoutMode;
+      roundSize: number;
+      startPolicy: StartPolicy;
+      startAt: Date | null;
+      minToStart: number | null;
+      winnerSelectionTiming: WinnerSelectionTiming;
+    } | null;
+    _count: {
+      members: number;
+      cycles: number;
+    };
+  }): PublicGroupSummaryResponseDto {
+    return {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      currency: group.currency,
+      contributionAmount:
+        group.rules?.contributionAmount ?? group.contributionAmount,
+      frequency:
+        group.rules?.frequency ??
+        (group.frequency === GroupFrequency.WEEKLY
+          ? GroupRuleFrequency.WEEKLY
+          : GroupRuleFrequency.MONTHLY),
+      payoutMode: group.rules?.payoutMode ?? null,
+      memberCount: group._count.members,
+      alreadyStarted: group._count.cycles > 0,
+    };
+  }
+
+  private toPublicGroupDetailResponse(group: {
+    id: string;
+    name: string;
+    description: string | null;
+    currency: string;
+    contributionAmount: number;
+    frequency: GroupFrequency;
+    status: GroupStatus;
+    visibility: GroupVisibility;
+    rules: {
+      contributionAmount: number;
+      frequency: GroupRuleFrequency;
+      customIntervalDays: number | null;
+      payoutMode: GroupRulePayoutMode;
+      roundSize: number;
+      startPolicy: StartPolicy;
+      startAt: Date | null;
+      minToStart: number | null;
+      winnerSelectionTiming: WinnerSelectionTiming;
+    } | null;
+    members: { id: string }[];
+    _count: {
+      members: number;
+      cycles: number;
+    };
+  }): PublicGroupDetailResponseDto {
+    return {
+      ...this.toPublicGroupSummaryResponse(group),
+      visibility: group.visibility,
+      status: group.status,
+      rulesetConfigured: group.rules != null,
+      isCurrentUserMember: group.members.length > 0,
+      rules: group.rules
+        ? this.toPublicGroupRulesSummaryResponse(group.rules)
+        : null,
     };
   }
 
@@ -1816,6 +2320,42 @@ export class GroupsService {
     };
   }
 
+  private toJoinRequestResponse(request: {
+    id: string;
+    groupId: string;
+    userId: string;
+    status: JoinRequestStatus;
+    message: string | null;
+    createdAt: Date;
+    reviewedAt: Date | null;
+    reviewedByUserId: string | null;
+    user?: {
+      id: string;
+      phone: string;
+      fullName: string | null;
+    };
+  }): JoinRequestResponseDto {
+    const retryAvailableAt =
+      request.status === JoinRequestStatus.REJECTED
+        ? this.resolveJoinRequestRetryAvailableAt(
+            request.reviewedAt ?? request.createdAt,
+          )
+        : null;
+
+    return {
+      id: request.id,
+      groupId: request.groupId,
+      userId: request.userId,
+      status: request.status,
+      message: request.message ?? null,
+      createdAt: request.createdAt,
+      reviewedAt: request.reviewedAt ?? null,
+      reviewedByUserId: request.reviewedByUserId ?? null,
+      retryAvailableAt,
+      ...(request.user ? { user: request.user } : {}),
+    };
+  }
+
   private async countActiveAdmins(groupId: string): Promise<number> {
     return this.prisma.equbMember.count({
       where: {
@@ -1824,6 +2364,143 @@ export class GroupsService {
         status: {
           in: PARTICIPATING_MEMBER_STATUSES,
         },
+      },
+    });
+  }
+
+  private async assertGroupExists(groupId: string): Promise<void> {
+    const group = await this.prisma.equbGroup.findUnique({
+      where: { id: groupId },
+      select: { id: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+  }
+
+  private resolveJoinRequestRetryAvailableAt(rejectedAt: Date): Date {
+    const retryAvailableAt = new Date(rejectedAt);
+    retryAvailableAt.setDate(
+      retryAvailableAt.getDate() + GROUP_JOIN_REQUEST_RETRY_COOLDOWN_DAYS,
+    );
+    return retryAvailableAt;
+  }
+
+  private async reviewJoinRequest(
+    currentUser: AuthenticatedUser,
+    groupId: string,
+    joinRequestId: string,
+    nextStatus: JoinRequestStatus,
+  ): Promise<JoinRequestResponseDto> {
+    const reviewedAt = new Date();
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const request = await tx.joinRequest.findFirst({
+        where: {
+          id: joinRequestId,
+          groupId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+        },
+      });
+
+      if (!request) {
+        throw new NotFoundException('Join request not found');
+      }
+
+      if (request.status !== JoinRequestStatus.REQUESTED) {
+        throw new ConflictException(
+          `Join request is already ${request.status.toLowerCase()}`,
+        );
+      }
+
+      if (nextStatus === JoinRequestStatus.APPROVED) {
+        await this.assertGroupMembershipOpen(groupId, tx);
+        await this.upsertJoinedMembership(tx, groupId, request.userId);
+      }
+
+      const updated = await tx.joinRequest.update({
+        where: { id: request.id },
+        data: {
+          status: nextStatus,
+          reviewedAt,
+          reviewedByUserId: currentUser.id,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              phone: true,
+              fullName: true,
+            },
+          },
+        },
+      });
+
+      return this.toJoinRequestResponse(updated);
+    });
+
+    return result;
+  }
+
+  private async upsertJoinedMembership(
+    tx: Prisma.TransactionClient,
+    groupId: string,
+    userId: string,
+  ): Promise<void> {
+    const existingMembership = await tx.equbMember.findUnique({
+      where: {
+        groupId_userId: {
+          groupId,
+          userId,
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (isSuspendedMemberStatus(existingMembership?.status)) {
+      throw new ConflictException(
+        'Suspended members cannot be re-added through join approval',
+      );
+    }
+
+    if (isParticipatingMemberStatus(existingMembership?.status)) {
+      throw new ConflictException('User is already a member of this group');
+    }
+
+    const joinedAt = new Date();
+
+    if (existingMembership) {
+      await tx.equbMember.update({
+        where: { id: existingMembership.id },
+        data: {
+          status: MemberStatus.JOINED,
+          joinedAt,
+          verifiedAt: null,
+          verifiedByUserId: null,
+        },
+      });
+      return;
+    }
+
+    await tx.equbMember.create({
+      data: {
+        groupId,
+        userId,
+        role: MemberRole.MEMBER,
+        status: MemberStatus.JOINED,
+        joinedAt,
       },
     });
   }
@@ -1851,6 +2528,34 @@ export class GroupsService {
     throw new ConflictException({
       message: GROUP_LOCKED_OPEN_CYCLE_MESSAGE,
       reasonCode: GROUP_LOCKED_OPEN_CYCLE_REASON_CODE,
+      cycleId: openCycle.id,
+      cycleStatus: CycleStatus.OPEN,
+    });
+  }
+
+  private async assertJoinRequestsOpen(
+    groupId: string,
+    prismaClient:
+      | Pick<Prisma.TransactionClient, 'equbCycle'>
+      | Pick<PrismaService, 'equbCycle'> = this.prisma,
+  ): Promise<void> {
+    const openCycle = await prismaClient.equbCycle.findFirst({
+      where: {
+        groupId,
+        status: CycleStatus.OPEN,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!openCycle) {
+      return;
+    }
+
+    throw new ConflictException({
+      message: GROUP_JOIN_REQUESTS_BLOCKED_MESSAGE,
+      reasonCode: GROUP_JOIN_REQUESTS_BLOCKED_REASON_CODE,
       cycleId: openCycle.id,
       cycleStatus: CycleStatus.OPEN,
     });

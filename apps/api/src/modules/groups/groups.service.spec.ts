@@ -1,224 +1,275 @@
 import {
-  ContributionStatus,
-  CycleState,
   CycleStatus,
-  GroupRuleFrequency,
-  GroupRulePayoutMode,
+  GroupFrequency,
   GroupStatus,
+  GroupVisibility,
+  JoinRequestStatus,
+  MemberRole,
   MemberStatus,
-  PayoutMode,
-  StartPolicy,
-  WinnerSelectionTiming,
 } from '@prisma/client';
 
-import { DateService } from '../../common/date/date.service';
-import type { PrismaService } from '../../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
-import { RoundEligibilityService } from '../../common/cycles/round-eligibility.service';
-import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import { GroupsService } from './groups.service';
+import {
+  GROUP_JOIN_REQUEST_COOLDOWN_MESSAGE,
+  GROUP_JOIN_REQUESTS_BLOCKED_MESSAGE,
+} from './groups.constants';
 
-describe('GroupsService.startCycle', () => {
-  const currentUser: AuthenticatedUser = {
-    id: 'user-admin',
+describe('GroupsService', () => {
+  const actor: AuthenticatedUser = {
+    id: 'user-1',
     phone: '+251911111111',
   };
 
-  function createService(winnerSelectionTiming: WinnerSelectionTiming) {
-    const txMock = {
+  const auditService = { log: jest.fn() };
+  const configService = { get: jest.fn() };
+  const dateService = {
+    normalizeGroupDate: jest.fn((date: Date) => date),
+  };
+  const notificationsService = { notifyGroupAdmins: jest.fn() };
+  const roundEligibilityService = {};
+  const winnerSelectionService = {};
+  const realtimeService = { emitGroupEvent: jest.fn() };
+
+  const createService = (overrides?: Record<string, unknown>) => {
+    const prisma = {
+      $transaction: jest.fn(async (callback: (tx: any) => unknown) =>
+        callback(prisma),
+      ),
       equbGroup: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'group-1',
-          status: GroupStatus.ACTIVE,
-          contributionAmount: 500,
-          frequency: GroupRuleFrequency.MONTHLY,
-          startDate: new Date('2026-03-01T00:00:00.000Z'),
-          timezone: 'Africa/Addis_Ababa',
-          rules: {
-            contributionAmount: 500,
-            requiresMemberVerification: false,
-            frequency: GroupRuleFrequency.MONTHLY,
-            customIntervalDays: null,
-            roundSize: 2,
-            startPolicy: StartPolicy.WHEN_FULL,
-            startAt: null,
-            minToStart: null,
-            payoutMode: GroupRulePayoutMode.LOTTERY,
-            winnerSelectionTiming,
-          },
-        }),
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
       },
       equbCycle: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(null),
-        create: jest.fn().mockResolvedValue({
-          id: 'cycle-1',
-          dueDate: new Date('2026-03-01T00:00:00.000Z'),
-        }),
-        update: jest.fn().mockResolvedValue({}),
+        findFirst: jest.fn(),
       },
       equbMember: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            userId: 'user-admin',
-            payoutPosition: 1,
-            createdAt: new Date('2026-03-01T00:00:00.000Z'),
-          },
-          {
-            userId: 'user-member',
-            payoutPosition: 2,
-            createdAt: new Date('2026-03-01T00:00:00.000Z'),
-          },
-        ]),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
       },
-      equbRound: {
-        findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: 'round-1' }),
-        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      joinRequest: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        findMany: jest.fn(),
+        count: jest.fn(),
       },
-      payoutSchedule: {
-        createMany: jest.fn().mockResolvedValue({ count: 2 }),
-      },
-      contribution: {
-        createMany: jest.fn().mockResolvedValue({ count: 2 }),
-      },
+      ...(overrides ?? {}),
     };
-
-    const prismaMock = {
-      $transaction: jest.fn((callback: (tx: typeof txMock) => unknown) =>
-        callback(txMock),
-      ),
-    } as unknown as PrismaService;
-
-    const roundEligibilityService = {
-      getRoundParticipantUserIds: jest
-        .fn()
-        .mockResolvedValue(['user-admin', 'user-member']),
-      listCompletedWinnerUserIds: jest.fn().mockResolvedValue([]),
-      computeRemainingEligibleWinnerUserIds: jest
-        .fn()
-        .mockImplementation(
-          (participantUserIds: string[]) => participantUserIds,
-        ),
-      closeRoundIfOpen: jest.fn().mockResolvedValue(undefined),
-    } as unknown as RoundEligibilityService;
-
-    const winnerSelectionService = {
-      selectWinner: jest.fn().mockResolvedValue({
-        cycleId: 'cycle-1',
-        groupId: 'group-1',
-        winnerUserId: 'user-member',
-        payoutMode: GroupRulePayoutMode.LOTTERY,
-        selectionMetadata: null,
-      }),
-    } as unknown as WinnerSelectionService;
 
     const service = new GroupsService(
-      prismaMock,
-      { log: jest.fn() } as never,
-      {} as never,
-      new DateService(),
-      { notifyGroupAdmins: jest.fn() } as never,
-      roundEligibilityService,
-      winnerSelectionService,
-      { emitGroupEvent: jest.fn(), emitTurnEvent: jest.fn() } as never,
+      prisma as never,
+      auditService as never,
+      configService as never,
+      dateService as never,
+      notificationsService as never,
+      roundEligibilityService as never,
+      winnerSelectionService as never,
+      realtimeService as never,
     );
 
-    jest.spyOn(service, 'getCycleById').mockResolvedValue({
-      id: 'cycle-1',
+    return { service, prisma };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('creates a join request for a public group', async () => {
+    const { service, prisma } = createService();
+
+    prisma.equbGroup.findUnique.mockResolvedValue({
+      id: 'group-1',
+      visibility: GroupVisibility.PUBLIC,
+    });
+    prisma.equbCycle.findFirst.mockResolvedValue(null);
+    prisma.equbMember.findUnique.mockResolvedValue(null);
+    prisma.joinRequest.findFirst.mockResolvedValue(null);
+    prisma.joinRequest.create.mockResolvedValue({
+      id: 'request-1',
       groupId: 'group-1',
-      roundId: 'round-1',
-      cycleNo: 1,
-      dueDate: new Date('2026-03-01T00:00:00.000Z'),
-      dueAt: new Date('2026-03-01T00:00:00.000Z'),
-      state: CycleState.COLLECTING,
-      scheduledPayoutUserId: 'user-admin',
-      finalPayoutUserId: 'user-member',
-      selectedWinnerUserId:
-        winnerSelectionTiming === WinnerSelectionTiming.BEFORE_COLLECTION
-          ? 'user-member'
-          : null,
-      winnerSelectedAt: null,
-      selectionMethod: null,
-      selectionMetadata: null,
-      payoutUserId: 'user-member',
-      auctionStatus: 'NONE' as never,
-      winningBidAmount: null,
-      winningBidUserId: null,
-      payoutSentAt: null,
-      payoutSentByUserId: null,
-      payoutReceivedConfirmedAt: null,
-      payoutReceivedConfirmedByUserId: null,
+      userId: actor.id,
+      status: JoinRequestStatus.REQUESTED,
+      message: 'Please add me',
+      createdAt: new Date('2026-03-11T09:00:00.000Z'),
+      reviewedAt: null,
+      reviewedByUserId: null,
+      user: {
+        id: actor.id,
+        phone: actor.phone,
+        fullName: 'Requester',
+      },
+    });
+
+    const result = await service.createJoinRequest(actor, 'group-1', {
+      message: 'Please add me',
+    });
+
+    expect(result.status).toBe(JoinRequestStatus.REQUESTED);
+    expect(result.groupId).toBe('group-1');
+    expect(prisma.joinRequest.create).toHaveBeenCalled();
+    expect(auditService.log).toHaveBeenCalledWith(
+      'GROUP_JOIN_REQUEST_CREATED',
+      actor.id,
+      expect.objectContaining({ joinRequestId: 'request-1' }),
+      'group-1',
+    );
+  });
+
+  it('blocks join requests while a cycle is open', async () => {
+    const { service, prisma } = createService();
+
+    prisma.equbGroup.findUnique.mockResolvedValue({
+      id: 'group-1',
+      visibility: GroupVisibility.PUBLIC,
+    });
+    prisma.equbCycle.findFirst.mockResolvedValue({
+      id: 'cycle-1',
       status: CycleStatus.OPEN,
-      createdByUserId: currentUser.id,
-      createdAt: new Date('2026-03-01T00:00:00.000Z'),
-      scheduledPayoutUser: {
-        id: 'user-admin',
-        fullName: 'Admin',
-        phone: '+251911111111',
-      },
-      finalPayoutUser: {
-        id: 'user-member',
-        fullName: 'Member',
-        phone: '+251922222222',
-      },
-      selectedWinnerUser: null,
-      winningBidUser: null,
-      payoutUser: {
-        id: 'user-member',
-        fullName: 'Member',
-        phone: '+251922222222',
-      },
     });
 
-    return {
-      service,
-      txMock,
-      winnerSelectionService,
-    };
-  }
-
-  it('selects winner immediately when timing is BEFORE_COLLECTION', async () => {
-    const { service, txMock, winnerSelectionService } = createService(
-      WinnerSelectionTiming.BEFORE_COLLECTION,
-    );
-
-    await service.startCycle(currentUser, 'group-1');
-
-    expect(txMock.equbCycle.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          cycleNo: 1,
-        }),
+    await expect(
+      service.createJoinRequest(actor, 'group-1', {}),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: GROUP_JOIN_REQUESTS_BLOCKED_MESSAGE,
+        reasonCode: 'GROUP_JOIN_REQUESTS_BLOCKED_ACTIVE_CYCLE',
       }),
-    );
-    expect(winnerSelectionService.selectWinner).toHaveBeenCalledWith(txMock, {
-      cycleId: 'cycle-1',
-      actorUserId: currentUser.id,
-    });
-    expect(txMock.equbCycle.update).toHaveBeenCalledWith({
-      where: { id: 'cycle-1' },
-      data: {
-        state: CycleState.COLLECTING,
-      },
     });
   });
 
-  it('does not select winner at start when timing is AFTER_COLLECTION', async () => {
-    const { service, txMock, winnerSelectionService } = createService(
-      WinnerSelectionTiming.AFTER_COLLECTION,
-    );
+  it('blocks a retry during the rejection cooldown window', async () => {
+    const { service, prisma } = createService();
 
-    await service.startCycle(currentUser, 'group-1');
+    prisma.equbGroup.findUnique.mockResolvedValue({
+      id: 'group-1',
+      visibility: GroupVisibility.PUBLIC,
+    });
+    prisma.equbCycle.findFirst.mockResolvedValue(null);
+    prisma.equbMember.findUnique.mockResolvedValue(null);
+    prisma.joinRequest.findFirst.mockResolvedValue(null);
+    prisma.joinRequest.findFirst.mockResolvedValueOnce(null);
+    prisma.joinRequest.findFirst.mockResolvedValueOnce({
+      reviewedAt: new Date('2026-03-11T10:00:00.000Z'),
+      createdAt: new Date('2026-03-11T09:00:00.000Z'),
+    });
 
-    expect(winnerSelectionService.selectWinner).not.toHaveBeenCalled();
-    expect(txMock.equbCycle.update).toHaveBeenCalledWith({
-      where: { id: 'cycle-1' },
-      data: {
-        state: CycleState.COLLECTING,
+    await expect(
+      service.createJoinRequest(actor, 'group-1', {}),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: GROUP_JOIN_REQUEST_COOLDOWN_MESSAGE,
+        reasonCode: 'GROUP_JOIN_REQUEST_COOLDOWN',
+      }),
+    });
+  });
+
+  it('approves a join request and creates joined membership', async () => {
+    const { service, prisma } = createService();
+
+    prisma.joinRequest.findFirst.mockResolvedValue({
+      id: 'request-1',
+      groupId: 'group-1',
+      userId: 'user-2',
+      status: JoinRequestStatus.REQUESTED,
+      message: 'Let me in',
+      createdAt: new Date('2026-03-11T08:00:00.000Z'),
+      reviewedAt: null,
+      reviewedByUserId: null,
+      user: {
+        id: 'user-2',
+        phone: '+251922222222',
+        fullName: 'Joiner',
       },
     });
+    prisma.equbCycle.findFirst.mockResolvedValue(null);
+    prisma.equbMember.findUnique.mockResolvedValueOnce(null);
+    prisma.equbMember.create.mockResolvedValue({
+      id: 'member-1',
+      groupId: 'group-1',
+      userId: 'user-2',
+      role: MemberRole.MEMBER,
+      status: MemberStatus.JOINED,
+      joinedAt: new Date('2026-03-11T10:00:00.000Z'),
+    });
+    prisma.joinRequest.update.mockResolvedValue({
+      id: 'request-1',
+      groupId: 'group-1',
+      userId: 'user-2',
+      status: JoinRequestStatus.APPROVED,
+      message: 'Let me in',
+      createdAt: new Date('2026-03-11T08:00:00.000Z'),
+      reviewedAt: new Date('2026-03-11T10:00:00.000Z'),
+      reviewedByUserId: actor.id,
+      user: {
+        id: 'user-2',
+        phone: '+251922222222',
+        fullName: 'Joiner',
+      },
+    });
+    const result = await service.approveJoinRequest(
+      actor,
+      'group-1',
+      'request-1',
+    );
+
+    expect(result.status).toBe(JoinRequestStatus.APPROVED);
+    expect(prisma.equbMember.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          groupId: 'group-1',
+          userId: 'user-2',
+          status: MemberStatus.JOINED,
+        }),
+      }),
+    );
+    expect(auditService.log).toHaveBeenCalledWith(
+      'GROUP_JOIN_REQUEST_APPROVED',
+      actor.id,
+      { joinRequestId: 'request-1' },
+      'group-1',
+    );
+  });
+
+  it('lists only public groups in discovery summaries', async () => {
+    const { service, prisma } = createService();
+
+    prisma.equbGroup.findMany.mockResolvedValue([
+      {
+        id: 'group-1',
+        name: 'Open Equb',
+        description: 'Public',
+        currency: 'ETB',
+        contributionAmount: 500,
+        frequency: GroupFrequency.MONTHLY,
+        status: GroupStatus.ACTIVE,
+        visibility: GroupVisibility.PUBLIC,
+        rules: null,
+        _count: {
+          members: 3,
+          cycles: 1,
+        },
+      },
+    ]);
+
+    const result = await service.listPublicGroups();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'group-1',
+        name: 'Open Equb',
+        memberCount: 3,
+        alreadyStarted: true,
+      }),
+    ]);
+    expect(prisma.equbGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: GroupVisibility.PUBLIC,
+          status: GroupStatus.ACTIVE,
+        }),
+      }),
+    );
   });
 });

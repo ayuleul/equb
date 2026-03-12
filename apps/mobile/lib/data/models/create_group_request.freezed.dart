@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CreateGroupRequest {
 
- String get name; int? get contributionAmount;@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? get frequency;@JsonKey(toJson: _nullableDateToIsoString) DateTime? get startDate; String get currency;
+ String get name; String? get description; int? get contributionAmount;@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? get frequency;@JsonKey(toJson: _nullableDateToIsoString) DateTime? get startDate; String get currency;@JsonKey(unknownEnumValue: GroupVisibilityModel.private) GroupVisibilityModel get visibility;
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CreateGroupRequestCopyWith<CreateGroupRequest> get copyWith => _$CreateGroupReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateGroupRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.currency, currency) || other.currency == currency));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateGroupRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.visibility, visibility) || other.visibility == visibility));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,contributionAmount,frequency,startDate,currency);
+int get hashCode => Object.hash(runtimeType,name,description,contributionAmount,frequency,startDate,currency,visibility);
 
 @override
 String toString() {
-  return 'CreateGroupRequest(name: $name, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, currency: $currency)';
+  return 'CreateGroupRequest(name: $name, description: $description, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, currency: $currency, visibility: $visibility)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $CreateGroupRequestCopyWith<$Res>  {
   factory $CreateGroupRequestCopyWith(CreateGroupRequest value, $Res Function(CreateGroupRequest) _then) = _$CreateGroupRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, int? contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? frequency,@JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate, String currency
+ String name, String? description, int? contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? frequency,@JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate, String currency,@JsonKey(unknownEnumValue: GroupVisibilityModel.private) GroupVisibilityModel visibility
 });
 
 
@@ -65,14 +65,16 @@ class _$CreateGroupRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? contributionAmount = freezed,Object? frequency = freezed,Object? startDate = freezed,Object? currency = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = freezed,Object? contributionAmount = freezed,Object? frequency = freezed,Object? startDate = freezed,Object? currency = null,Object? visibility = null,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,contributionAmount: freezed == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
+as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,contributionAmount: freezed == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
 as int?,frequency: freezed == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
 as GroupFrequencyModel?,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,
+as String,visibility: null == visibility ? _self.visibility : visibility // ignore: cast_nullable_to_non_nullable
+as GroupVisibilityModel,
   ));
 }
 
@@ -154,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String? description,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency, @JsonKey(unknownEnumValue: GroupVisibilityModel.private)  GroupVisibilityModel visibility)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreateGroupRequest() when $default != null:
-return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency);case _:
+return $default(_that.name,_that.description,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency,_that.visibility);case _:
   return orElse();
 
 }
@@ -175,10 +177,10 @@ return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startD
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String? description,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency, @JsonKey(unknownEnumValue: GroupVisibilityModel.private)  GroupVisibilityModel visibility)  $default,) {final _that = this;
 switch (_that) {
 case _CreateGroupRequest():
-return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency);}
+return $default(_that.name,_that.description,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency,_that.visibility);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -192,10 +194,10 @@ return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startD
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String? description,  int? contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)  GroupFrequencyModel? frequency, @JsonKey(toJson: _nullableDateToIsoString)  DateTime? startDate,  String currency, @JsonKey(unknownEnumValue: GroupVisibilityModel.private)  GroupVisibilityModel visibility)?  $default,) {final _that = this;
 switch (_that) {
 case _CreateGroupRequest() when $default != null:
-return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency);case _:
+return $default(_that.name,_that.description,_that.contributionAmount,_that.frequency,_that.startDate,_that.currency,_that.visibility);case _:
   return null;
 
 }
@@ -207,14 +209,16 @@ return $default(_that.name,_that.contributionAmount,_that.frequency,_that.startD
 @JsonSerializable()
 
 class _CreateGroupRequest implements CreateGroupRequest {
-  const _CreateGroupRequest({required this.name, this.contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) this.frequency, @JsonKey(toJson: _nullableDateToIsoString) this.startDate, this.currency = 'ETB'});
+  const _CreateGroupRequest({required this.name, this.description, this.contributionAmount, @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) this.frequency, @JsonKey(toJson: _nullableDateToIsoString) this.startDate, this.currency = 'ETB', @JsonKey(unknownEnumValue: GroupVisibilityModel.private) this.visibility = GroupVisibilityModel.private});
   factory _CreateGroupRequest.fromJson(Map<String, dynamic> json) => _$CreateGroupRequestFromJson(json);
 
 @override final  String name;
+@override final  String? description;
 @override final  int? contributionAmount;
 @override@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) final  GroupFrequencyModel? frequency;
 @override@JsonKey(toJson: _nullableDateToIsoString) final  DateTime? startDate;
 @override@JsonKey() final  String currency;
+@override@JsonKey(unknownEnumValue: GroupVisibilityModel.private) final  GroupVisibilityModel visibility;
 
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +233,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateGroupRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.currency, currency) || other.currency == currency));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateGroupRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.visibility, visibility) || other.visibility == visibility));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,contributionAmount,frequency,startDate,currency);
+int get hashCode => Object.hash(runtimeType,name,description,contributionAmount,frequency,startDate,currency,visibility);
 
 @override
 String toString() {
-  return 'CreateGroupRequest(name: $name, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, currency: $currency)';
+  return 'CreateGroupRequest(name: $name, description: $description, contributionAmount: $contributionAmount, frequency: $frequency, startDate: $startDate, currency: $currency, visibility: $visibility)';
 }
 
 
@@ -249,7 +253,7 @@ abstract mixin class _$CreateGroupRequestCopyWith<$Res> implements $CreateGroupR
   factory _$CreateGroupRequestCopyWith(_CreateGroupRequest value, $Res Function(_CreateGroupRequest) _then) = __$CreateGroupRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, int? contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? frequency,@JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate, String currency
+ String name, String? description, int? contributionAmount,@JsonKey(unknownEnumValue: GroupFrequencyModel.unknown) GroupFrequencyModel? frequency,@JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate, String currency,@JsonKey(unknownEnumValue: GroupVisibilityModel.private) GroupVisibilityModel visibility
 });
 
 
@@ -266,14 +270,16 @@ class __$CreateGroupRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateGroupRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? contributionAmount = freezed,Object? frequency = freezed,Object? startDate = freezed,Object? currency = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = freezed,Object? contributionAmount = freezed,Object? frequency = freezed,Object? startDate = freezed,Object? currency = null,Object? visibility = null,}) {
   return _then(_CreateGroupRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,contributionAmount: freezed == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
+as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,contributionAmount: freezed == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
 as int?,frequency: freezed == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
 as GroupFrequencyModel?,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,
+as String,visibility: null == visibility ? _self.visibility : visibility // ignore: cast_nullable_to_non_nullable
+as GroupVisibilityModel,
   ));
 }
 

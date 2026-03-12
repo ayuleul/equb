@@ -6,16 +6,19 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/join_request_model.dart';
 import '../../../data/models/member_model.dart';
 import '../../../data/models/member_status_utils.dart';
 import '../../../shared/copy/lottery_copy.dart';
 import '../../../shared/kit/kit.dart';
+import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
 import '../group_detail_controller.dart';
+import '../public_groups_controller.dart';
 import '../widgets/group_invite_sheet.dart';
 import '../widgets/group_more_actions_button.dart';
 
@@ -64,12 +67,19 @@ class _GroupOverviewBody extends ConsumerWidget {
     final isAdmin = group.membership?.role == MemberRoleModel.admin;
 
     return RefreshIndicator(
-      onRefresh: () => ref
-          .read(groupDetailControllerProvider)
-          .refreshGroupPage(
-            group.id,
-            cycleId: currentCycleAsync.valueOrNull?.id,
-          ),
+      onRefresh: () async {
+        await ref
+            .read(groupDetailControllerProvider)
+            .refreshGroupPage(
+              group.id,
+              cycleId: currentCycleAsync.valueOrNull?.id,
+            );
+        if (isAdmin) {
+          await ref
+              .read(publicGroupsControllerProvider)
+              .refreshJoinRequests(group.id);
+        }
+      },
       child: ListView(
         children: [
           if (isAdmin && !group.rulesetConfigured) ...[
@@ -98,6 +108,10 @@ class _GroupOverviewBody extends ConsumerWidget {
             canInviteMembers: group.canInviteMembers,
             membersAsync: membersAsync,
           ),
+          if (isAdmin) ...[
+            const SizedBox(height: AppSpacing.md),
+            _JoinRequestsCard(groupId: group.id),
+          ],
         ],
       ),
     );
@@ -358,6 +372,140 @@ class _MemberListRow extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
           StatusPill.fromLabel(statusLabel),
         ],
+      ],
+    );
+  }
+}
+
+class _JoinRequestsCard extends ConsumerWidget {
+  const _JoinRequestsCard({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final requestsAsync = ref.watch(pendingJoinRequestsProvider(groupId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const KitSectionHeader(title: 'Join Requests'),
+        requestsAsync.when(
+          loading: () => const KitCard(
+            child: Column(
+              children: [
+                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
+                SizedBox(height: AppSpacing.sm),
+                KitSkeletonBox(height: AppSpacing.lg, width: double.infinity),
+              ],
+            ),
+          ),
+          error: (error, _) => ErrorView(
+            message: mapFriendlyError(error),
+            onRetry: () => ref.invalidate(pendingJoinRequestsProvider(groupId)),
+          ),
+          data: (requests) {
+            if (requests.isEmpty) {
+              return const KitCard(
+                child: Text('No pending join requests right now.'),
+              );
+            }
+
+            return KitCard(
+              child: Column(
+                children: [
+                  for (var i = 0; i < requests.length; i++) ...[
+                    _JoinRequestRow(groupId: groupId, request: requests[i]),
+                    if (i != requests.length - 1)
+                      Divider(
+                        height: AppSpacing.lg,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _JoinRequestRow extends ConsumerStatefulWidget {
+  const _JoinRequestRow({required this.groupId, required this.request});
+
+  final String groupId;
+  final JoinRequestModel request;
+
+  @override
+  ConsumerState<_JoinRequestRow> createState() => _JoinRequestRowState();
+}
+
+class _JoinRequestRowState extends ConsumerState<_JoinRequestRow> {
+  bool _isWorking = false;
+
+  Future<void> _review(bool approve) async {
+    setState(() => _isWorking = true);
+    try {
+      final controller = ref.read(publicGroupsControllerProvider);
+      if (approve) {
+        await controller.approveJoinRequest(widget.groupId, widget.request.id);
+      } else {
+        await controller.rejectJoinRequest(widget.groupId, widget.request.id);
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      KitToast.success(
+        context,
+        approve ? 'Join request approved.' : 'Join request rejected.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      KitToast.error(context, mapApiErrorToMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isWorking = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.request.requesterName,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        if ((widget.request.message ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(widget.request.message!),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: KitSecondaryButton(
+                label: _isWorking ? 'Working...' : 'Reject',
+                onPressed: _isWorking ? null : () => _review(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: KitPrimaryButton(
+                label: _isWorking ? 'Working...' : 'Approve',
+                onPressed: _isWorking ? null : () => _review(true),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

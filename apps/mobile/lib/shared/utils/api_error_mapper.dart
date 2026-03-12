@@ -8,6 +8,13 @@ const groupLockedOpenCycleFriendlyMessage =
 const groupRulesetRequiredReasonCode = 'GROUP_RULESET_REQUIRED';
 const groupRulesetRequiredFriendlyMessage =
     'Complete group rules setup before continuing.';
+const groupJoinRequestsBlockedReasonCode =
+    'GROUP_JOIN_REQUESTS_BLOCKED_ACTIVE_CYCLE';
+const groupJoinRequestsBlockedFriendlyMessage =
+    'This group is currently in progress. New members can join after the round ends.';
+const groupJoinRequestCooldownReasonCode = 'GROUP_JOIN_REQUEST_COOLDOWN';
+const groupJoinRequestCooldownFriendlyMessage =
+    'Your last join request was rejected. Please wait before trying again.';
 
 String mapApiErrorToMessage(Object error) {
   if (error is ApiError) {
@@ -54,6 +61,14 @@ String _mapApiError(ApiError error) {
 
   if (_isGroupRulesetRequiredError(error)) {
     return groupRulesetRequiredFriendlyMessage;
+  }
+
+  if (_isJoinRequestsBlockedError(error)) {
+    return groupJoinRequestsBlockedFriendlyMessage;
+  }
+
+  if (_isJoinRequestCooldownError(error)) {
+    return groupJoinRequestCooldownFriendlyMessage;
   }
 
   final message = error.message.trim();
@@ -228,5 +243,27 @@ bool _isGroupRulesetRequiredError(ApiError error) {
   final normalizedMessage = error.message.toLowerCase();
   return normalizedMessage.contains(
     'group rules must be configured before this action is allowed',
+  );
+}
+
+bool _isJoinRequestsBlockedError(ApiError error) {
+  if (error.statusCode == 409 &&
+      error.reasonCode == groupJoinRequestsBlockedReasonCode) {
+    return true;
+  }
+
+  return error.message.toLowerCase().contains(
+    'this group is currently in progress. new members can join after the round ends.',
+  );
+}
+
+bool _isJoinRequestCooldownError(ApiError error) {
+  if (error.statusCode == 409 &&
+      error.reasonCode == groupJoinRequestCooldownReasonCode) {
+    return true;
+  }
+
+  return error.message.toLowerCase().contains(
+    'wait before sending another join request',
   );
 }

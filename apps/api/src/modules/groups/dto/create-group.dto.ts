@@ -1,4 +1,4 @@
-import { GroupFrequency } from '@prisma/client';
+import { GroupFrequency, GroupVisibility } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
@@ -9,6 +9,7 @@ import {
   IsString,
   Matches,
   Min,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateGroupDto {
@@ -16,6 +17,12 @@ export class CreateGroupDto {
   @IsString()
   @IsNotEmpty()
   name!: string;
+
+  @ApiPropertyOptional({ example: 'A neighborhood savings circle.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
 
   @ApiPropertyOptional({
     example: 500,
@@ -48,4 +55,13 @@ export class CreateGroupDto {
   @IsString()
   @Matches(/^[A-Z]{3}$/)
   currency?: string;
+
+  @ApiPropertyOptional({
+    enum: GroupVisibility,
+    example: GroupVisibility.PRIVATE,
+    default: GroupVisibility.PRIVATE,
+  })
+  @IsOptional()
+  @IsEnum(GroupVisibility)
+  visibility?: GroupVisibility;
 }

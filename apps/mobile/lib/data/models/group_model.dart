@@ -19,6 +19,14 @@ enum GroupStatusModel {
   unknown,
 }
 
+enum GroupVisibilityModel {
+  @JsonValue('PRIVATE')
+  private,
+  @JsonValue('PUBLIC')
+  public,
+  unknown,
+}
+
 enum MemberRoleModel {
   @JsonValue('ADMIN')
   admin,
@@ -64,6 +72,7 @@ sealed class GroupModel with _$GroupModel {
   const factory GroupModel({
     required String id,
     required String name,
+    String? description,
     required String currency,
     @JsonKey(fromJson: _toInt) required int contributionAmount,
     @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)
@@ -71,6 +80,9 @@ sealed class GroupModel with _$GroupModel {
     required DateTime startDate,
     @JsonKey(unknownEnumValue: GroupStatusModel.unknown)
     required GroupStatusModel status,
+    @JsonKey(unknownEnumValue: GroupVisibilityModel.unknown)
+    @Default(GroupVisibilityModel.private)
+    GroupVisibilityModel visibility,
     String? createdByUserId,
     DateTime? createdAt,
     bool? strictPayout,

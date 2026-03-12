@@ -62,6 +62,12 @@
 - Migrations must be deterministic and checked in.
 
 ## Group membership rules
+- Groups support exactly two visibility modes:
+  - `PRIVATE` -> not discoverable; join via invite code/link only
+  - `PUBLIC` -> discoverable in public listing; users request to join and admins approve/reject
+- Public join requests allow only one active `REQUESTED` row per `(userId, groupId)` at a time; after rejection, retries are blocked by a 7-day cooldown and must return `409` until the cooldown expires.
+- Public group discovery/list/detail endpoints must expose safe summary data only (group identity, contribution/frequency/payout summary, member count, and started state) and must not leak member rosters or admin-only internals.
+- Active rounds/open cycles block new public join requests with `409`; private invite-code behavior stays unchanged.
 - Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, and cycle start must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
 - Group rules lookup endpoint behavior is locked: `GET /groups/:id/rules` returns `200` with `null` when the group exists but no ruleset has been configured yet; only unknown groups return `404`.
 - Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).

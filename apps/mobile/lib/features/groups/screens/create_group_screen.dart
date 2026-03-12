@@ -21,6 +21,7 @@ class CreateGroupScreen extends ConsumerStatefulWidget {
 
 class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
   late final TextEditingController _currencyController;
 
   bool _isSubmitting = false;
@@ -30,18 +31,21 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _descriptionController = TextEditingController();
     _currencyController = TextEditingController(text: 'ETB');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
     _currencyController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
     final currency = _currencyController.text.trim().toUpperCase();
 
     if (name.isEmpty) {
@@ -61,7 +65,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     try {
       final repository = ref.read(groupsRepositoryProvider);
       final group = await repository.createGroup(
-        CreateGroupRequest(name: name, currency: currency),
+        CreateGroupRequest(
+          name: name,
+          description: description.isEmpty ? null : description,
+          currency: currency,
+        ),
       );
 
       if (!mounted) {
@@ -111,6 +119,13 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   controller: _nameController,
                   label: 'Group name',
                   hint: 'Family Equb',
+                  onChanged: (_) => setState(() => _formError = null),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  controller: _descriptionController,
+                  label: 'Description',
+                  hint: 'What is this Equb for?',
                   onChanged: (_) => setState(() => _formError = null),
                 ),
                 const SizedBox(height: AppSpacing.md),

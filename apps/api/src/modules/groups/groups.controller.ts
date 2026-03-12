@@ -30,7 +30,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
+import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
@@ -42,6 +44,9 @@ import {
   GroupRulesResponseDto,
   GroupSummaryResponseDto,
   InviteCodeResponseDto,
+  JoinRequestResponseDto,
+  PublicGroupDetailResponseDto,
+  PublicGroupSummaryResponseDto,
 } from './entities/groups.entities';
 import { GroupsService } from './groups.service';
 
@@ -73,6 +78,26 @@ export class GroupsController {
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<GroupSummaryResponseDto[]> {
     return this.groupsService.listGroups(currentUser);
+  }
+
+  @Get('public')
+  @SkipThrottle()
+  @ApiOperation({ summary: 'List discoverable public groups' })
+  @ApiOkResponse({ type: PublicGroupSummaryResponseDto, isArray: true })
+  listPublicGroups(): Promise<PublicGroupSummaryResponseDto[]> {
+    return this.groupsService.listPublicGroups();
+  }
+
+  @Get('public/:groupId')
+  @SkipThrottle()
+  @ApiOperation({ summary: 'Get discoverable public group detail' })
+  @ApiOkResponse({ type: PublicGroupDetailResponseDto })
+  @ApiNotFoundResponse({ description: 'Public group not found' })
+  getPublicGroup(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('groupId', new ParseUUIDPipe()) groupId: string,
+  ): Promise<PublicGroupDetailResponseDto> {
+    return this.groupsService.getPublicGroupDetails(currentUser, groupId);
   }
 
   @Post('join')
@@ -111,6 +136,86 @@ export class GroupsController {
     return this.groupsService.acceptInvite(currentUser, groupId, code);
   }
 
+  @Post(':id/join-requests')
+  @ApiOperation({ summary: 'Request to join a public group' })
+  @ApiBody({ type: CreateJoinRequestDto })
+  @ApiOkResponse({ type: JoinRequestResponseDto })
+  @ApiBadRequestResponse({ description: 'Group is not public or already joined' })
+  @ApiConflictResponse({
+    description: 'Open request already exists or the group is currently in progress',
+  })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  createJoinRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Body() dto: CreateJoinRequestDto,
+  ): Promise<JoinRequestResponseDto> {
+    return this.groupsService.createJoinRequest(currentUser, groupId, dto);
+  }
+
+  @Get(':id/join-request/me')
+  @SkipThrottle()
+  @ApiOperation({ summary: "Get current user's join request for a public group" })
+  @ApiOkResponse({ type: JoinRequestResponseDto })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  getMyJoinRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<JoinRequestResponseDto | null> {
+    return this.groupsService.getMyJoinRequest(currentUser, groupId);
+  }
+
+  @Get(':id/join-requests')
+  @UseGuards(GroupAdminGuard)
+  @SkipThrottle()
+  @ApiOperation({ summary: 'List pending join requests for a group' })
+  @ApiOkResponse({ type: JoinRequestResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  listJoinRequests(
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+  ): Promise<JoinRequestResponseDto[]> {
+    return this.groupsService.listJoinRequests(groupId);
+  }
+
+  @Post(':id/join-requests/:joinRequestId/approve')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Approve a join request' })
+  @ApiOkResponse({ type: JoinRequestResponseDto })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiConflictResponse({ description: 'Join request cannot be approved' })
+  @ApiNotFoundResponse({ description: 'Join request not found' })
+  approveJoinRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Param('joinRequestId') joinRequestId: string,
+  ): Promise<JoinRequestResponseDto> {
+    return this.groupsService.approveJoinRequest(
+      currentUser,
+      groupId,
+      joinRequestId,
+    );
+  }
+
+  @Post(':id/join-requests/:joinRequestId/reject')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Reject a join request' })
+  @ApiOkResponse({ type: JoinRequestResponseDto })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiConflictResponse({ description: 'Join request cannot be rejected' })
+  @ApiNotFoundResponse({ description: 'Join request not found' })
+  rejectJoinRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Param('joinRequestId') joinRequestId: string,
+  ): Promise<JoinRequestResponseDto> {
+    return this.groupsService.rejectJoinRequest(
+      currentUser,
+      groupId,
+      joinRequestId,
+    );
+  }
+
   @Get(':id')
   @UseGuards(GroupMemberGuard)
   @SkipThrottle()
@@ -124,6 +229,22 @@ export class GroupsController {
     @Param('id', new ParseUUIDPipe()) groupId: string,
   ): Promise<GroupDetailResponseDto> {
     return this.groupsService.getGroupDetails(currentUser, groupId);
+  }
+
+  @Patch(':id')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({ summary: 'Update editable group metadata' })
+  @ApiBody({ type: UpdateGroupDto })
+  @ApiOkResponse({ type: GroupDetailResponseDto })
+  @ApiForbiddenResponse({ description: 'Joined admin membership required' })
+  @ApiBadRequestResponse({ description: 'No supported group fields were provided' })
+  @ApiNotFoundResponse({ description: 'Group not found' })
+  updateGroup(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) groupId: string,
+    @Body() dto: UpdateGroupDto,
+  ): Promise<GroupDetailResponseDto> {
+    return this.groupsService.updateGroup(currentUser, groupId, dto);
   }
 
   @Get(':id/rules')

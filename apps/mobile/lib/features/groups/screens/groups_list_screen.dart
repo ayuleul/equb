@@ -46,6 +46,11 @@ class _GroupsListScreenState extends ConsumerState<GroupsListScreen> {
           icon: Icons.group_add_outlined,
           onPressed: () => context.push(AppRoutePaths.groupsJoin),
         ),
+        KitActionSheetItem(
+          label: 'Discover Public',
+          icon: Icons.travel_explore_outlined,
+          onPressed: () => context.push(AppRoutePaths.groupsDiscover),
+        ),
       ],
     );
   }

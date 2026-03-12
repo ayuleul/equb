@@ -8,6 +8,8 @@ import {
   GroupRuleFrequency,
   GroupRulePayoutMode,
   GroupStatus,
+  GroupVisibility,
+  JoinRequestStatus,
   MemberRole,
   MemberStatus,
   StartPolicy,
@@ -21,6 +23,9 @@ export class GroupSummaryResponseDto {
 
   @ApiProperty()
   name!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  description!: string | null;
 
   @ApiProperty()
   currency!: string;
@@ -36,6 +41,9 @@ export class GroupSummaryResponseDto {
 
   @ApiProperty({ enum: GroupStatus })
   status!: GroupStatus;
+
+  @ApiProperty({ enum: GroupVisibility })
+  visibility!: GroupVisibility;
 
   @ApiProperty()
   rulesetConfigured!: boolean;
@@ -168,6 +176,127 @@ export class GroupJoinResponseDto {
 
   @ApiPropertyOptional()
   joinedAt!: Date | null;
+}
+
+export class PublicGroupRulesSummaryResponseDto {
+  @ApiProperty()
+  contributionAmount!: number;
+
+  @ApiProperty({ enum: GroupRuleFrequency })
+  frequency!: GroupRuleFrequency;
+
+  @ApiPropertyOptional({ nullable: true })
+  customIntervalDays!: number | null;
+
+  @ApiProperty({ enum: GroupRulePayoutMode })
+  payoutMode!: GroupRulePayoutMode;
+
+  @ApiProperty()
+  roundSize!: number;
+
+  @ApiProperty({ enum: StartPolicy })
+  startPolicy!: StartPolicy;
+
+  @ApiPropertyOptional({ nullable: true })
+  startAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  minToStart!: number | null;
+
+  @ApiProperty({ enum: WinnerSelectionTiming })
+  winnerSelectionTiming!: WinnerSelectionTiming;
+}
+
+export class PublicGroupSummaryResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  description!: string | null;
+
+  @ApiProperty()
+  currency!: string;
+
+  @ApiProperty()
+  contributionAmount!: number;
+
+  @ApiProperty({ enum: GroupRuleFrequency })
+  frequency!: GroupRuleFrequency;
+
+  @ApiPropertyOptional({ enum: GroupRulePayoutMode, nullable: true })
+  payoutMode!: GroupRulePayoutMode | null;
+
+  @ApiProperty()
+  memberCount!: number;
+
+  @ApiProperty()
+  alreadyStarted!: boolean;
+}
+
+export class PublicGroupDetailResponseDto extends PublicGroupSummaryResponseDto {
+  @ApiProperty({ enum: GroupVisibility })
+  visibility!: GroupVisibility;
+
+  @ApiProperty({ enum: GroupStatus })
+  status!: GroupStatus;
+
+  @ApiProperty()
+  rulesetConfigured!: boolean;
+
+  @ApiProperty()
+  isCurrentUserMember!: boolean;
+
+  @ApiPropertyOptional({
+    type: () => PublicGroupRulesSummaryResponseDto,
+    nullable: true,
+  })
+  rules!: PublicGroupRulesSummaryResponseDto | null;
+}
+
+export class JoinRequestUserResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  phone!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  fullName!: string | null;
+}
+
+export class JoinRequestResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  groupId!: string;
+
+  @ApiProperty()
+  userId!: string;
+
+  @ApiProperty({ enum: JoinRequestStatus })
+  status!: JoinRequestStatus;
+
+  @ApiPropertyOptional({ nullable: true })
+  message!: string | null;
+
+  @ApiProperty()
+  createdAt!: Date;
+
+  @ApiPropertyOptional({ nullable: true })
+  reviewedAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  reviewedByUserId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  retryAvailableAt!: Date | null;
+
+  @ApiPropertyOptional({ type: () => JoinRequestUserResponseDto })
+  user?: JoinRequestUserResponseDto;
 }
 
 export class MemberProfileResponseDto {

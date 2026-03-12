@@ -16,6 +16,8 @@ import '../features/groups/screens/group_overview_screen.dart';
 import '../features/groups/screens/group_setup_screen.dart';
 import '../features/groups/screens/groups_list_screen.dart';
 import '../features/groups/screens/join_group_screen.dart';
+import '../features/groups/screens/public_group_detail_screen.dart';
+import '../features/groups/screens/public_groups_screen.dart';
 import '../features/cycles/screens/cycles_overview_screen.dart';
 import '../features/contributions/screens/contributions_list_screen.dart';
 import '../features/contributions/screens/contribution_disputes_screen.dart';
@@ -54,9 +56,11 @@ class AppRoutePaths {
   static const settingsAbout = '/settings/about';
   static const groupsCreate = '/groups/create';
   static const groupsJoin = '/groups/join';
+  static const groupsDiscover = '/groups/discover';
   static const debugTheme = '/debug/theme';
 
   static String groupDetail(String groupId) => '/groups/$groupId';
+  static String publicGroupDetail(String groupId) => '/groups/discover/$groupId';
   static String groupSetup(String groupId, {String? step}) {
     final base = '/groups/$groupId/setup';
     if (step == null || step.isEmpty) {
@@ -158,6 +162,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   builder: (context, state) => JoinGroupScreen(
                     initialCode: state.uri.queryParameters['code'],
                   ),
+                ),
+                GoRoute(
+                  path: 'discover',
+                  builder: (context, state) => const PublicGroupsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':groupId',
+                      builder: (context, state) {
+                        final groupId =
+                            state.pathParameters['groupId'] ?? '';
+                        return PublicGroupDetailScreen(groupId: groupId);
+                      },
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: ':id',

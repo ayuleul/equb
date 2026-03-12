@@ -9,11 +9,15 @@ part 'create_group_request.g.dart';
 sealed class CreateGroupRequest with _$CreateGroupRequest {
   const factory CreateGroupRequest({
     required String name,
+    String? description,
     int? contributionAmount,
     @JsonKey(unknownEnumValue: GroupFrequencyModel.unknown)
     GroupFrequencyModel? frequency,
     @JsonKey(toJson: _nullableDateToIsoString) DateTime? startDate,
     @Default('ETB') String currency,
+    @JsonKey(unknownEnumValue: GroupVisibilityModel.private)
+    @Default(GroupVisibilityModel.private)
+    GroupVisibilityModel visibility,
   }) = _CreateGroupRequest;
 
   factory CreateGroupRequest.fromJson(Map<String, dynamic> json) =>

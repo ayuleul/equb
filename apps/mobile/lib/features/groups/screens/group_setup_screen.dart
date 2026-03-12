@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../data/models/group_model.dart';
 import '../../../data/models/group_rules_model.dart';
 import '../../../data/models/update_group_rules_request.dart';
 import '../../../shared/kit/kit.dart';
@@ -34,30 +35,37 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _SetupTab(
       key: 'basics',
       label: 'Basics',
-      description: 'Set the contribution amount and round size.',
+      description:
+          'Set the group name, description, currency, and contribution amount.',
       section: _RulesSection.basics,
     ),
     _SetupTab(
       key: 'timing',
       label: 'Timing',
-      description: 'Choose frequency, start policy, and start timing.',
+      description: 'Choose round size, frequency, start policy, and start timing.',
       section: _RulesSection.timing,
     ),
     _SetupTab(
       key: 'policy',
       label: 'Policy',
-      description: 'Set payout, fine, payment, and verification rules.',
+      description: 'Set visibility, payout, fine, payment, and verification rules.',
       section: _RulesSection.policy,
     ),
   ];
 
   late final TextEditingController _contributionAmountController;
+  late final TextEditingController _groupNameController;
+  late final TextEditingController _groupDescriptionController;
+  late final TextEditingController _currencyController;
   late final TextEditingController _roundSizeController;
   late final TextEditingController _minToStartController;
   late final TextEditingController _customIntervalDaysController;
   late final TextEditingController _graceDaysController;
   late final TextEditingController _fineAmountController;
   late final FocusNode _contributionAmountFocusNode;
+  late final FocusNode _groupNameFocusNode;
+  late final FocusNode _groupDescriptionFocusNode;
+  late final FocusNode _currencyFocusNode;
   late final FocusNode _minToStartFocusNode;
   late final FocusNode _customIntervalDaysFocusNode;
   late final FocusNode _graceDaysFocusNode;
@@ -65,6 +73,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   late final List<GlobalKey> _setupTabKeys;
   late final ScrollController _setupTabsScrollController;
 
+  var _visibility = GroupVisibilityModel.private;
   var _frequency = GroupRuleFrequencyModel.monthly;
   var _fineType = GroupRuleFineTypeModel.none;
   var _payoutMode = GroupRulePayoutModeModel.lottery;
@@ -87,6 +96,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   @override
   void initState() {
     super.initState();
+    _groupNameController = TextEditingController();
+    _groupDescriptionController = TextEditingController();
+    _currencyController = TextEditingController();
     _contributionAmountController = TextEditingController();
     _roundSizeController = TextEditingController(text: '2');
     _minToStartController = TextEditingController();
@@ -95,6 +107,10 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _fineAmountController = TextEditingController(text: '0');
     _contributionAmountFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
+    _groupNameFocusNode = FocusNode()..addListener(_handleRulesInputFocusChanged);
+    _groupDescriptionFocusNode = FocusNode()
+      ..addListener(_handleRulesInputFocusChanged);
+    _currencyFocusNode = FocusNode()..addListener(_handleRulesInputFocusChanged);
     _minToStartFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
     _customIntervalDaysFocusNode = FocusNode()
@@ -114,6 +130,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
   @override
   void dispose() {
+    _groupNameController.dispose();
+    _groupDescriptionController.dispose();
+    _currencyController.dispose();
     _contributionAmountController.dispose();
     _roundSizeController.dispose();
     _minToStartController.dispose();
@@ -121,6 +140,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _graceDaysController.dispose();
     _fineAmountController.dispose();
     _contributionAmountFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _groupNameFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _groupDescriptionFocusNode
+      ..removeListener(_handleRulesInputFocusChanged)
+      ..dispose();
+    _currencyFocusNode
       ..removeListener(_handleRulesInputFocusChanged)
       ..dispose();
     _minToStartFocusNode
@@ -147,6 +175,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
   void _handleRulesInputFocusChanged() {
     final isFocused =
+        _groupNameFocusNode.hasFocus ||
+        _groupDescriptionFocusNode.hasFocus ||
+        _currencyFocusNode.hasFocus ||
         _contributionAmountFocusNode.hasFocus ||
         _minToStartFocusNode.hasFocus ||
         _customIntervalDaysFocusNode.hasFocus ||
@@ -167,7 +198,12 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
     try {
       final repository = ref.read(groupsRepositoryProvider);
+      final group = await repository.getGroup(widget.groupId, forceRefresh: true);
       final rules = await repository.getGroupRules(widget.groupId);
+      _groupNameController.text = group.name;
+      _groupDescriptionController.text = group.description ?? '';
+      _currencyController.text = group.currency;
+      _visibility = group.visibility;
       if (rules != null) {
         _applyRules(rules);
       }
@@ -239,18 +275,23 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   }
 
   bool _validateBasicsStep() {
+    final groupName = _groupNameController.text.trim();
+    final currency = _currencyController.text.trim().toUpperCase();
     final contributionAmount = int.tryParse(
       _contributionAmountController.text.trim(),
     );
-    final roundSize = int.tryParse(_roundSizeController.text.trim());
+    if (groupName.isEmpty) {
+      setState(() => _errorMessage = 'Group name is required.');
+      return false;
+    }
+    if (currency.length != 3) {
+      setState(() => _errorMessage = 'Currency must be a 3-letter code.');
+      return false;
+    }
     if (contributionAmount == null || contributionAmount <= 0) {
       setState(
         () => _errorMessage = 'Contribution amount must be greater than 0.',
       );
-      return false;
-    }
-    if (roundSize == null || roundSize < 2) {
-      setState(() => _errorMessage = 'Round size must be at least 2.');
       return false;
     }
     return true;
@@ -267,6 +308,10 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       setState(
         () => _errorMessage = 'Custom interval days must be greater than 0.',
       );
+      return false;
+    }
+    if (roundSize < 2) {
+      setState(() => _errorMessage = 'Round size must be at least 2.');
       return false;
     }
     if (_startPolicy == StartPolicyModel.onDate && _startAt == null) {
@@ -350,6 +395,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     final contributionAmount = int.parse(
       _contributionAmountController.text.trim(),
     );
+    final groupName = _groupNameController.text.trim();
+    final groupDescription = _groupDescriptionController.text.trim();
+    final currency = _currencyController.text.trim().toUpperCase();
     final roundSize = int.parse(_roundSizeController.text.trim());
     final customIntervalDays = int.tryParse(
       _customIntervalDaysController.text.trim(),
@@ -365,6 +413,13 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
 
     try {
       final repository = ref.read(groupsRepositoryProvider);
+      await repository.updateGroup(
+        widget.groupId,
+        name: groupName,
+        description: groupDescription.isEmpty ? '' : groupDescription,
+        currency: currency,
+        visibility: _visibility,
+      );
       await repository.upsertGroupRules(
         widget.groupId,
         UpdateGroupRulesRequest(
@@ -548,6 +603,30 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       children: [
         if (section == _RulesSection.basics) ...[
           AppTextField(
+            controller: _groupNameController,
+            focusNode: _groupNameFocusNode,
+            label: 'Group name',
+            hint: 'Family Equb',
+            onChanged: (_) => setState(() => _errorMessage = null),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _groupDescriptionController,
+            focusNode: _groupDescriptionFocusNode,
+            label: 'Description',
+            hint: 'What is this Equb for?',
+            onChanged: (_) => setState(() => _errorMessage = null),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _currencyController,
+            focusNode: _currencyFocusNode,
+            label: 'Currency',
+            hint: 'ETB',
+            onChanged: (_) => setState(() => _errorMessage = null),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
             controller: _contributionAmountController,
             focusNode: _contributionAmountFocusNode,
             label: 'Contribution amount',
@@ -556,6 +635,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             onChanged: (_) => setState(() => _errorMessage = null),
           ),
           const SizedBox(height: AppSpacing.md),
+          KitBanner(
+            title: 'Basics summary',
+            message:
+                '${_groupNameController.text.trim().isEmpty ? 'This group' : _groupNameController.text.trim()} collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} ${_currencyController.text.trim().isEmpty ? 'ETB' : _currencyController.text.trim().toUpperCase()} per turn.',
+            tone: KitBadgeTone.info,
+            icon: Icons.info_outline_rounded,
+          ),
+        ],
+        if (section == _RulesSection.timing) ...[
           KitDropdownField<int>(
             value: roundSize,
             label: 'Round size',
@@ -583,15 +671,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             },
           ),
           const SizedBox(height: AppSpacing.md),
-          KitBanner(
-            title: 'Basics summary',
-            message:
-                'Each turn collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} from up to $roundSize members.',
-            tone: KitBadgeTone.info,
-            icon: Icons.info_outline_rounded,
-          ),
-        ],
-        if (section == _RulesSection.timing) ...[
           KitDropdownField<GroupRuleFrequencyModel>(
             value: _frequency,
             label: 'Frequency',
@@ -731,6 +810,33 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           ),
         ],
         if (section == _RulesSection.policy) ...[
+          KitDropdownField<GroupVisibilityModel>(
+            value: _visibility,
+            label: 'Visibility',
+            items: const [
+              DropdownMenuItem(
+                value: GroupVisibilityModel.private,
+                child: Text('Private'),
+              ),
+              DropdownMenuItem(
+                value: GroupVisibilityModel.public,
+                child: Text('Public'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              setState(() {
+                _visibility = value;
+                _errorMessage = null;
+              });
+            },
+            supportText: _visibility == GroupVisibilityModel.public
+                ? 'Visible to others. People can request to join.'
+                : 'Join by invite code only.',
+          ),
+          const SizedBox(height: AppSpacing.md),
           KitDropdownField<GroupRulePayoutModeModel>(
             value: _payoutMode,
             label: 'Payout mode',

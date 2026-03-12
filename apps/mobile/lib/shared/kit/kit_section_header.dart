@@ -54,7 +54,6 @@ class KitSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final resolvedAction =
         action ??
         ((actionLabel != null && onActionPressed != null)
