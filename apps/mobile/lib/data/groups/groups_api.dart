@@ -10,6 +10,7 @@ import '../models/update_group_rules_request.dart';
 abstract class GroupsApi {
   Future<List<Map<String, dynamic>>> listGroups();
   Future<List<Map<String, dynamic>>> listPublicGroups();
+  Future<List<Map<String, dynamic>>> discoverPublicGroups();
   Future<Map<String, dynamic>> createGroup(CreateGroupRequest request);
   Future<Map<String, dynamic>> getGroup(String groupId);
   Future<Map<String, dynamic>> getPublicGroup(String groupId);
@@ -27,10 +28,7 @@ abstract class GroupsApi {
   );
   Future<Map<String, dynamic>> createInvite(String groupId);
   Future<Map<String, dynamic>> joinByCode(JoinGroupRequest request);
-  Future<Map<String, dynamic>> requestToJoin(
-    String groupId, {
-    String? message,
-  });
+  Future<Map<String, dynamic>> requestToJoin(String groupId, {String? message});
   Future<Map<String, dynamic>?> getMyJoinRequest(String groupId);
   Future<List<Map<String, dynamic>>> listJoinRequests(String groupId);
   Future<Map<String, dynamic>> approveJoinRequest(
@@ -61,6 +59,17 @@ class DioGroupsApi implements GroupsApi {
   Future<List<Map<String, dynamic>>> listPublicGroups() async {
     final payload = await _apiClient.getList('/groups/public');
     return payload.map(_toMap).toList(growable: false);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> discoverPublicGroups() async {
+    final payload = await _apiClient.getMap('/groups/discover');
+    final sections = payload['sections'];
+    if (sections is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    return sections.map(_toMap).toList(growable: false);
   }
 
   @override
@@ -100,10 +109,7 @@ class DioGroupsApi implements GroupsApi {
       data['visibility'] = visibility.name.toUpperCase();
     }
 
-    return _apiClient.patchMap(
-      '/groups/$groupId',
-      data: data,
-    );
+    return _apiClient.patchMap('/groups/$groupId', data: data);
   }
 
   @override
@@ -179,7 +185,8 @@ class DioGroupsApi implements GroupsApi {
         rethrow;
       }
       final message = mapped.message.trim().toLowerCase();
-      if (message == 'not found.' || message.contains('join request not found')) {
+      if (message == 'not found.' ||
+          message.contains('join request not found')) {
         return null;
       }
       rethrow;
@@ -197,7 +204,9 @@ class DioGroupsApi implements GroupsApi {
     String groupId,
     String joinRequestId,
   ) {
-    return _apiClient.postMap('/groups/$groupId/join-requests/$joinRequestId/approve');
+    return _apiClient.postMap(
+      '/groups/$groupId/join-requests/$joinRequestId/approve',
+    );
   }
 
   @override
@@ -205,7 +214,9 @@ class DioGroupsApi implements GroupsApi {
     String groupId,
     String joinRequestId,
   ) {
-    return _apiClient.postMap('/groups/$groupId/join-requests/$joinRequestId/reject');
+    return _apiClient.postMap(
+      '/groups/$groupId/join-requests/$joinRequestId/reject',
+    );
   }
 
   @override

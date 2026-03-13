@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
@@ -8,23 +7,16 @@ import '../../../data/models/public_group_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/reputation_badge.dart';
-import '../public_group_action_state.dart';
-import '../public_groups_controller.dart';
 
-class PublicEqubCard extends ConsumerWidget {
+class PublicEqubCard extends StatelessWidget {
   const PublicEqubCard({super.key, required this.group});
 
   final PublicGroupModel group;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final joinRequest = ref
-        .watch(myJoinRequestProvider(group.id))
-        .asData
-        ?.value;
-    final actionState = resolvePublicGroupActionState(group, joinRequest);
 
     return KitCard(
       onTap: () => context.push(AppRoutePaths.publicGroupDetail(group.id)),
@@ -42,8 +34,6 @@ class PublicEqubCard extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              _Badge(label: actionState.label),
             ],
           ),
           if (group.host != null) ...[
@@ -87,25 +77,24 @@ class PublicEqubCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            (group.description ?? '').trim().isNotEmpty
-                ? group.description!
-                : (actionState.message ??
-                      (group.alreadyStarted
-                          ? 'Already started.'
-                          : 'Review details before requesting to join.')),
-            style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+          if ((group.description ?? '').trim().isEmpty) ...[
+            Text(
+              group.alreadyStarted
+                  ? 'Already started.'
+                  : 'Review details before requesting to join.',
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           Row(
             children: [
               Expanded(
                 child: Text(
-                  actionState.buttonLabel,
+                  'Review to join',
                   style: textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -119,37 +108,6 @@ class PublicEqubCard extends ConsumerWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: AppRadius.pillRounded,
-        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.16)),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: colorScheme.primary,
-          fontWeight: FontWeight.w700,
-          height: 1,
-        ),
       ),
     );
   }

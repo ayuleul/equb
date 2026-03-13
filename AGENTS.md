@@ -135,6 +135,36 @@
 - Migrations must be deterministic and checked in.
 
 ## Group membership rules
+- Discover public Equbs are served through a ranked marketplace feed, not raw `createdAt` ordering; the ranking remains deterministic, explainable, and additive to the existing public/private join flows.
+- Discover candidate eligibility is locked to public groups that are ACTIVE, have no started cycles yet, have a configured ruleset, are not full (`joinedCount < roundSize`), and exclude groups the viewer already joined, already requested to join, or cannot join under current public-join eligibility gates.
+- Discover feed sections are locked to:
+  - `recommended_for_you`
+  - `filling_fast`
+  - `trusted_hosts`
+  - `new_equbs`
+  - `starter_equbs`
+- Discover v1 ranking is centralized in the backend discover ranking service and metrics layer:
+  - `discover_score = 0.35*hostTrustScore + 0.20*avgMemberScore + 0.20*fillPercent + 0.15*freshnessScore + 0.10*joinVelocityScore`
+  - all score inputs are normalized to `0..100`
+  - demotions apply for low host trust, low group trust, stale low-fill groups, host cancellation history, and host dispute history
+- Discover personalization is lightweight and optional:
+  - fit signals: contribution, duration, and group size
+  - `match_score = 0.50*contributionFit + 0.25*durationFit + 0.25*groupSizeFit`
+  - `recommended_for_you` blends `0.80 * discover_score + 0.20 * match_score`
+  - when a user has no Equb history, discover must fall back to trusted/starter-friendly recommendations instead of fabricating personalization
+- Discover cold-start behavior is locked:
+  - favor trusted hosts, starter-friendly groups, lower contribution groups, and higher-trust groups
+  - apply a temporary freshness boost for new groups so older high-momentum groups do not dominate forever
+- Discover explainability labels must be deterministic and user-facing only; v1 labels are:
+  - `Recommended for you`
+  - `Trusted host`
+  - `Filling fast`
+  - `Almost full`
+  - `Good for new members`
+  - `New Equb`
+  - `High trust group`
+  - `Matches your usual contribution`
+- Discover feed performance must use the `equb_discover_metrics` summary layer (table or equivalent cache), refreshed from group/join/trust activity and lazily rehydrated when metrics go stale; discover endpoints must not recompute raw marketplace aggregates for every card on every request.
 - Groups support exactly two visibility modes:
   - `PRIVATE` -> not discoverable; join via invite code/link only
   - `PUBLIC` -> discoverable in public listing; users request to join and admins approve/reject

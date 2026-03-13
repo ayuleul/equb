@@ -206,6 +206,7 @@ model User {
   notifications     Notification[]
   reputationMetrics UserReputationMetrics?
   reputationHistory ReputationHistory[]
+  discoverMetrics   EqubDiscoverMetrics[]
 }
 
 model OtpCode {
@@ -261,10 +262,43 @@ model EqubGroup {
   joinRequests       JoinRequest[]
   notifications      Notification[]
   rules              GroupRules?
+  discoverMetrics    EqubDiscoverMetrics?
   reputationHistory  ReputationHistory[] @relation("ReputationHistoryGroup")
 
   @@index([createdByUserId])
   @@index([visibility, status])
+}
+
+model EqubDiscoverMetrics {
+  equbId                  String   @id
+  hostUserId              String
+  hostTrustScore          Int      @default(50)
+  hostTrustLevel          String   @default("New")
+  avgMemberScore          Int      @default(50)
+  groupTrustLevel         String   @default("Low")
+  verifiedMembersPercent  Int      @default(0)
+  joinedCount             Int      @default(0)
+  maxMembers              Int      @default(0)
+  fillPercent             Int      @default(0)
+  pendingRequestCount     Int      @default(0)
+  waitlistCount           Int      @default(0)
+  joinVelocity24h         Int      @default(0)
+  joinVelocity7d          Int      @default(0)
+  hostCompletionRate      Int      @default(50)
+  freshnessScore          Int      @default(0)
+  discoverScore           Int      @default(0)
+  createdAt               DateTime
+  lastActivityAt          DateTime
+  updatedAt               DateTime @updatedAt
+  equb                    EqubGroup @relation(fields: [equbId], references: [id], onDelete: Cascade)
+  hostUser                User      @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
+
+  @@index([hostTrustScore])
+  @@index([groupTrustLevel])
+  @@index([fillPercent])
+  @@index([discoverScore(sort: Desc)])
+  @@index([lastActivityAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
 }
 
 model JoinRequest {

@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Put,
   UseGuards,
 } from '@nestjs/common';
@@ -32,11 +33,13 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
+import { ListDiscoverGroupsDto } from './dto/list-discover-groups.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateMemberStatusDto } from './dto/update-member-status.dto';
 import {
+  DiscoverGroupsResponseDto,
   GroupCycleResponseDto,
   GroupDetailResponseDto,
   GroupJoinResponseDto,
@@ -48,6 +51,7 @@ import {
   PublicGroupDetailResponseDto,
   PublicGroupSummaryResponseDto,
 } from './entities/groups.entities';
+import { GroupsDiscoverService } from './groups-discover.service';
 import { GroupsService } from './groups.service';
 import { GroupTrustSummaryDto } from '../reputation/entities/reputation.entities';
 
@@ -57,7 +61,10 @@ import { GroupTrustSummaryDto } from '../reputation/entities/reputation.entities
 @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
 @Controller('groups')
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService) {}
+  constructor(
+    private readonly groupsService: GroupsService,
+    private readonly groupsDiscoverService: GroupsDiscoverService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create an Equb group' })
@@ -85,8 +92,21 @@ export class GroupsController {
   @SkipThrottle()
   @ApiOperation({ summary: 'List discoverable public groups' })
   @ApiOkResponse({ type: PublicGroupSummaryResponseDto, isArray: true })
-  listPublicGroups(): Promise<PublicGroupSummaryResponseDto[]> {
-    return this.groupsService.listPublicGroups();
+  listPublicGroups(
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<PublicGroupSummaryResponseDto[]> {
+    return this.groupsService.listPublicGroups(currentUser);
+  }
+
+  @Get('discover')
+  @SkipThrottle()
+  @ApiOperation({ summary: 'List ranked public Equb discover sections' })
+  @ApiOkResponse({ type: DiscoverGroupsResponseDto })
+  discoverGroups(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: ListDiscoverGroupsDto,
+  ): Promise<DiscoverGroupsResponseDto> {
+    return this.groupsDiscoverService.listDiscoverSections(currentUser, query);
   }
 
   @Get('public/:groupId')
@@ -141,9 +161,12 @@ export class GroupsController {
   @ApiOperation({ summary: 'Request to join a public group' })
   @ApiBody({ type: CreateJoinRequestDto })
   @ApiOkResponse({ type: JoinRequestResponseDto })
-  @ApiBadRequestResponse({ description: 'Group is not public or already joined' })
+  @ApiBadRequestResponse({
+    description: 'Group is not public or already joined',
+  })
   @ApiConflictResponse({
-    description: 'Open request already exists or the group is currently in progress',
+    description:
+      'Open request already exists or the group is currently in progress',
   })
   @ApiNotFoundResponse({ description: 'Group not found' })
   createJoinRequest(
@@ -156,7 +179,9 @@ export class GroupsController {
 
   @Get(':id/join-request/me')
   @SkipThrottle()
-  @ApiOperation({ summary: "Get current user's join request for a public group" })
+  @ApiOperation({
+    summary: "Get current user's join request for a public group",
+  })
   @ApiOkResponse({ type: JoinRequestResponseDto })
   @ApiNotFoundResponse({ description: 'Group not found' })
   getMyJoinRequest(
@@ -238,7 +263,9 @@ export class GroupsController {
   @ApiBody({ type: UpdateGroupDto })
   @ApiOkResponse({ type: GroupDetailResponseDto })
   @ApiForbiddenResponse({ description: 'Joined admin membership required' })
-  @ApiBadRequestResponse({ description: 'No supported group fields were provided' })
+  @ApiBadRequestResponse({
+    description: 'No supported group fields were provided',
+  })
   @ApiNotFoundResponse({ description: 'Group not found' })
   updateGroup(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -340,7 +367,9 @@ export class GroupsController {
   @UseGuards(GroupMemberGuard)
   @SkipThrottle()
   @ApiTags('Members')
-  @ApiOperation({ summary: 'List members with reliability summaries for a group' })
+  @ApiOperation({
+    summary: 'List members with reliability summaries for a group',
+  })
   @ApiOkResponse({ type: GroupMemberResponseDto, isArray: true })
   @ApiForbiddenResponse({ description: 'Joined group membership required' })
   listMemberReputations(

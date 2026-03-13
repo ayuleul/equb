@@ -1,5 +1,6 @@
 import '../api/api_error.dart';
 import '../models/create_group_request.dart';
+import '../models/discover_section_model.dart';
 import '../models/group_model.dart';
 import '../models/group_rules_model.dart';
 import '../models/invite_model.dart';
@@ -23,6 +24,7 @@ class GroupsRepository {
   final Map<String, PublicGroupModel> _publicGroupCache =
       <String, PublicGroupModel>{};
   List<PublicGroupModel>? _publicGroupsCache;
+  List<DiscoverSectionModel>? _discoverSectionsCache;
   final Map<String, JoinRequestModel?> _joinRequestCache =
       <String, JoinRequestModel?>{};
   final Map<String, List<JoinRequestModel>> _joinRequestsCache =
@@ -72,6 +74,28 @@ class GroupsRepository {
     }
 
     return groups;
+  }
+
+  Future<List<DiscoverSectionModel>> discoverPublicGroups({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _discoverSectionsCache != null) {
+      return _discoverSectionsCache!;
+    }
+
+    final payload = await _groupsApi.discoverPublicGroups();
+    final sections = payload
+        .map(DiscoverSectionModel.fromJson)
+        .toList(growable: false);
+
+    _discoverSectionsCache = sections;
+    for (final section in sections) {
+      for (final group in section.items) {
+        _publicGroupCache[group.id] = group;
+      }
+    }
+
+    return sections;
   }
 
   Future<GroupModel> getGroup(
@@ -285,6 +309,7 @@ class GroupsRepository {
 
   void invalidatePublicGroups() {
     _publicGroupsCache = null;
+    _discoverSectionsCache = null;
   }
 
   void invalidatePublicGroup(String groupId) {

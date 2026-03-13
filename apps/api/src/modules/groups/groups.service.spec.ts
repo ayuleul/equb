@@ -39,6 +39,7 @@ describe('GroupsService', () => {
     getGroupTrustSummary: jest.fn(),
   };
   const realtimeService = { emitGroupEvent: jest.fn() };
+  const discoverMetricsService = { refreshMetricsForGroups: jest.fn() };
 
   const createService = (overrides?: Record<string, unknown>) => {
     const prisma = {
@@ -84,6 +85,7 @@ describe('GroupsService', () => {
       winnerSelectionService as never,
       reputationService as never,
       realtimeService as never,
+      discoverMetricsService as never,
     );
 
     return { service, prisma };
@@ -134,6 +136,7 @@ describe('GroupsService', () => {
         hostDisputesCount: 0,
       },
     });
+    discoverMetricsService.refreshMetricsForGroups.mockResolvedValue(undefined);
   });
 
   it('allows a new user to create a starter public Equb', async () => {
@@ -533,7 +536,7 @@ describe('GroupsService', () => {
       },
     ]);
 
-    const result = await service.listPublicGroups();
+    const result = await service.listPublicGroups(actor);
 
     expect(result).toEqual([
       expect.objectContaining({
@@ -548,6 +551,17 @@ describe('GroupsService', () => {
         where: expect.objectContaining({
           visibility: GroupVisibility.PUBLIC,
           status: GroupStatus.ACTIVE,
+          createdByUserId: {
+            not: actor.id,
+          },
+          joinRequests: {
+            none: {
+              userId: actor.id,
+              status: {
+                in: [JoinRequestStatus.REQUESTED, JoinRequestStatus.APPROVED],
+              },
+            },
+          },
         }),
       }),
     );

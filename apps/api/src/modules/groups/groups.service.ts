@@ -50,6 +50,7 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
+import { DiscoverMetricsService } from './discover-metrics.service';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
@@ -98,6 +99,7 @@ export class GroupsService {
     private readonly winnerSelectionService: WinnerSelectionService,
     private readonly reputationService: ReputationService,
     private readonly realtimeService: RealtimeService,
+    private readonly discoverMetricsService: DiscoverMetricsService,
   ) {}
 
   async createGroup(
@@ -113,7 +115,9 @@ export class GroupsService {
         {
           contributionAmount: dto.contributionAmount ?? null,
           durationDays:
-            dto.frequency != null ? this.resolveLegacyDurationDays(dto.frequency) : null,
+            dto.frequency != null
+              ? this.resolveLegacyDurationDays(dto.frequency)
+              : null,
           activePublicEqubCount: await this.countActivePublicGroupsForHost(
             currentUser.id,
           ),
@@ -150,11 +154,11 @@ export class GroupsService {
           visibility: dto.visibility ?? GroupVisibility.PRIVATE,
           hostTier:
             dto.visibility === GroupVisibility.PUBLIC
-              ? publicHosting?.hostTier ?? null
+              ? (publicHosting?.hostTier ?? null)
               : null,
           hostReputationAtCreation:
             dto.visibility === GroupVisibility.PUBLIC
-              ? publicHosting?.trustScore ?? null
+              ? (publicHosting?.trustScore ?? null)
               : null,
           createdByUserId: currentUser.id,
         } as Prisma.EqubGroupUncheckedCreateInput,
@@ -223,6 +227,10 @@ export class GroupsService {
       group.id,
     );
 
+    if (group.visibility === GroupVisibility.PUBLIC) {
+      await this.discoverMetricsService.refreshMetricsForGroups([group.id]);
+    }
+
     return this.getGroupDetails(currentUser, group.id);
   }
 
@@ -271,11 +279,24 @@ export class GroupsService {
     );
   }
 
-  async listPublicGroups(): Promise<PublicGroupSummaryResponseDto[]> {
+  async listPublicGroups(
+    currentUser: AuthenticatedUser,
+  ): Promise<PublicGroupSummaryResponseDto[]> {
     const groups = await this.prisma.equbGroup.findMany({
       where: {
         visibility: GroupVisibility.PUBLIC,
         status: GroupStatus.ACTIVE,
+        createdByUserId: {
+          not: currentUser.id,
+        },
+        joinRequests: {
+          none: {
+            userId: currentUser.id,
+            status: {
+              in: [JoinRequestStatus.REQUESTED, JoinRequestStatus.APPROVED],
+            },
+          },
+        },
       },
       include: {
         createdByUser: {
@@ -431,9 +452,8 @@ export class GroupsService {
       throw new NotFoundException('Membership not found');
     }
 
-    const trustSummary = await this.reputationService.getGroupTrustSummary(
-      groupId,
-    );
+    const trustSummary =
+      await this.reputationService.getGroupTrustSummary(groupId);
 
     return this.toGroupDetailResponse(
       group,
@@ -518,6 +538,8 @@ export class GroupsService {
       groupId,
     );
 
+    await this.discoverMetricsService.refreshMetricsForGroups([groupId]);
+
     return this.getGroupDetails(currentUser, groupId);
   }
 
@@ -548,6 +570,8 @@ export class GroupsService {
       members.map((member) => member.status),
       rules.requiresMemberVerification,
     );
+
+    await this.discoverMetricsService.refreshMetricsForGroups([groupId]);
 
     return this.toGroupRulesResponse(rules, eligibleCount);
   }
@@ -1123,6 +1147,8 @@ export class GroupsService {
       }),
     );
 
+    await this.discoverMetricsService.refreshMetricsForGroups([groupId]);
+
     return result;
   }
 
@@ -1171,9 +1197,10 @@ export class GroupsService {
       },
       orderBy: [{ createdAt: 'asc' }],
     });
-    const reputationByUserId = await this.reputationService.getReliabilitySummaries(
-      requests.map((request) => request.userId),
-    );
+    const reputationByUserId =
+      await this.reputationService.getReliabilitySummaries(
+        requests.map((request) => request.userId),
+      );
 
     return requests.map((request) =>
       this.toJoinRequestResponse(
@@ -1218,6 +1245,8 @@ export class GroupsService {
       }),
     );
 
+    await this.discoverMetricsService.refreshMetricsForGroups([groupId]);
+
     return result;
   }
 
@@ -1249,6 +1278,8 @@ export class GroupsService {
       }),
     );
 
+    await this.discoverMetricsService.refreshMetricsForGroups([groupId]);
+
     return result;
   }
 
@@ -1270,9 +1301,10 @@ export class GroupsService {
         createdAt: 'asc',
       },
     });
-    const reputationByUserId = await this.reputationService.getReliabilitySummaries(
-      memberships.map((membership) => membership.userId),
-    );
+    const reputationByUserId =
+      await this.reputationService.getReliabilitySummaries(
+        memberships.map((membership) => membership.userId),
+      );
 
     return memberships.map((membership) =>
       this.toMemberResponse(
@@ -1567,7 +1599,9 @@ export class GroupsService {
       await this.reputationService.applyEvent(tx, {
         userId: targetUserId,
         eventType:
-          isSelfAction === true ? 'MEMBER_LEFT_GROUP' : 'MEMBER_REMOVED_FROM_GROUP',
+          isSelfAction === true
+            ? 'MEMBER_LEFT_GROUP'
+            : 'MEMBER_REMOVED_FROM_GROUP',
         metricChanges: {
           removalsCount: 1,
           ...(isSelfAction ? { equbsLeftEarly: 1 } : {}),
@@ -2254,37 +2288,38 @@ export class GroupsService {
     };
   }
 
-  private toPublicGroupSummaryResponse(group: {
-    id: string;
-    name: string;
-    description: string | null;
-    currency: string;
-    contributionAmount: number;
-    frequency: GroupFrequency;
-    hostTier?: string | null;
-    hostReputationAtCreation?: number | null;
-    rules: {
+  private toPublicGroupSummaryResponse(
+    group: {
+      id: string;
+      name: string;
+      description: string | null;
+      currency: string;
       contributionAmount: number;
-      frequency: GroupRuleFrequency;
-      customIntervalDays: number | null;
-      payoutMode: GroupRulePayoutMode;
-      roundSize: number;
-      startPolicy: StartPolicy;
-      startAt: Date | null;
-      minToStart: number | null;
-      winnerSelectionTiming: WinnerSelectionTiming;
-    } | null;
-    _count: {
-      members: number;
-      cycles: number;
-    };
-    createdByUser?: {
-      fullName: string | null;
-      phone: string;
-    };
-  },
-  host: GroupTrustSummaryDto['host'],
-  trustSummary: GroupTrustSummaryDto,
+      frequency: GroupFrequency;
+      hostTier?: string | null;
+      hostReputationAtCreation?: number | null;
+      rules: {
+        contributionAmount: number;
+        frequency: GroupRuleFrequency;
+        customIntervalDays: number | null;
+        payoutMode: GroupRulePayoutMode;
+        roundSize: number;
+        startPolicy: StartPolicy;
+        startAt: Date | null;
+        minToStart: number | null;
+        winnerSelectionTiming: WinnerSelectionTiming;
+      } | null;
+      _count: {
+        members: number;
+        cycles: number;
+      };
+      createdByUser?: {
+        fullName: string | null;
+        phone: string;
+      };
+    },
+    host: GroupTrustSummaryDto['host'],
+    trustSummary: GroupTrustSummaryDto,
   ): PublicGroupSummaryResponseDto {
     return {
       id: group.id,
@@ -2301,7 +2336,8 @@ export class GroupsService {
       payoutMode: group.rules?.payoutMode ?? null,
       memberCount: group._count.members,
       alreadyStarted: group._count.cycles > 0,
-      hostName: group.createdByUser?.fullName ?? group.createdByUser?.phone ?? null,
+      hostName:
+        group.createdByUser?.fullName ?? group.createdByUser?.phone ?? null,
       hostTier: group.hostTier ?? null,
       hostReputationAtCreation: group.hostReputationAtCreation ?? null,
       hostReputationLevel:
@@ -2318,40 +2354,41 @@ export class GroupsService {
     };
   }
 
-  private toPublicGroupDetailResponse(group: {
-    id: string;
-    name: string;
-    description: string | null;
-    currency: string;
-    contributionAmount: number;
-    frequency: GroupFrequency;
-    hostTier?: string | null;
-    hostReputationAtCreation?: number | null;
-    status: GroupStatus;
-    visibility: GroupVisibility;
-    rules: {
+  private toPublicGroupDetailResponse(
+    group: {
+      id: string;
+      name: string;
+      description: string | null;
+      currency: string;
       contributionAmount: number;
-      frequency: GroupRuleFrequency;
-      customIntervalDays: number | null;
-      payoutMode: GroupRulePayoutMode;
-      roundSize: number;
-      startPolicy: StartPolicy;
-      startAt: Date | null;
-      minToStart: number | null;
-      winnerSelectionTiming: WinnerSelectionTiming;
-    } | null;
-    members: { id: string }[];
-    _count: {
-      members: number;
-      cycles: number;
-    };
-    createdByUser?: {
-      fullName: string | null;
-      phone: string;
-    };
-  },
-  host: GroupTrustSummaryDto['host'],
-  trustSummary: GroupTrustSummaryDto,
+      frequency: GroupFrequency;
+      hostTier?: string | null;
+      hostReputationAtCreation?: number | null;
+      status: GroupStatus;
+      visibility: GroupVisibility;
+      rules: {
+        contributionAmount: number;
+        frequency: GroupRuleFrequency;
+        customIntervalDays: number | null;
+        payoutMode: GroupRulePayoutMode;
+        roundSize: number;
+        startPolicy: StartPolicy;
+        startAt: Date | null;
+        minToStart: number | null;
+        winnerSelectionTiming: WinnerSelectionTiming;
+      } | null;
+      members: { id: string }[];
+      _count: {
+        members: number;
+        cycles: number;
+      };
+      createdByUser?: {
+        fullName: string | null;
+        phone: string;
+      };
+    },
+    host: GroupTrustSummaryDto['host'],
+    trustSummary: GroupTrustSummaryDto,
   ): PublicGroupDetailResponseDto {
     return {
       ...this.toPublicGroupSummaryResponse(group, host, trustSummary),
@@ -2519,21 +2556,22 @@ export class GroupsService {
     };
   }
 
-  private toMemberResponse(member: {
-    id: string;
-    user: {
+  private toMemberResponse(
+    member: {
       id: string;
-      phone: string;
-      fullName: string | null;
-    };
-    role: MemberRole;
-    status: MemberStatus;
-    payoutPosition: number | null;
-    joinedAt: Date | null;
-    verifiedAt?: Date | null;
-    verifiedByUserId?: string | null;
-  },
-  reputation: MemberReliabilitySummaryDto | null = null,
+      user: {
+        id: string;
+        phone: string;
+        fullName: string | null;
+      };
+      role: MemberRole;
+      status: MemberStatus;
+      payoutPosition: number | null;
+      joinedAt: Date | null;
+      verifiedAt?: Date | null;
+      verifiedByUserId?: string | null;
+    },
+    reputation: MemberReliabilitySummaryDto | null = null,
   ): GroupMemberResponseDto {
     return {
       id: member.id,
@@ -2548,22 +2586,23 @@ export class GroupsService {
     };
   }
 
-  private toJoinRequestResponse(request: {
-    id: string;
-    groupId: string;
-    userId: string;
-    status: JoinRequestStatus;
-    message: string | null;
-    createdAt: Date;
-    reviewedAt: Date | null;
-    reviewedByUserId: string | null;
-    user?: {
+  private toJoinRequestResponse(
+    request: {
       id: string;
-      phone: string;
-      fullName: string | null;
-    };
-  },
-  reputation: MemberReliabilitySummaryDto | null = null,
+      groupId: string;
+      userId: string;
+      status: JoinRequestStatus;
+      message: string | null;
+      createdAt: Date;
+      reviewedAt: Date | null;
+      reviewedByUserId: string | null;
+      user?: {
+        id: string;
+        phone: string;
+        fullName: string | null;
+      };
+    },
+    reputation: MemberReliabilitySummaryDto | null = null,
   ): JoinRequestResponseDto {
     const retryAvailableAt =
       request.status === JoinRequestStatus.REJECTED

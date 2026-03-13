@@ -307,6 +307,62 @@ export class PublicGroupDetailResponseDto extends PublicGroupSummaryResponseDto 
   rules!: PublicGroupRulesSummaryResponseDto | null;
 }
 
+export class DiscoverGroupHostDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  name!: string | null;
+
+  @ApiProperty()
+  trustScore!: number;
+
+  @ApiProperty()
+  trustLevel!: string;
+}
+
+export class DiscoverGroupItemResponseDto extends PublicGroupSummaryResponseDto {
+  @ApiProperty()
+  equbId!: string;
+
+  @ApiProperty()
+  durationDays!: number;
+
+  @ApiProperty()
+  joinedCount!: number;
+
+  @ApiProperty()
+  maxMembers!: number;
+
+  @ApiProperty()
+  fillPercent!: number;
+
+  @ApiProperty()
+  groupTrustLevel!: string;
+
+  @ApiProperty({ type: () => DiscoverGroupHostDto })
+  discoverHost!: DiscoverGroupHostDto;
+
+  @ApiProperty({ type: String, isArray: true })
+  reasonLabels!: string[];
+}
+
+export class DiscoverGroupSectionResponseDto {
+  @ApiProperty()
+  key!: string;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty({ type: () => DiscoverGroupItemResponseDto, isArray: true })
+  items!: DiscoverGroupItemResponseDto[];
+}
+
+export class DiscoverGroupsResponseDto {
+  @ApiProperty({ type: () => DiscoverGroupSectionResponseDto, isArray: true })
+  sections!: DiscoverGroupSectionResponseDto[];
+}
+
 export class JoinRequestUserResponseDto {
   @ApiProperty()
   id!: string;

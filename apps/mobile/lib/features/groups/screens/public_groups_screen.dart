@@ -11,7 +11,7 @@ class PublicGroupsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupsAsync = ref.watch(publicGroupsProvider);
+    final sectionsAsync = ref.watch(discoverSectionsProvider);
 
     return KitScaffold(
       appBar: const KitAppBar(
@@ -21,17 +21,17 @@ class PublicGroupsScreen extends ConsumerWidget {
       child: RefreshIndicator(
         onRefresh: () =>
             ref.read(publicGroupsControllerProvider).refreshPublicGroups(),
-        child: groupsAsync.when(
+        child: sectionsAsync.when(
           loading: () => const KitSkeletonList(itemCount: 4),
           error: (error, _) => KitEmptyState(
             icon: Icons.travel_explore_outlined,
             title: 'Unable to load public groups',
             message: mapApiErrorToMessage(error),
             ctaLabel: 'Retry',
-            onCtaPressed: () => ref.invalidate(publicGroupsProvider),
+            onCtaPressed: () => ref.invalidate(discoverSectionsProvider),
           ),
-          data: (groups) {
-            if (groups.isEmpty) {
+          data: (sections) {
+            if (sections.isEmpty) {
               return const KitEmptyState(
                 icon: Icons.groups_2_outlined,
                 title: 'No public groups yet',
@@ -40,11 +40,18 @@ class PublicGroupsScreen extends ConsumerWidget {
               );
             }
 
-            return ListView.separated(
-              itemCount: groups.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) =>
-                  PublicEqubCard(group: groups[index]),
+            return ListView(
+              children: [
+                for (final section in sections) ...[
+                  KitSectionHeader(title: section.title),
+                  for (var i = 0; i < section.items.length; i++) ...[
+                    PublicEqubCard(group: section.items[i]),
+                    if (i != section.items.length - 1)
+                      const SizedBox(height: AppSpacing.sm),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+              ],
             );
           },
         ),

@@ -1,13 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/bootstrap.dart';
+import '../../data/models/discover_section_model.dart';
 import '../../data/models/join_request_model.dart';
 import '../../data/models/public_group_model.dart';
 import 'group_detail_controller.dart';
 
-final publicGroupsProvider = FutureProvider<List<PublicGroupModel>>((ref) async {
+final publicGroupsProvider = FutureProvider<List<PublicGroupModel>>((
+  ref,
+) async {
   final repository = ref.watch(groupsRepositoryProvider);
   return repository.listPublicGroups();
+});
+
+final discoverSectionsProvider = FutureProvider<List<DiscoverSectionModel>>((
+  ref,
+) async {
+  final repository = ref.watch(groupsRepositoryProvider);
+  return repository.discoverPublicGroups();
 });
 
 final publicGroupDetailProvider =
@@ -16,11 +26,13 @@ final publicGroupDetailProvider =
       return repository.getPublicGroup(groupId, forceRefresh: true);
     });
 
-final myJoinRequestProvider =
-    FutureProvider.family<JoinRequestModel?, String>((ref, groupId) async {
-      final repository = ref.watch(groupsRepositoryProvider);
-      return repository.getMyJoinRequest(groupId, forceRefresh: true);
-    });
+final myJoinRequestProvider = FutureProvider.family<JoinRequestModel?, String>((
+  ref,
+  groupId,
+) async {
+  final repository = ref.watch(groupsRepositoryProvider);
+  return repository.getMyJoinRequest(groupId, forceRefresh: true);
+});
 
 final pendingJoinRequestsProvider =
     FutureProvider.family<List<JoinRequestModel>, String>((ref, groupId) async {
@@ -41,7 +53,11 @@ class PublicGroupsController {
     final repository = _ref.read(groupsRepositoryProvider);
     repository.invalidatePublicGroups();
     _ref.invalidate(publicGroupsProvider);
-    await _ref.read(publicGroupsProvider.future);
+    _ref.invalidate(discoverSectionsProvider);
+    await Future.wait([
+      _ref.read(publicGroupsProvider.future),
+      _ref.read(discoverSectionsProvider.future),
+    ]);
   }
 
   Future<void> refreshPublicGroup(String groupId) async {
