@@ -18,8 +18,9 @@ class ReputationBadge extends StatelessWidget {
     final spec = reputationVisualSpec(trustLevel);
     return KitBadge(
       icon: spec.icon,
-      label: compact ? spec.label : spec.label,
+      label: spec.label,
       tone: spec.tone,
+      compact: compact,
     );
   }
 }

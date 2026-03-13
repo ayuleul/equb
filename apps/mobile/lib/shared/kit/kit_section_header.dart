@@ -56,6 +56,9 @@ class KitSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSupportingCopy =
+        (subtitle != null && subtitle!.trim().isNotEmpty) ||
+        (kicker != null && kicker!.trim().isNotEmpty);
     final resolvedAction =
         action ??
         ((actionLabel != null && onActionPressed != null)
@@ -89,7 +92,9 @@ class KitSectionHeader extends StatelessWidget {
             child: IgnorePointer(
               ignoring: isSearching,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: hasSupportingCopy
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: _KitSectionHeaderCopy(
@@ -103,9 +108,15 @@ class KitSectionHeader extends StatelessWidget {
                     _KitSectionHeaderCollapsedSearchActions(
                       config: config,
                       action: resolvedAction,
+                      alignTop: hasSupportingCopy,
                     )
                   else
-                    ?resolvedAction,
+                    Align(
+                      alignment: hasSupportingCopy
+                          ? Alignment.topRight
+                          : Alignment.centerRight,
+                      child: resolvedAction,
+                    ),
                 ],
               ),
             ),
@@ -198,15 +209,17 @@ class _KitSectionHeaderCollapsedSearchActions extends StatelessWidget {
   const _KitSectionHeaderCollapsedSearchActions({
     required this.config,
     required this.action,
+    required this.alignTop,
   });
 
   final KitSectionHeaderSearchConfig config;
   final Widget? action;
+  final bool alignTop;
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: Alignment.topRight,
+      alignment: alignTop ? Alignment.topRight : Alignment.centerRight,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -16,6 +16,30 @@ import '../groups/widgets/public_equb_card.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  Future<void> _showGroupActions(BuildContext context) {
+    return KitActionSheet.show(
+      context: context,
+      title: 'Group actions',
+      actions: [
+        KitActionSheetItem(
+          label: 'Create Equb',
+          icon: Icons.add,
+          onPressed: () => context.push(AppRoutePaths.groupsCreate),
+        ),
+        KitActionSheetItem(
+          label: 'Join Equb',
+          icon: Icons.group_add_outlined,
+          onPressed: () => context.push(AppRoutePaths.groupsJoin),
+        ),
+        KitActionSheetItem(
+          label: 'Discover Public',
+          icon: Icons.travel_explore_outlined,
+          onPressed: () => context.push(AppRoutePaths.groupsDiscover),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -25,6 +49,11 @@ class HomeScreen extends ConsumerWidget {
     final displayName = user?.firstName ?? user?.phone ?? 'there';
 
     return KitScaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showGroupActions(context),
+        icon: const Icon(Icons.add),
+        label: const Text('New'),
+      ),
       child: RefreshIndicator(
         onRefresh: () => Future.wait([
           ref.read(groupsListProvider.notifier).refresh(),
@@ -34,11 +63,12 @@ class HomeScreen extends ConsumerWidget {
           children: [
             KitSectionHeader(
               title: 'Hi, $displayName',
+              subtitle: 'Your groups first, then public equbs worth joining.',
+
               titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
-              subtitle: 'Your groups first, then public equbs worth joining.',
               action: IconButton(
                 tooltip: 'Notifications',
                 onPressed: () => context.push(AppRoutePaths.notifications),
@@ -47,37 +77,13 @@ class HomeScreen extends ConsumerWidget {
             ),
             KitSectionHeader(
               title: 'My Equbs',
-              subtitle: 'Swipe through your groups and jump back in quickly.',
               actionLabel: 'View all',
               onActionPressed: () => context.go(AppRoutePaths.groups),
             ),
             _MyEqubsRail(state: groupsState),
             const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: KitPrimaryButton(
-                    label: 'Create Equb',
-                    icon: Icons.add_rounded,
-                    expand: false,
-                    onPressed: () => context.push(AppRoutePaths.groupsCreate),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: KitSecondaryButton(
-                    label: 'Join by Code',
-                    icon: Icons.group_add_outlined,
-                    expand: false,
-                    onPressed: () => context.push(AppRoutePaths.groupsJoin),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
             KitSectionHeader(
               title: 'Discover Public Equbs',
-              subtitle: 'Browse open groups that accept join requests.',
               actionLabel: 'See all',
               onActionPressed: () => context.push(AppRoutePaths.groupsDiscover),
             ),
@@ -98,7 +104,7 @@ class _MyEqubsRail extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.isLoading && !state.hasData) {
       return SizedBox(
-        height: 188,
+        height: 172,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: 3,
@@ -154,7 +160,7 @@ class _MyEqubsRail extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 188,
+      height: 172,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: state.items.length,

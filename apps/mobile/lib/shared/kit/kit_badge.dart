@@ -13,6 +13,7 @@ class KitBadge extends StatelessWidget {
     this.icon,
     this.isDot = false,
     this.tone = KitBadgeTone.neutral,
+    this.compact = false,
   });
 
   final String? label;
@@ -20,6 +21,7 @@ class KitBadge extends StatelessWidget {
   final IconData? icon;
   final bool isDot;
   final KitBadgeTone tone;
+  final bool compact;
 
   factory KitBadge.dot({Key? key, KitBadgeTone tone = KitBadgeTone.info}) {
     return KitBadge(key: key, isDot: true, tone: tone);
@@ -75,21 +77,26 @@ class KitBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 14, color: palette.fg),
-          const SizedBox(width: AppSpacing.xxs),
+          Icon(icon, size: compact ? 12 : 14, color: palette.fg),
+          SizedBox(width: compact ? 3 : AppSpacing.xxs),
         ],
         if (text != null)
           Text(
             text,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: palette.fg),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: palette.fg,
+              fontSize: compact ? 11 : null,
+              height: compact ? 1.1 : null,
+            ),
           ),
       ],
     );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 10,
+        vertical: compact ? 4 : 6,
+      ),
       decoration: BoxDecoration(
         color: palette.bg,
         borderRadius: AppRadius.pillRounded,

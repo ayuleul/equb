@@ -51,18 +51,21 @@ class MyEqubCard extends ConsumerWidget {
     final currentCycle = currentCycleAsync.valueOrNull;
     final nextDrawDate = currentCycle?.dueDate ?? group.startDate;
     final memberSummary = memberCount == null
-        ? 'Members loading...'
+        ? 'Loading'
         : '$memberCount members';
     final turnSummary = _turnSummary(
       cycle: currentCycle,
       memberCount: memberCount,
     );
     final initials = _groupInitial(group.name);
-    final avatarSize = compact ? 38.0 : 42.0;
+    final avatarSize = compact ? 34.0 : 40.0;
     final sectionSpacing = compact ? AppSpacing.xs : AppSpacing.sm;
     final headerGap = compact ? AppSpacing.xs : AppSpacing.sm;
-    final summaryPadding = compact ? AppSpacing.xs : AppSpacing.sm;
-    final cardPadding = compact ? const EdgeInsets.all(12) : null;
+    final cardPadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 11)
+        : null;
+    final isArchived = group.status == GroupStatusModel.archived;
+    final nextDrawLabel = formatShortDate(nextDrawDate);
 
     final card = KitCard(
       onTap: () => context.push(AppRoutePaths.groupDetail(group.id)),
@@ -103,19 +106,38 @@ class MyEqubCard extends ConsumerWidget {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(right: headerGap),
-                  child: Text(
-                    group.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: compact
-                        ? textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          )
-                        : textTheme.titleMedium,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: compact
+                            ? textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              )
+                            : textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        role == 'ADMIN'
+                            ? 'You manage this group'
+                            : 'You are a member',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              StatusPill.fromLabel(role),
+              _CompactMetaPill(
+                label: isArchived ? 'Archived' : role,
+                compact: compact,
+              ),
             ],
           ),
           SizedBox(height: sectionSpacing),
@@ -128,79 +150,45 @@ class MyEqubCard extends ConsumerWidget {
                 ),
           ),
           SizedBox(height: sectionSpacing),
-          Row(
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
-              Icon(
-                Icons.group_outlined,
-                size: 16,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  memberSummary,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              SizedBox(width: compact ? AppSpacing.xs : AppSpacing.sm),
-              _CompactMetaPill(
-                label: group.status == GroupStatusModel.archived
-                    ? 'Archived'
-                    : 'Active',
-                compact: compact,
-              ),
+              _InfoChip(icon: Icons.group_outlined, label: memberSummary),
+              _InfoChip(icon: Icons.schedule_rounded, label: turnSummary),
             ],
           ),
           SizedBox(height: sectionSpacing),
           Container(
             padding: EdgeInsets.symmetric(
               horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
-              vertical: summaryPadding,
+              vertical: compact ? AppSpacing.xs : AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow.withValues(alpha: 0.7),
+              color: colorScheme.surfaceContainerLow.withValues(alpha: 0.55),
               borderRadius: AppRadius.mdRounded,
-              border: Border.all(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.9),
-              ),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Icon(
+                  Icons.event_outlined,
+                  size: compact ? 15 : 16,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
-                    turnSummary,
+                    'Next draw $nextDrawLabel',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
                       fontSize: compact ? 13 : null,
                     ),
                   ),
                 ),
-                SizedBox(width: compact ? AppSpacing.xs : AppSpacing.sm),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'Next draw: ${formatShortDate(nextDrawDate)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                        fontSize: compact ? 13 : null,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xxs),
+                const SizedBox(width: AppSpacing.xs),
                 Icon(
                   Icons.arrow_forward_rounded,
                   size: compact ? 16 : 18,
@@ -221,6 +209,44 @@ class MyEqubCard extends ConsumerWidget {
   }
 }
 
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: AppRadius.pillRounded,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            label,
+            style: textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CompactMetaPill extends StatelessWidget {
   const _CompactMetaPill({required this.label, required this.compact});
 
@@ -238,16 +264,14 @@ class _CompactMetaPill extends StatelessWidget {
         vertical: AppSpacing.xxs,
       ),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.85),
+        color: colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: AppRadius.pillRounded,
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.85),
-        ),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.16)),
       ),
       child: Text(
         label,
         style: textTheme.labelSmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
+          color: colorScheme.primary,
           fontWeight: FontWeight.w700,
           letterSpacing: compact ? 0.1 : 0.2,
         ),

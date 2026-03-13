@@ -18,6 +18,7 @@ class PublicEqubCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final joinRequest = ref
         .watch(myJoinRequestProvider(group.id))
@@ -45,32 +46,28 @@ class PublicEqubCard extends ConsumerWidget {
               _Badge(label: actionState.label),
             ],
           ),
-          if ((group.description ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              group.description!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodyMedium,
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
           if (group.host != null) ...[
-            Row(
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xxs,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    'Host: ${group.hostName ?? 'Group admin'}',
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                Text(
+                  group.hostName ?? 'Group admin',
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
                   ),
                 ),
-                ReputationBadge(trustLevel: group.host!.trustLevel),
+                ReputationBadge(
+                  trustLevel: group.host!.trustLevel,
+                  compact: true,
+                ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
           ],
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
@@ -89,26 +86,35 @@ class PublicEqubCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            (group.description ?? '').trim().isNotEmpty
+                ? group.description!
+                : (actionState.message ??
+                      (group.alreadyStarted
+                          ? 'Already started.'
+                          : 'Review details before requesting to join.')),
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  actionState.message ??
-                      (group.alreadyStarted
-                          ? 'This group has already started.'
-                          : 'Open details to review and request to join.'),
-                  style: textTheme.bodyMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  actionState.buttonLabel,
+                  style: textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                actionState.buttonLabel,
-                style: textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
               ),
             ],
           ),
