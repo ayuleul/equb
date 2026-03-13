@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/theme/app_spacing.dart';
 import '../../shared/kit/kit.dart';
+import '../../shared/widgets/reputation_badge.dart';
 import '../auth/auth_controller.dart';
+import '../profile/profile_reputation_provider.dart';
+import 'widgets/settings_list.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -13,16 +16,14 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final reputationAsync = ref.watch(currentUserReputationProvider);
     final theme = Theme.of(context);
 
     return KitScaffold(
       child: ListView(
         children: [
-          KitSectionHeader(
-            title: 'Settings',
-            subtitle: 'Manage your account and app preferences.',
-          ),
           KitCard(
+            onTap: () => context.push(AppRoutePaths.settingsAccountProfile),
             child: Row(
               children: [
                 Container(
@@ -54,101 +55,92 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          KitCard(
-            child: Column(
-              children: [
-                _SettingsNavRow(
-                  title: 'Account',
-                  icon: Icons.badge_outlined,
-                  onTap: () => context.push(AppRoutePaths.settingsAccount),
-                ),
-                _SettingsNavRow(
-                  title: 'Security',
-                  icon: Icons.lock_outline_rounded,
-                  onTap: () => context.push(AppRoutePaths.settingsSecurity),
-                ),
-                _SettingsNavRow(
-                  title: 'Notifications',
-                  icon: Icons.notifications_outlined,
-                  onTap: () =>
-                      context.push(AppRoutePaths.settingsNotifications),
-                ),
-                _SettingsNavRow(
-                  title: 'Payments',
-                  icon: Icons.account_balance_wallet_outlined,
-                  onTap: () => context.push(AppRoutePaths.settingsPayments),
-                ),
-                _SettingsNavRow(
-                  title: 'Equb Preferences',
-                  icon: Icons.tune_rounded,
-                  onTap: () =>
-                      context.push(AppRoutePaths.settingsEqubPreferences),
-                  showDivider: false,
+                reputationAsync.maybeWhen(
+                  data: (profile) => profile == null
+                      ? const Icon(Icons.chevron_right_rounded)
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ReputationBadge(
+                              trustLevel: profile.trustLevel,
+                              compact: true,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            const Icon(Icons.chevron_right_rounded),
+                          ],
+                        ),
+                  orElse: () => const Icon(Icons.chevron_right_rounded),
                 ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          KitCard(
-            child: Column(
-              children: [
-                _SettingsNavRow(
-                  title: 'Data & Privacy',
-                  icon: Icons.privacy_tip_outlined,
-                  onTap: () => context.push(AppRoutePaths.settingsDataPrivacy),
-                ),
-                _SettingsNavRow(
-                  title: 'Support',
-                  icon: Icons.support_agent_outlined,
-                  onTap: () => context.push(AppRoutePaths.settingsSupport),
-                ),
-                _SettingsNavRow(
-                  title: 'About',
-                  icon: Icons.info_outline_rounded,
-                  onTap: () => context.push(AppRoutePaths.settingsAbout),
-                  showDivider: false,
-                ),
-              ],
-            ),
+          const KitSectionHeader(title: 'Account'),
+          const SizedBox(height: AppSpacing.xs),
+          SettingsListCard(
+            children: [
+              SettingsNavRow(
+                title: 'Account',
+                icon: Icons.badge_outlined,
+                onTap: () => context.push(AppRoutePaths.settingsAccount),
+              ),
+              SettingsNavRow(
+                title: 'Security',
+                icon: Icons.lock_outline_rounded,
+                onTap: () => context.push(AppRoutePaths.settingsSecurity),
+              ),
+              SettingsNavRow(
+                title: 'Notifications',
+                icon: Icons.notifications_outlined,
+                onTap: () => context.push(AppRoutePaths.settingsNotifications),
+                showDivider: false,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const KitSectionHeader(title: 'Preferences'),
+          const SizedBox(height: AppSpacing.xs),
+          SettingsListCard(
+            children: [
+              SettingsNavRow(
+                title: 'Payments',
+                icon: Icons.account_balance_wallet_outlined,
+                onTap: () => context.push(AppRoutePaths.settingsPayments),
+              ),
+              SettingsNavRow(
+                title: 'Equb Preferences',
+                icon: Icons.tune_rounded,
+                onTap: () =>
+                    context.push(AppRoutePaths.settingsEqubPreferences),
+                showDivider: false,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const KitSectionHeader(title: 'More'),
+          const SizedBox(height: AppSpacing.xs),
+          SettingsListCard(
+            children: [
+              SettingsNavRow(
+                title: 'Data & Privacy',
+                icon: Icons.privacy_tip_outlined,
+                onTap: () => context.push(AppRoutePaths.settingsDataPrivacy),
+              ),
+              SettingsNavRow(
+                title: 'Support',
+                icon: Icons.support_agent_outlined,
+                onTap: () => context.push(AppRoutePaths.settingsSupport),
+              ),
+              SettingsNavRow(
+                title: 'About',
+                icon: Icons.info_outline_rounded,
+                onTap: () => context.push(AppRoutePaths.settingsAbout),
+                showDivider: false,
+              ),
+            ],
           ),
         ],
       ),
     );
-  }
-}
-
-class _SettingsNavRow extends StatelessWidget {
-  const _SettingsNavRow({
-    required this.title,
-    required this.icon,
-    required this.onTap,
-    this.showDivider = true,
-  });
-
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    final tile = Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs, top: AppSpacing.xs),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-        leading: Icon(icon),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      ),
-    );
-    if (!showDivider) {
-      return tile;
-    }
-    return Column(children: [tile, const Divider(height: 1)]);
   }
 }

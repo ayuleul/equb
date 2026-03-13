@@ -27,7 +27,10 @@ import '../features/profile/screens/complete_profile_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/screens/about_settings_screen.dart';
+import '../features/settings/screens/account_activity_settings_screen.dart';
+import '../features/settings/screens/account_profile_settings_screen.dart';
 import '../features/settings/screens/account_settings_screen.dart';
+import '../features/settings/screens/account_trust_settings_screen.dart';
 import '../features/settings/screens/data_privacy_settings_screen.dart';
 import '../features/settings/screens/notifications_settings_screen.dart';
 import '../features/settings/screens/security_settings_screen.dart';
@@ -47,6 +50,9 @@ class AppRoutePaths {
   static const notifications = '/notifications';
   static const settings = '/settings';
   static const settingsAccount = '/settings/account';
+  static const settingsAccountProfile = '/settings/account/profile';
+  static const settingsAccountTrust = '/settings/account/trust';
+  static const settingsAccountActivity = '/settings/account/activity';
   static const settingsSecurity = '/settings/security';
   static const settingsNotifications = '/settings/notifications';
   static const settingsPayments = '/settings/payments';
@@ -60,7 +66,8 @@ class AppRoutePaths {
   static const debugTheme = '/debug/theme';
 
   static String groupDetail(String groupId) => '/groups/$groupId';
-  static String publicGroupDetail(String groupId) => '/groups/discover/$groupId';
+  static String publicGroupDetail(String groupId) =>
+      '/groups/discover/$groupId';
   static String groupSetup(String groupId, {String? step}) {
     final base = '/groups/$groupId/setup';
     if (step == null || step.isEmpty) {
@@ -68,6 +75,7 @@ class AppRoutePaths {
     }
     return '$base?step=$step';
   }
+
   static String groupOverview(String groupId) => '/groups/$groupId/overview';
   static String groupCycles(String groupId) => '/groups/$groupId/cycles';
   static String groupCyclesCurrent(String groupId) =>
@@ -170,8 +178,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     GoRoute(
                       path: ':groupId',
                       builder: (context, state) {
-                        final groupId =
-                            state.pathParameters['groupId'] ?? '';
+                        final groupId = state.pathParameters['groupId'] ?? '';
                         return PublicGroupDetailScreen(groupId: groupId);
                       },
                     ),
@@ -317,6 +324,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                   path: 'account',
                   builder: (context, state) => const AccountSettingsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'profile',
+                      builder: (context, state) =>
+                          const AccountProfileSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'trust',
+                      builder: (context, state) =>
+                          const AccountTrustSettingsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'activity',
+                      builder: (context, state) =>
+                          const AccountActivitySettingsScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'security',
