@@ -308,6 +308,11 @@ class _FakeGroupsApi implements GroupsApi {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> discoverPublicGroups() async {
+    return const <Map<String, dynamic>>[];
+  }
+
+  @override
   Future<Map<String, dynamic>> createGroup(CreateGroupRequest request) async {
     throw UnimplementedError();
   }

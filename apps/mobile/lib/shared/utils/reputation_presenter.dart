@@ -1,17 +1,9 @@
-import 'package:flutter/material.dart';
-
 import '../../data/models/reputation_model.dart';
 import '../kit/kit.dart';
 
 class TrustLevelVisualSpec {
-  const TrustLevelVisualSpec({
-    required this.label,
-    required this.icon,
-    required this.tone,
-  });
+  const TrustLevelVisualSpec({required this.tone});
 
-  final String label;
-  final IconData icon;
   final KitBadgeTone tone;
 }
 
@@ -33,38 +25,27 @@ class TrustProgressModel {
   final bool isMaxLevel;
 }
 
-TrustLevelVisualSpec reputationVisualSpec(String trustLevel) {
-  switch (trustLevel.trim().toLowerCase()) {
+TrustLevelVisualSpec reputationVisualSpec(String level) {
+  switch (level.trim().toLowerCase()) {
+    case 'top':
     case 'elite':
-      return const TrustLevelVisualSpec(
-        label: 'Elite',
-        icon: Icons.auto_awesome_rounded,
-        tone: KitBadgeTone.success,
-      );
+    case 'pro':
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.success);
+    case 'advanced':
+    case 'established':
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.info);
+    case 'active':
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.warning);
+    case 'rising':
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.warning);
     case 'trusted':
-      return const TrustLevelVisualSpec(
-        label: 'Trusted',
-        icon: Icons.star_rounded,
-        tone: KitBadgeTone.success,
-      );
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.success);
     case 'reliable':
-      return const TrustLevelVisualSpec(
-        label: 'Reliable',
-        icon: Icons.verified_rounded,
-        tone: KitBadgeTone.info,
-      );
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.info);
     case 'risky':
-      return const TrustLevelVisualSpec(
-        label: 'Risky',
-        icon: Icons.warning_amber_rounded,
-        tone: KitBadgeTone.danger,
-      );
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.danger);
     default:
-      return const TrustLevelVisualSpec(
-        label: 'New Member',
-        icon: Icons.workspace_premium_outlined,
-        tone: KitBadgeTone.warning,
-      );
+      return const TrustLevelVisualSpec(tone: KitBadgeTone.neutral);
   }
 }
 

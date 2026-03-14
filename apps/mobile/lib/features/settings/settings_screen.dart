@@ -56,13 +56,15 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 reputationAsync.maybeWhen(
-                  data: (profile) => profile == null
+                  data: (profile) => profile == null || !profile.hasEarnedLevel
                       ? const Icon(Icons.chevron_right_rounded)
                       : Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             ReputationBadge(
-                              trustLevel: profile.trustLevel,
+                              label: profile.displayLabel!,
+                              icon: profile.icon,
+                              level: profile.level,
                               compact: true,
                             ),
                             const SizedBox(width: AppSpacing.xs),

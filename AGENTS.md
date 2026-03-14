@@ -65,6 +65,21 @@
   - `60..74` -> `Reliable`
   - `75..89` -> `Trusted`
   - `90..100` -> `Elite`
+- Public reputation display is earned-only and must stay separate from the internal trust-band baseline:
+  - eligibility for any public reputation label/icon/title is `trustScore >= 55 && (equbsCompleted > 0 || turnsParticipated > 0)`
+  - when `trustScore < 55`, public presentation fields must be `null` even if the user has started participating
+  - when `equbsCompleted == 0` and `turnsParticipated == 0`, public presentation fields must be `null` and UI must show no default public label, icon, or host title
+- Earned public reputation levels are locked to score bands and icons:
+  - `0..54` -> no public label/icon/title
+  - `55..59` -> `Rising` `🌱`
+  - `60..69` -> `Active` `⭐`
+  - `70..79` -> `Regular` `⭐⭐`
+  - `80..89` -> `Advanced` `⭐⭐⭐`
+  - `90..94` -> `Pro` `💎`
+  - `95..97` -> `Elite` `👑`
+  - `98..100` -> `Top` `🏆`
+- Host public titles must reuse the same earned mapping with a `Host` suffix:
+  - `Rising Host`, `Active Host`, `Regular Host`, `Advanced Host`, `Pro Host`, `Elite Host`, `Top Host`
 - Reputation scoring is centralized in the backend reputation service; controllers and feature services must not scatter score math, confidence logic, decay logic, or trust-band mapping.
 - Reputation scoring pipeline is locked to five steps:
   - Step 1 component scores (`0..100` each):
@@ -123,6 +138,8 @@
   - show trust score, trust level, progress to next level, activity highlights, badges, and trust summaries
   - do not expose the raw scoring formula or weighting details in end-user UI copy
   - profile/account surfaces should show the trust identity card and most-recent reputation timeline entries
+  - member lists, discover cards, participant chips, and other public badges must render earned-only public presentation fields (`level`, `icon`, `displayLabel`, `hostTitle`) and must show nothing for brand-new users
+  - group detail/overview screens must not show textual group-trust tier words such as `Low`, `Medium`, or `High`; keep supporting numeric trust metrics instead
   - member lists and join-request review should use lightweight trust badges plus small supporting stats, not full metric dumps
   - public-group cards/details should show host trust and group trust summary where members make join decisions
 - Reputation badges are computed from reputation metrics at read time; they must never be manually assigned or persisted as standalone admin-managed records.

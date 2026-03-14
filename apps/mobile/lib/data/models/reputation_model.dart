@@ -43,11 +43,17 @@ sealed class ReputationComponentsModel with _$ReputationComponentsModel {
 
 @freezed
 sealed class MemberReputationSummaryModel with _$MemberReputationSummaryModel {
+  const MemberReputationSummaryModel._();
+
   const factory MemberReputationSummaryModel({
     required String userId,
     @JsonKey(fromJson: _toInt) required int trustScore,
     required String trustLevel,
-    required String summaryLabel,
+    String? summaryLabel,
+    String? level,
+    String? icon,
+    String? displayLabel,
+    String? hostTitle,
     @JsonKey(fromJson: _toInt) @Default(0) int equbsCompleted,
     @JsonKey(fromJson: _toInt) @Default(0) int equbsHosted,
     double? onTimePaymentRate,
@@ -55,15 +61,23 @@ sealed class MemberReputationSummaryModel with _$MemberReputationSummaryModel {
 
   factory MemberReputationSummaryModel.fromJson(Map<String, dynamic> json) =>
       _$MemberReputationSummaryModelFromJson(json);
+
+  bool get hasEarnedLevel => (displayLabel ?? '').trim().isNotEmpty;
 }
 
 @freezed
 sealed class HostReputationSummaryModel with _$HostReputationSummaryModel {
+  const HostReputationSummaryModel._();
+
   const factory HostReputationSummaryModel({
     required String userId,
     @JsonKey(fromJson: _toInt) required int trustScore,
     required String trustLevel,
-    required String summaryLabel,
+    String? summaryLabel,
+    String? level,
+    String? icon,
+    String? displayLabel,
+    String? hostTitle,
     @JsonKey(fromJson: _toInt) required int equbsHosted,
     @JsonKey(fromJson: _toInt) required int hostedEqubsCompleted,
     @JsonKey(fromJson: _toInt) required int turnsParticipated,
@@ -74,6 +88,8 @@ sealed class HostReputationSummaryModel with _$HostReputationSummaryModel {
 
   factory HostReputationSummaryModel.fromJson(Map<String, dynamic> json) =>
       _$HostReputationSummaryModelFromJson(json);
+
+  bool get hasEarnedLevel => (displayLabel ?? '').trim().isNotEmpty;
 }
 
 @freezed
@@ -147,7 +163,11 @@ sealed class ReputationProfileModel with _$ReputationProfileModel {
     required String userId,
     @JsonKey(fromJson: _toInt) required int trustScore,
     required String trustLevel,
-    required String summaryLabel,
+    String? summaryLabel,
+    String? level,
+    String? icon,
+    String? displayLabel,
+    String? hostTitle,
     @JsonKey(fromJson: _toInt) required int equbsJoined,
     @JsonKey(fromJson: _toInt) required int equbsCompleted,
     @JsonKey(fromJson: _toInt) @Default(0) int equbsLeftEarly,
@@ -180,6 +200,8 @@ sealed class ReputationProfileModel with _$ReputationProfileModel {
       _$ReputationProfileModelFromJson(json);
 
   int get totalPayments => onTimePayments + latePayments + missedPayments;
+
+  bool get hasEarnedLevel => (displayLabel ?? '').trim().isNotEmpty;
 }
 
 int _toInt(Object? value) {

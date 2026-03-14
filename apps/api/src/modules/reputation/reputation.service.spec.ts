@@ -208,6 +208,308 @@ describe('ReputationService', () => {
     expect(service.deriveTrustLevel(95)).toBe('Elite');
   });
 
+  it('returns null public presentation fields for brand-new users', () => {
+    const { service } = createService();
+
+    expect(
+      service.getPublicPresentation({
+        trustScore: 50,
+        equbsCompleted: 0,
+        turnsParticipated: 0,
+      }),
+    ).toEqual({
+      level: null,
+      icon: null,
+      displayLabel: null,
+      hostTitle: null,
+    });
+  });
+
+  it('keeps public reputation hidden below score 55 even after participation', () => {
+    const { service } = createService();
+
+    expect(
+      service.getPublicPresentation({
+        trustScore: 50,
+        equbsCompleted: 1,
+        turnsParticipated: 0,
+      }),
+    ).toEqual({
+      level: null,
+      icon: null,
+      displayLabel: null,
+      hostTitle: null,
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 54,
+        equbsCompleted: 0,
+        turnsParticipated: 1,
+      }),
+    ).toEqual({
+      level: null,
+      icon: null,
+      displayLabel: null,
+      hostTitle: null,
+    });
+  });
+
+  it('maps earned public reputation levels by score only after participation and the score threshold', () => {
+    const { service } = createService();
+
+    expect(
+      service.getPublicPresentation({
+        trustScore: 55,
+        equbsCompleted: 1,
+        turnsParticipated: 0,
+      }),
+    ).toEqual({
+      level: 'Rising',
+      icon: '🌱',
+      displayLabel: 'Rising',
+      hostTitle: 'Rising Host',
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 60,
+        equbsCompleted: 1,
+        turnsParticipated: 0,
+      }),
+    ).toEqual({
+      level: 'Active',
+      icon: '⭐',
+      displayLabel: 'Active',
+      hostTitle: 'Active Host',
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 72,
+        equbsCompleted: 1,
+        turnsParticipated: 0,
+      }),
+    ).toEqual({
+      level: 'Regular',
+      icon: '⭐⭐',
+      displayLabel: 'Regular',
+      hostTitle: 'Regular Host',
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 84,
+        equbsCompleted: 0,
+        turnsParticipated: 1,
+      }),
+    ).toEqual({
+      level: 'Advanced',
+      icon: '⭐⭐⭐',
+      displayLabel: 'Advanced',
+      hostTitle: 'Advanced Host',
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 92,
+        equbsCompleted: 1,
+        turnsParticipated: 2,
+      }),
+    ).toEqual({
+      level: 'Pro',
+      icon: '💎',
+      displayLabel: 'Pro',
+      hostTitle: 'Pro Host',
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 96,
+        equbsCompleted: 1,
+        turnsParticipated: 2,
+      }),
+    ).toEqual({
+      level: 'Elite',
+      icon: '👑',
+      displayLabel: 'Elite',
+      hostTitle: 'Elite Host',
+    });
+    expect(
+      service.getPublicPresentation({
+        trustScore: 98,
+        equbsCompleted: 2,
+        turnsParticipated: 4,
+      }),
+    ).toEqual({
+      level: 'Top',
+      icon: '🏆',
+      displayLabel: 'Top',
+      hostTitle: 'Top Host',
+    });
+  });
+
+  it('omits public labels from reliability summaries until participation and score 55 are earned', () => {
+    const { service } = createService();
+
+    const summary = service.toReliabilitySummary('user-1', {
+      userId: 'user-1',
+      trustScore: 50,
+      trustLevel: 'New',
+      paymentScore: 50,
+      completionScore: 50,
+      behaviorScore: 100,
+      experienceScore: 0,
+      baseScore: 55,
+      activityFactor: 1,
+      adjustedScore: 55,
+      confidenceFactor: 0,
+      equbsJoined: 0,
+      equbsCompleted: 0,
+      equbsLeftEarly: 0,
+      equbsHosted: 0,
+      hostedEqubsCompleted: 0,
+      onTimePayments: 0,
+      latePayments: 0,
+      missedPayments: 0,
+      turnsParticipated: 0,
+      payoutsReceived: 0,
+      payoutsConfirmed: 0,
+      removalsCount: 0,
+      disputesCount: 0,
+      cancelledGroupsCount: 0,
+      hostDisputesCount: 0,
+      lastEqubActivityAt: null,
+      updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+    });
+
+    expect(summary.displayLabel).toBeNull();
+    expect(summary.icon).toBeNull();
+    expect(summary.hostTitle).toBeNull();
+    expect(summary.summaryLabel).toBeNull();
+  });
+
+  it('omits public labels from reliability summaries when participation exists but score is still below 55', () => {
+    const { service } = createService();
+
+    const summary = service.toReliabilitySummary('user-1', {
+      userId: 'user-1',
+      trustScore: 54,
+      trustLevel: 'New',
+      paymentScore: 50,
+      completionScore: 50,
+      behaviorScore: 100,
+      experienceScore: 0,
+      baseScore: 55,
+      activityFactor: 1,
+      adjustedScore: 55,
+      confidenceFactor: 0,
+      equbsJoined: 1,
+      equbsCompleted: 1,
+      equbsLeftEarly: 0,
+      equbsHosted: 0,
+      hostedEqubsCompleted: 0,
+      onTimePayments: 0,
+      latePayments: 0,
+      missedPayments: 0,
+      turnsParticipated: 1,
+      payoutsReceived: 0,
+      payoutsConfirmed: 0,
+      removalsCount: 0,
+      disputesCount: 0,
+      cancelledGroupsCount: 0,
+      hostDisputesCount: 0,
+      lastEqubActivityAt: new Date('2026-03-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+    });
+
+    expect(summary.displayLabel).toBeNull();
+    expect(summary.icon).toBeNull();
+    expect(summary.hostTitle).toBeNull();
+    expect(summary.summaryLabel).toBeNull();
+  });
+
+  it('maps host titles from earned user levels', () => {
+    const { service } = createService();
+
+    const hostSummary = service.toHostSummary('host-1', {
+      userId: 'host-1',
+      trustScore: 72,
+      trustLevel: 'Reliable',
+      paymentScore: 50,
+      completionScore: 50,
+      behaviorScore: 100,
+      experienceScore: 0,
+      baseScore: 55,
+      activityFactor: 1,
+      adjustedScore: 55,
+      confidenceFactor: 0,
+      equbsJoined: 2,
+      equbsCompleted: 1,
+      equbsLeftEarly: 0,
+      equbsHosted: 1,
+      hostedEqubsCompleted: 0,
+      onTimePayments: 0,
+      latePayments: 0,
+      missedPayments: 0,
+      turnsParticipated: 1,
+      payoutsReceived: 0,
+      payoutsConfirmed: 0,
+      removalsCount: 0,
+      disputesCount: 0,
+      cancelledGroupsCount: 0,
+      hostDisputesCount: 0,
+      lastEqubActivityAt: new Date('2026-03-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+    });
+
+    expect(hostSummary.level).toBe('Regular');
+    expect(hostSummary.icon).toBe('⭐⭐');
+    expect(hostSummary.displayLabel).toBe('Regular');
+    expect(hostSummary.hostTitle).toBe('Regular Host');
+  });
+
+  it('returns null public presentation fields from the profile API for brand-new users', async () => {
+    const { prisma, service } = createService();
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      createdAt: new Date('2026-03-01T00:00:00.000Z'),
+    });
+    prisma.userReputationMetrics.upsert.mockResolvedValue({
+      userId: 'user-1',
+      trustScore: 50,
+      trustLevel: 'New',
+      paymentScore: 50,
+      completionScore: 50,
+      behaviorScore: 100,
+      experienceScore: 0,
+      baseScore: 55,
+      activityFactor: 1,
+      adjustedScore: 55,
+      confidenceFactor: 0,
+      equbsJoined: 0,
+      equbsCompleted: 0,
+      equbsLeftEarly: 0,
+      equbsHosted: 0,
+      hostedEqubsCompleted: 0,
+      onTimePayments: 0,
+      latePayments: 0,
+      missedPayments: 0,
+      turnsParticipated: 0,
+      payoutsReceived: 0,
+      payoutsConfirmed: 0,
+      removalsCount: 0,
+      disputesCount: 0,
+      cancelledGroupsCount: 0,
+      hostDisputesCount: 0,
+      lastEqubActivityAt: null,
+      updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+    });
+
+    const profile = await service.getProfile('user-1');
+
+    expect(profile.trustScore).toBe(50);
+    expect(profile.level).toBeNull();
+    expect(profile.icon).toBeNull();
+    expect(profile.displayLabel).toBeNull();
+    expect(profile.hostTitle).toBeNull();
+    expect(profile.summaryLabel).toBeNull();
+  });
+
   it('applies reputation events idempotently', async () => {
     const { service } = createService();
     const tx = {

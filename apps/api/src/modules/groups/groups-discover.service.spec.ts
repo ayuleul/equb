@@ -36,6 +36,22 @@ describe('GroupsDiscoverService', () => {
     deriveTrustLevel: jest.fn((score: number) =>
       score >= 75 ? 'Trusted' : 'New',
     ),
+    getPublicPresentation: jest.fn((input: { trustScore: number }) => {
+      if (input.trustScore >= 80) {
+        return {
+          level: 'Pro',
+          icon: '💎',
+          displayLabel: 'Pro',
+          hostTitle: 'Pro Host',
+        };
+      }
+      return {
+        level: null,
+        icon: null,
+        displayLabel: null,
+        hostTitle: null,
+      };
+    }),
   };
 
   const service = new GroupsDiscoverService(
@@ -67,6 +83,7 @@ describe('GroupsDiscoverService', () => {
             reputationMetrics: {
               trustScore: 82,
               trustLevel: 'Trusted',
+              equbsCompleted: 2,
               equbsHosted: 4,
               hostedEqubsCompleted: 3,
               turnsParticipated: 12,
@@ -185,6 +202,18 @@ describe('GroupsDiscoverService', () => {
       fillPercent: 80,
       groupTrustLevel: 'High',
       reasonLabels: ['Trusted host', 'Filling fast'],
+      host: {
+        level: 'Pro',
+        icon: '💎',
+        displayLabel: 'Pro',
+        hostTitle: 'Pro Host',
+      },
+    });
+    expect(response.sections[0].items[0].discoverHost).toMatchObject({
+      level: 'Pro',
+      icon: '💎',
+      displayLabel: 'Pro',
+      hostTitle: 'Pro Host',
     });
   });
 

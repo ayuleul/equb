@@ -100,6 +100,23 @@ type ReputationSnapshot = {
   trustLevel: string;
 };
 
+type PublicReputationPresentation = {
+  level: string | null;
+  icon: string | null;
+  displayLabel: string | null;
+  hostTitle: string | null;
+};
+
+const EARNED_PUBLIC_REPUTATION_LEVELS = [
+  { min: 55, max: 59, level: 'Rising', icon: '🌱' },
+  { min: 60, max: 69, level: 'Active', icon: '⭐' },
+  { min: 70, max: 79, level: 'Regular', icon: '⭐⭐' },
+  { min: 80, max: 89, level: 'Advanced', icon: '⭐⭐⭐' },
+  { min: 90, max: 94, level: 'Pro', icon: '💎' },
+  { min: 95, max: 97, level: 'Elite', icon: '👑' },
+  { min: 98, max: 100, level: 'Top', icon: '🏆' },
+] as const;
+
 export type PublicHostingConstraintInput = {
   maxMembers?: number | null;
   contributionAmount?: number | null;
@@ -234,12 +251,54 @@ export class ReputationService {
     return 'Elite';
   }
 
-  deriveSummaryLabel(score: number): string {
-    const level = this.deriveTrustLevel(score);
-    if (level === 'New') {
-      return 'New Member';
+  hasEarnedPublicReputation(
+    metrics: Pick<
+      ReputationMetricsRecord,
+      'trustScore' | 'equbsCompleted' | 'turnsParticipated'
+    >,
+  ): boolean {
+    return (
+      metrics.trustScore >= 55 &&
+      (metrics.equbsCompleted > 0 || metrics.turnsParticipated > 0)
+    );
+  }
+
+  getPublicPresentation(
+    metrics: Pick<
+      ReputationMetricsRecord,
+      'trustScore' | 'equbsCompleted' | 'turnsParticipated'
+    >,
+  ): PublicReputationPresentation {
+    if (!this.hasEarnedPublicReputation(metrics)) {
+      return {
+        level: null,
+        icon: null,
+        displayLabel: null,
+        hostTitle: null,
+      };
     }
-    return level;
+
+    const clampedScore = this.clampScore(metrics.trustScore);
+    const match =
+      EARNED_PUBLIC_REPUTATION_LEVELS.find(
+        (item) => clampedScore >= item.min && clampedScore <= item.max,
+      ) ?? null;
+
+    if (!match) {
+      return {
+        level: null,
+        icon: null,
+        displayLabel: null,
+        hostTitle: null,
+      };
+    }
+
+    return {
+      level: match.level,
+      icon: match.icon,
+      displayLabel: match.level,
+      hostTitle: `${match.level} Host`,
+    };
   }
 
   async getProfile(userId: string): Promise<ReputationProfileResponseDto> {
@@ -362,7 +421,8 @@ export class ReputationService {
     const requestsHighValue =
       (constraints.contributionAmount ?? 0) >=
         REPUTATION_THRESHOLDS.highValueContributionAmount ||
-      (constraints.maxMembers ?? 0) > REPUTATION_THRESHOLDS.highValueMemberCount;
+      (constraints.maxMembers ?? 0) >
+        REPUTATION_THRESHOLDS.highValueMemberCount;
 
     if (
       requestsHighValue &&
@@ -424,7 +484,9 @@ export class ReputationService {
     userId: string,
     contributionAmount: number,
   ): Promise<void> {
-    if (contributionAmount < REPUTATION_THRESHOLDS.highValueContributionAmount) {
+    if (
+      contributionAmount < REPUTATION_THRESHOLDS.highValueContributionAmount
+    ) {
       return;
     }
 
@@ -500,7 +562,11 @@ export class ReputationService {
         members: {
           where: {
             status: {
-              in: [MemberStatus.JOINED, MemberStatus.VERIFIED, MemberStatus.ACTIVE],
+              in: [
+                MemberStatus.JOINED,
+                MemberStatus.VERIFIED,
+                MemberStatus.ACTIVE,
+              ],
             },
           },
           select: {
@@ -520,33 +586,40 @@ export class ReputationService {
       throw new NotFoundException('Group not found');
     }
 
-    return this.toGroupTrustSummary(group as {
-      id: string;
-      createdByUserId: string;
-      rules: { requiresMemberVerification: boolean } | null;
-      createdByUser: {
+    return this.toGroupTrustSummary(
+      group as {
         id: string;
-        reputationMetrics: ReputationMetricsRecord | null;
-      };
-      members: Array<{
-        status: MemberStatus;
-        userId: string;
-        user: {
+        createdByUserId: string;
+        rules: { requiresMemberVerification: boolean } | null;
+        createdByUser: {
+          id: string;
           reputationMetrics: ReputationMetricsRecord | null;
         };
-      }>;
-    });
+        members: Array<{
+          status: MemberStatus;
+          userId: string;
+          user: {
+            reputationMetrics: ReputationMetricsRecord | null;
+          };
+        }>;
+      },
+    );
   }
 
   toReliabilitySummary(
     userId: string,
     metrics: ReputationMetricsRecord,
   ): MemberReliabilitySummaryDto {
+    const presentation = this.getPublicPresentation(metrics);
     return {
       userId,
       trustScore: metrics.trustScore,
       trustLevel: metrics.trustLevel,
-      summaryLabel: this.deriveSummaryLabel(metrics.trustScore),
+      summaryLabel: presentation.displayLabel,
+      level: presentation.level,
+      icon: presentation.icon,
+      displayLabel: presentation.displayLabel,
+      hostTitle: presentation.hostTitle,
       equbsCompleted: metrics.equbsCompleted,
       equbsHosted: metrics.equbsHosted,
       onTimePaymentRate: this.calculateRate(
@@ -560,11 +633,16 @@ export class ReputationService {
     userId: string,
     metrics: ReputationMetricsRecord,
   ): HostReputationSummaryDto {
+    const presentation = this.getPublicPresentation(metrics);
     return {
       userId,
       trustScore: metrics.trustScore,
       trustLevel: metrics.trustLevel,
-      summaryLabel: this.deriveSummaryLabel(metrics.trustScore),
+      summaryLabel: presentation.displayLabel,
+      level: presentation.level,
+      icon: presentation.icon,
+      displayLabel: presentation.displayLabel,
+      hostTitle: presentation.hostTitle,
       equbsHosted: metrics.equbsHosted,
       hostedEqubsCompleted: metrics.hostedEqubsCompleted,
       turnsParticipated: metrics.turnsParticipated,
@@ -718,11 +796,16 @@ export class ReputationService {
     userCreatedAt: Date,
     metrics: ReputationMetricsRecord,
   ): ReputationProfileResponseDto {
+    const presentation = this.getPublicPresentation(metrics);
     return {
       userId,
       trustScore: metrics.trustScore,
       trustLevel: metrics.trustLevel,
-      summaryLabel: this.deriveSummaryLabel(metrics.trustScore),
+      summaryLabel: presentation.displayLabel,
+      level: presentation.level,
+      icon: presentation.icon,
+      displayLabel: presentation.displayLabel,
+      hostTitle: presentation.hostTitle,
       equbsJoined: metrics.equbsJoined,
       equbsCompleted: metrics.equbsCompleted,
       equbsLeftEarly: metrics.equbsLeftEarly,
@@ -769,7 +852,8 @@ export class ReputationService {
       canHostPublicGroup: hosting.hostTier != null,
       canJoinHighValuePublicGroup:
         score >= REPUTATION_THRESHOLDS.highValuePublicJoinMinScore,
-      canAccessLending: score >= REPUTATION_THRESHOLDS.lendingEligibilityMinScore,
+      canAccessLending:
+        score >= REPUTATION_THRESHOLDS.lendingEligibilityMinScore,
       canAccessMarketplace:
         score >= REPUTATION_THRESHOLDS.marketplaceEligibilityMinScore,
       hostTier: hosting.hostTier,
@@ -1031,7 +1115,10 @@ export class ReputationService {
 
     return (
       this.calculateMonthsInactive(metrics.lastEqubActivityAt, referenceAt) >
-      this.calculateMonthsInactive(metrics.lastEqubActivityAt, metrics.updatedAt)
+      this.calculateMonthsInactive(
+        metrics.lastEqubActivityAt,
+        metrics.updatedAt,
+      )
     );
   }
 
@@ -1041,7 +1128,10 @@ export class ReputationService {
   }
 
   private clampScore(value: number): number {
-    return Math.max(REPUTATION_SCORE_MIN, Math.min(REPUTATION_SCORE_MAX, value));
+    return Math.max(
+      REPUTATION_SCORE_MIN,
+      Math.min(REPUTATION_SCORE_MAX, value),
+    );
   }
 
   private buildDefaultMetricsCreateInput(
@@ -1157,7 +1247,9 @@ export class ReputationService {
     };
   }
 
-  private toMetricChangesRecord(value: Prisma.JsonValue): Record<string, number> {
+  private toMetricChangesRecord(
+    value: Prisma.JsonValue,
+  ): Record<string, number> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return {};
     }

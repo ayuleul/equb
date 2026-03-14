@@ -73,6 +73,10 @@ class _PublicGroupDetailScreenState
               group,
               joinRequest,
             );
+            final host = group.host;
+            final hostName = group.hostName ?? 'Group admin';
+            final hostTitle = host?.hostTitle;
+            final hasEarnedHostTitle = (hostTitle ?? '').trim().isNotEmpty;
 
             return ListView(
               children: [
@@ -115,26 +119,34 @@ class _PublicGroupDetailScreenState
                         label: 'Members',
                         value: '${group.memberCount}',
                       ),
-                      if (group.host != null)
+                      if (host != null)
                         _DetailRow(
                           label: 'Host score',
-                          value: '${group.host!.trustScore}',
+                          value: '${host.trustScore}',
                         ),
                       _DetailRow(
                         label: 'Started',
                         value: group.alreadyStarted ? 'Yes' : 'No',
                       ),
-                      if (group.host != null) ...[
+                      if (host != null) ...[
                         const SizedBox(height: AppSpacing.sm),
                         Row(
                           children: [
-                            Expanded(
-                              child: Text(
-                                'Host: ${group.hostName ?? 'Group admin'}',
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
+                            Text(
+                              hasEarnedHostTitle
+                                  ? 'Host: $hostName'
+                                        .replaceAll(RegExp(r'\s+'), ' ')
+                                        .trim()
+                                  : 'Host: $hostName',
+                              style: Theme.of(context).textTheme.titleSmall,
                             ),
-                            ReputationBadge(trustLevel: group.host!.trustLevel),
+                            SizedBox(width: AppSpacing.sm),
+                            if (hasEarnedHostTitle)
+                              ReputationBadge(
+                                label: hostTitle!,
+                                icon: host.icon,
+                                level: host.level,
+                              ),
                           ],
                         ),
                       ],
@@ -152,10 +164,6 @@ class _PublicGroupDetailScreenState
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        _DetailRow(
-                          label: 'Group trust level',
-                          value: group.trustSummary!.groupTrustLevel,
-                        ),
                         _DetailRow(
                           label: 'Host score',
                           value: '${group.trustSummary!.hostScore}',

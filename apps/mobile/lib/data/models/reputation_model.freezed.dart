@@ -810,7 +810,7 @@ as int,
 /// @nodoc
 mixin _$MemberReputationSummaryModel {
 
- String get userId;@JsonKey(fromJson: _toInt) int get trustScore; String get trustLevel; String get summaryLabel;@JsonKey(fromJson: _toInt) int get equbsCompleted;@JsonKey(fromJson: _toInt) int get equbsHosted; double? get onTimePaymentRate;
+ String get userId;@JsonKey(fromJson: _toInt) int get trustScore; String get trustLevel; String? get summaryLabel; String? get level; String? get icon; String? get displayLabel; String? get hostTitle;@JsonKey(fromJson: _toInt) int get equbsCompleted;@JsonKey(fromJson: _toInt) int get equbsHosted; double? get onTimePaymentRate;
 /// Create a copy of MemberReputationSummaryModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -823,16 +823,16 @@ $MemberReputationSummaryModelCopyWith<MemberReputationSummaryModel> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MemberReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MemberReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.level, level) || other.level == level)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.displayLabel, displayLabel) || other.displayLabel == displayLabel)&&(identical(other.hostTitle, hostTitle) || other.hostTitle == hostTitle)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,equbsCompleted,equbsHosted,onTimePaymentRate);
+int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,level,icon,displayLabel,hostTitle,equbsCompleted,equbsHosted,onTimePaymentRate);
 
 @override
 String toString() {
-  return 'MemberReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, equbsCompleted: $equbsCompleted, equbsHosted: $equbsHosted, onTimePaymentRate: $onTimePaymentRate)';
+  return 'MemberReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, level: $level, icon: $icon, displayLabel: $displayLabel, hostTitle: $hostTitle, equbsCompleted: $equbsCompleted, equbsHosted: $equbsHosted, onTimePaymentRate: $onTimePaymentRate)';
 }
 
 
@@ -843,7 +843,7 @@ abstract mixin class $MemberReputationSummaryModelCopyWith<$Res>  {
   factory $MemberReputationSummaryModelCopyWith(MemberReputationSummaryModel value, $Res Function(MemberReputationSummaryModel) _then) = _$MemberReputationSummaryModelCopyWithImpl;
 @useResult
 $Res call({
- String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String summaryLabel,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsHosted, double? onTimePaymentRate
+ String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String? summaryLabel, String? level, String? icon, String? displayLabel, String? hostTitle,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsHosted, double? onTimePaymentRate
 });
 
 
@@ -860,13 +860,17 @@ class _$MemberReputationSummaryModelCopyWithImpl<$Res>
 
 /// Create a copy of MemberReputationSummaryModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = null,Object? equbsCompleted = null,Object? equbsHosted = null,Object? onTimePaymentRate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = freezed,Object? level = freezed,Object? icon = freezed,Object? displayLabel = freezed,Object? hostTitle = freezed,Object? equbsCompleted = null,Object? equbsHosted = null,Object? onTimePaymentRate = freezed,}) {
   return _then(_self.copyWith(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,trustScore: null == trustScore ? _self.trustScore : trustScore // ignore: cast_nullable_to_non_nullable
 as int,trustLevel: null == trustLevel ? _self.trustLevel : trustLevel // ignore: cast_nullable_to_non_nullable
-as String,summaryLabel: null == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
-as String,equbsCompleted: null == equbsCompleted ? _self.equbsCompleted : equbsCompleted // ignore: cast_nullable_to_non_nullable
+as String,summaryLabel: freezed == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
+as String?,level: freezed == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
+as String?,icon: freezed == icon ? _self.icon : icon // ignore: cast_nullable_to_non_nullable
+as String?,displayLabel: freezed == displayLabel ? _self.displayLabel : displayLabel // ignore: cast_nullable_to_non_nullable
+as String?,hostTitle: freezed == hostTitle ? _self.hostTitle : hostTitle // ignore: cast_nullable_to_non_nullable
+as String?,equbsCompleted: null == equbsCompleted ? _self.equbsCompleted : equbsCompleted // ignore: cast_nullable_to_non_nullable
 as int,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
 as int,onTimePaymentRate: freezed == onTimePaymentRate ? _self.onTimePaymentRate : onTimePaymentRate // ignore: cast_nullable_to_non_nullable
 as double?,
@@ -951,10 +955,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsHosted,  double? onTimePaymentRate)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsHosted,  double? onTimePaymentRate)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MemberReputationSummaryModel() when $default != null:
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsCompleted,_that.equbsHosted,_that.onTimePaymentRate);case _:
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsCompleted,_that.equbsHosted,_that.onTimePaymentRate);case _:
   return orElse();
 
 }
@@ -972,10 +976,10 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsHosted,  double? onTimePaymentRate)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsHosted,  double? onTimePaymentRate)  $default,) {final _that = this;
 switch (_that) {
 case _MemberReputationSummaryModel():
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsCompleted,_that.equbsHosted,_that.onTimePaymentRate);}
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsCompleted,_that.equbsHosted,_that.onTimePaymentRate);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -989,10 +993,10 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsHosted,  double? onTimePaymentRate)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsHosted,  double? onTimePaymentRate)?  $default,) {final _that = this;
 switch (_that) {
 case _MemberReputationSummaryModel() when $default != null:
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsCompleted,_that.equbsHosted,_that.onTimePaymentRate);case _:
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsCompleted,_that.equbsHosted,_that.onTimePaymentRate);case _:
   return null;
 
 }
@@ -1003,14 +1007,18 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// @nodoc
 @JsonSerializable()
 
-class _MemberReputationSummaryModel implements MemberReputationSummaryModel {
-  const _MemberReputationSummaryModel({required this.userId, @JsonKey(fromJson: _toInt) required this.trustScore, required this.trustLevel, required this.summaryLabel, @JsonKey(fromJson: _toInt) this.equbsCompleted = 0, @JsonKey(fromJson: _toInt) this.equbsHosted = 0, this.onTimePaymentRate});
+class _MemberReputationSummaryModel extends MemberReputationSummaryModel {
+  const _MemberReputationSummaryModel({required this.userId, @JsonKey(fromJson: _toInt) required this.trustScore, required this.trustLevel, this.summaryLabel, this.level, this.icon, this.displayLabel, this.hostTitle, @JsonKey(fromJson: _toInt) this.equbsCompleted = 0, @JsonKey(fromJson: _toInt) this.equbsHosted = 0, this.onTimePaymentRate}): super._();
   factory _MemberReputationSummaryModel.fromJson(Map<String, dynamic> json) => _$MemberReputationSummaryModelFromJson(json);
 
 @override final  String userId;
 @override@JsonKey(fromJson: _toInt) final  int trustScore;
 @override final  String trustLevel;
-@override final  String summaryLabel;
+@override final  String? summaryLabel;
+@override final  String? level;
+@override final  String? icon;
+@override final  String? displayLabel;
+@override final  String? hostTitle;
 @override@JsonKey(fromJson: _toInt) final  int equbsCompleted;
 @override@JsonKey(fromJson: _toInt) final  int equbsHosted;
 @override final  double? onTimePaymentRate;
@@ -1028,16 +1036,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MemberReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MemberReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.level, level) || other.level == level)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.displayLabel, displayLabel) || other.displayLabel == displayLabel)&&(identical(other.hostTitle, hostTitle) || other.hostTitle == hostTitle)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,equbsCompleted,equbsHosted,onTimePaymentRate);
+int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,level,icon,displayLabel,hostTitle,equbsCompleted,equbsHosted,onTimePaymentRate);
 
 @override
 String toString() {
-  return 'MemberReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, equbsCompleted: $equbsCompleted, equbsHosted: $equbsHosted, onTimePaymentRate: $onTimePaymentRate)';
+  return 'MemberReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, level: $level, icon: $icon, displayLabel: $displayLabel, hostTitle: $hostTitle, equbsCompleted: $equbsCompleted, equbsHosted: $equbsHosted, onTimePaymentRate: $onTimePaymentRate)';
 }
 
 
@@ -1048,7 +1056,7 @@ abstract mixin class _$MemberReputationSummaryModelCopyWith<$Res> implements $Me
   factory _$MemberReputationSummaryModelCopyWith(_MemberReputationSummaryModel value, $Res Function(_MemberReputationSummaryModel) _then) = __$MemberReputationSummaryModelCopyWithImpl;
 @override @useResult
 $Res call({
- String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String summaryLabel,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsHosted, double? onTimePaymentRate
+ String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String? summaryLabel, String? level, String? icon, String? displayLabel, String? hostTitle,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsHosted, double? onTimePaymentRate
 });
 
 
@@ -1065,13 +1073,17 @@ class __$MemberReputationSummaryModelCopyWithImpl<$Res>
 
 /// Create a copy of MemberReputationSummaryModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = null,Object? equbsCompleted = null,Object? equbsHosted = null,Object? onTimePaymentRate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = freezed,Object? level = freezed,Object? icon = freezed,Object? displayLabel = freezed,Object? hostTitle = freezed,Object? equbsCompleted = null,Object? equbsHosted = null,Object? onTimePaymentRate = freezed,}) {
   return _then(_MemberReputationSummaryModel(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,trustScore: null == trustScore ? _self.trustScore : trustScore // ignore: cast_nullable_to_non_nullable
 as int,trustLevel: null == trustLevel ? _self.trustLevel : trustLevel // ignore: cast_nullable_to_non_nullable
-as String,summaryLabel: null == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
-as String,equbsCompleted: null == equbsCompleted ? _self.equbsCompleted : equbsCompleted // ignore: cast_nullable_to_non_nullable
+as String,summaryLabel: freezed == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
+as String?,level: freezed == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
+as String?,icon: freezed == icon ? _self.icon : icon // ignore: cast_nullable_to_non_nullable
+as String?,displayLabel: freezed == displayLabel ? _self.displayLabel : displayLabel // ignore: cast_nullable_to_non_nullable
+as String?,hostTitle: freezed == hostTitle ? _self.hostTitle : hostTitle // ignore: cast_nullable_to_non_nullable
+as String?,equbsCompleted: null == equbsCompleted ? _self.equbsCompleted : equbsCompleted // ignore: cast_nullable_to_non_nullable
 as int,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
 as int,onTimePaymentRate: freezed == onTimePaymentRate ? _self.onTimePaymentRate : onTimePaymentRate // ignore: cast_nullable_to_non_nullable
 as double?,
@@ -1085,7 +1097,7 @@ as double?,
 /// @nodoc
 mixin _$HostReputationSummaryModel {
 
- String get userId;@JsonKey(fromJson: _toInt) int get trustScore; String get trustLevel; String get summaryLabel;@JsonKey(fromJson: _toInt) int get equbsHosted;@JsonKey(fromJson: _toInt) int get hostedEqubsCompleted;@JsonKey(fromJson: _toInt) int get turnsParticipated; double? get hostedCompletionRate;@JsonKey(fromJson: _toInt) int get cancelledGroupsCount;@JsonKey(fromJson: _toInt) int get hostDisputesCount;
+ String get userId;@JsonKey(fromJson: _toInt) int get trustScore; String get trustLevel; String? get summaryLabel; String? get level; String? get icon; String? get displayLabel; String? get hostTitle;@JsonKey(fromJson: _toInt) int get equbsHosted;@JsonKey(fromJson: _toInt) int get hostedEqubsCompleted;@JsonKey(fromJson: _toInt) int get turnsParticipated; double? get hostedCompletionRate;@JsonKey(fromJson: _toInt) int get cancelledGroupsCount;@JsonKey(fromJson: _toInt) int get hostDisputesCount;
 /// Create a copy of HostReputationSummaryModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1098,16 +1110,16 @@ $HostReputationSummaryModelCopyWith<HostReputationSummaryModel> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HostReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HostReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.level, level) || other.level == level)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.displayLabel, displayLabel) || other.displayLabel == displayLabel)&&(identical(other.hostTitle, hostTitle) || other.hostTitle == hostTitle)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,equbsHosted,hostedEqubsCompleted,turnsParticipated,hostedCompletionRate,cancelledGroupsCount,hostDisputesCount);
+int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,level,icon,displayLabel,hostTitle,equbsHosted,hostedEqubsCompleted,turnsParticipated,hostedCompletionRate,cancelledGroupsCount,hostDisputesCount);
 
 @override
 String toString() {
-  return 'HostReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, turnsParticipated: $turnsParticipated, hostedCompletionRate: $hostedCompletionRate, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount)';
+  return 'HostReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, level: $level, icon: $icon, displayLabel: $displayLabel, hostTitle: $hostTitle, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, turnsParticipated: $turnsParticipated, hostedCompletionRate: $hostedCompletionRate, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount)';
 }
 
 
@@ -1118,7 +1130,7 @@ abstract mixin class $HostReputationSummaryModelCopyWith<$Res>  {
   factory $HostReputationSummaryModelCopyWith(HostReputationSummaryModel value, $Res Function(HostReputationSummaryModel) _then) = _$HostReputationSummaryModelCopyWithImpl;
 @useResult
 $Res call({
- String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String summaryLabel,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int turnsParticipated, double? hostedCompletionRate,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount
+ String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String? summaryLabel, String? level, String? icon, String? displayLabel, String? hostTitle,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int turnsParticipated, double? hostedCompletionRate,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount
 });
 
 
@@ -1135,13 +1147,17 @@ class _$HostReputationSummaryModelCopyWithImpl<$Res>
 
 /// Create a copy of HostReputationSummaryModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = null,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? turnsParticipated = null,Object? hostedCompletionRate = freezed,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = freezed,Object? level = freezed,Object? icon = freezed,Object? displayLabel = freezed,Object? hostTitle = freezed,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? turnsParticipated = null,Object? hostedCompletionRate = freezed,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,}) {
   return _then(_self.copyWith(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,trustScore: null == trustScore ? _self.trustScore : trustScore // ignore: cast_nullable_to_non_nullable
 as int,trustLevel: null == trustLevel ? _self.trustLevel : trustLevel // ignore: cast_nullable_to_non_nullable
-as String,summaryLabel: null == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
-as String,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
+as String,summaryLabel: freezed == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
+as String?,level: freezed == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
+as String?,icon: freezed == icon ? _self.icon : icon // ignore: cast_nullable_to_non_nullable
+as String?,displayLabel: freezed == displayLabel ? _self.displayLabel : displayLabel // ignore: cast_nullable_to_non_nullable
+as String?,hostTitle: freezed == hostTitle ? _self.hostTitle : hostTitle // ignore: cast_nullable_to_non_nullable
+as String?,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
 as int,hostedEqubsCompleted: null == hostedEqubsCompleted ? _self.hostedEqubsCompleted : hostedEqubsCompleted // ignore: cast_nullable_to_non_nullable
 as int,turnsParticipated: null == turnsParticipated ? _self.turnsParticipated : turnsParticipated // ignore: cast_nullable_to_non_nullable
 as int,hostedCompletionRate: freezed == hostedCompletionRate ? _self.hostedCompletionRate : hostedCompletionRate // ignore: cast_nullable_to_non_nullable
@@ -1229,10 +1245,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int turnsParticipated,  double? hostedCompletionRate, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int turnsParticipated,  double? hostedCompletionRate, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _HostReputationSummaryModel() when $default != null:
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsHosted,_that.hostedEqubsCompleted,_that.turnsParticipated,_that.hostedCompletionRate,_that.cancelledGroupsCount,_that.hostDisputesCount);case _:
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsHosted,_that.hostedEqubsCompleted,_that.turnsParticipated,_that.hostedCompletionRate,_that.cancelledGroupsCount,_that.hostDisputesCount);case _:
   return orElse();
 
 }
@@ -1250,10 +1266,10 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int turnsParticipated,  double? hostedCompletionRate, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int turnsParticipated,  double? hostedCompletionRate, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount)  $default,) {final _that = this;
 switch (_that) {
 case _HostReputationSummaryModel():
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsHosted,_that.hostedEqubsCompleted,_that.turnsParticipated,_that.hostedCompletionRate,_that.cancelledGroupsCount,_that.hostDisputesCount);}
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsHosted,_that.hostedEqubsCompleted,_that.turnsParticipated,_that.hostedCompletionRate,_that.cancelledGroupsCount,_that.hostDisputesCount);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -1267,10 +1283,10 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int turnsParticipated,  double? hostedCompletionRate, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int turnsParticipated,  double? hostedCompletionRate, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount)?  $default,) {final _that = this;
 switch (_that) {
 case _HostReputationSummaryModel() when $default != null:
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsHosted,_that.hostedEqubsCompleted,_that.turnsParticipated,_that.hostedCompletionRate,_that.cancelledGroupsCount,_that.hostDisputesCount);case _:
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsHosted,_that.hostedEqubsCompleted,_that.turnsParticipated,_that.hostedCompletionRate,_that.cancelledGroupsCount,_that.hostDisputesCount);case _:
   return null;
 
 }
@@ -1281,14 +1297,18 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// @nodoc
 @JsonSerializable()
 
-class _HostReputationSummaryModel implements HostReputationSummaryModel {
-  const _HostReputationSummaryModel({required this.userId, @JsonKey(fromJson: _toInt) required this.trustScore, required this.trustLevel, required this.summaryLabel, @JsonKey(fromJson: _toInt) required this.equbsHosted, @JsonKey(fromJson: _toInt) required this.hostedEqubsCompleted, @JsonKey(fromJson: _toInt) required this.turnsParticipated, this.hostedCompletionRate, @JsonKey(fromJson: _toInt) required this.cancelledGroupsCount, @JsonKey(fromJson: _toInt) required this.hostDisputesCount});
+class _HostReputationSummaryModel extends HostReputationSummaryModel {
+  const _HostReputationSummaryModel({required this.userId, @JsonKey(fromJson: _toInt) required this.trustScore, required this.trustLevel, this.summaryLabel, this.level, this.icon, this.displayLabel, this.hostTitle, @JsonKey(fromJson: _toInt) required this.equbsHosted, @JsonKey(fromJson: _toInt) required this.hostedEqubsCompleted, @JsonKey(fromJson: _toInt) required this.turnsParticipated, this.hostedCompletionRate, @JsonKey(fromJson: _toInt) required this.cancelledGroupsCount, @JsonKey(fromJson: _toInt) required this.hostDisputesCount}): super._();
   factory _HostReputationSummaryModel.fromJson(Map<String, dynamic> json) => _$HostReputationSummaryModelFromJson(json);
 
 @override final  String userId;
 @override@JsonKey(fromJson: _toInt) final  int trustScore;
 @override final  String trustLevel;
-@override final  String summaryLabel;
+@override final  String? summaryLabel;
+@override final  String? level;
+@override final  String? icon;
+@override final  String? displayLabel;
+@override final  String? hostTitle;
 @override@JsonKey(fromJson: _toInt) final  int equbsHosted;
 @override@JsonKey(fromJson: _toInt) final  int hostedEqubsCompleted;
 @override@JsonKey(fromJson: _toInt) final  int turnsParticipated;
@@ -1309,16 +1329,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HostReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HostReputationSummaryModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.level, level) || other.level == level)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.displayLabel, displayLabel) || other.displayLabel == displayLabel)&&(identical(other.hostTitle, hostTitle) || other.hostTitle == hostTitle)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,equbsHosted,hostedEqubsCompleted,turnsParticipated,hostedCompletionRate,cancelledGroupsCount,hostDisputesCount);
+int get hashCode => Object.hash(runtimeType,userId,trustScore,trustLevel,summaryLabel,level,icon,displayLabel,hostTitle,equbsHosted,hostedEqubsCompleted,turnsParticipated,hostedCompletionRate,cancelledGroupsCount,hostDisputesCount);
 
 @override
 String toString() {
-  return 'HostReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, turnsParticipated: $turnsParticipated, hostedCompletionRate: $hostedCompletionRate, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount)';
+  return 'HostReputationSummaryModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, level: $level, icon: $icon, displayLabel: $displayLabel, hostTitle: $hostTitle, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, turnsParticipated: $turnsParticipated, hostedCompletionRate: $hostedCompletionRate, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount)';
 }
 
 
@@ -1329,7 +1349,7 @@ abstract mixin class _$HostReputationSummaryModelCopyWith<$Res> implements $Host
   factory _$HostReputationSummaryModelCopyWith(_HostReputationSummaryModel value, $Res Function(_HostReputationSummaryModel) _then) = __$HostReputationSummaryModelCopyWithImpl;
 @override @useResult
 $Res call({
- String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String summaryLabel,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int turnsParticipated, double? hostedCompletionRate,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount
+ String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String? summaryLabel, String? level, String? icon, String? displayLabel, String? hostTitle,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int turnsParticipated, double? hostedCompletionRate,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount
 });
 
 
@@ -1346,13 +1366,17 @@ class __$HostReputationSummaryModelCopyWithImpl<$Res>
 
 /// Create a copy of HostReputationSummaryModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = null,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? turnsParticipated = null,Object? hostedCompletionRate = freezed,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = freezed,Object? level = freezed,Object? icon = freezed,Object? displayLabel = freezed,Object? hostTitle = freezed,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? turnsParticipated = null,Object? hostedCompletionRate = freezed,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,}) {
   return _then(_HostReputationSummaryModel(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,trustScore: null == trustScore ? _self.trustScore : trustScore // ignore: cast_nullable_to_non_nullable
 as int,trustLevel: null == trustLevel ? _self.trustLevel : trustLevel // ignore: cast_nullable_to_non_nullable
-as String,summaryLabel: null == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
-as String,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
+as String,summaryLabel: freezed == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
+as String?,level: freezed == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
+as String?,icon: freezed == icon ? _self.icon : icon // ignore: cast_nullable_to_non_nullable
+as String?,displayLabel: freezed == displayLabel ? _self.displayLabel : displayLabel // ignore: cast_nullable_to_non_nullable
+as String?,hostTitle: freezed == hostTitle ? _self.hostTitle : hostTitle // ignore: cast_nullable_to_non_nullable
+as String?,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
 as int,hostedEqubsCompleted: null == hostedEqubsCompleted ? _self.hostedEqubsCompleted : hostedEqubsCompleted // ignore: cast_nullable_to_non_nullable
 as int,turnsParticipated: null == turnsParticipated ? _self.turnsParticipated : turnsParticipated // ignore: cast_nullable_to_non_nullable
 as int,hostedCompletionRate: freezed == hostedCompletionRate ? _self.hostedCompletionRate : hostedCompletionRate // ignore: cast_nullable_to_non_nullable
@@ -2519,7 +2543,7 @@ as int,
 /// @nodoc
 mixin _$ReputationProfileModel {
 
- String get userId;@JsonKey(fromJson: _toInt) int get trustScore; String get trustLevel; String get summaryLabel;@JsonKey(fromJson: _toInt) int get equbsJoined;@JsonKey(fromJson: _toInt) int get equbsCompleted;@JsonKey(fromJson: _toInt) int get equbsLeftEarly;@JsonKey(fromJson: _toInt) int get equbsHosted;@JsonKey(fromJson: _toInt) int get hostedEqubsCompleted;@JsonKey(fromJson: _toInt) int get onTimePayments;@JsonKey(fromJson: _toInt) int get latePayments;@JsonKey(fromJson: _toInt) int get missedPayments;@JsonKey(fromJson: _toInt) int get turnsParticipated;@JsonKey(fromJson: _toInt) int get payoutsReceived;@JsonKey(fromJson: _toInt) int get payoutsConfirmed;@JsonKey(fromJson: _toInt) int get removalsCount;@JsonKey(fromJson: _toInt) int get disputesCount;@JsonKey(fromJson: _toInt) int get cancelledGroupsCount;@JsonKey(fromJson: _toInt) int get hostDisputesCount; ReputationComponentsModel get components; double? get baseScore; double? get activityFactor; double? get adjustedScore; double? get confidenceFactor; DateTime? get lastEqubActivityAt; double? get onTimePaymentRate; double? get hostedCompletionRate; DateTime get updatedAt; ReputationEligibilityModel get eligibility; List<ReputationBadgeModel> get badges;
+ String get userId;@JsonKey(fromJson: _toInt) int get trustScore; String get trustLevel; String? get summaryLabel; String? get level; String? get icon; String? get displayLabel; String? get hostTitle;@JsonKey(fromJson: _toInt) int get equbsJoined;@JsonKey(fromJson: _toInt) int get equbsCompleted;@JsonKey(fromJson: _toInt) int get equbsLeftEarly;@JsonKey(fromJson: _toInt) int get equbsHosted;@JsonKey(fromJson: _toInt) int get hostedEqubsCompleted;@JsonKey(fromJson: _toInt) int get onTimePayments;@JsonKey(fromJson: _toInt) int get latePayments;@JsonKey(fromJson: _toInt) int get missedPayments;@JsonKey(fromJson: _toInt) int get turnsParticipated;@JsonKey(fromJson: _toInt) int get payoutsReceived;@JsonKey(fromJson: _toInt) int get payoutsConfirmed;@JsonKey(fromJson: _toInt) int get removalsCount;@JsonKey(fromJson: _toInt) int get disputesCount;@JsonKey(fromJson: _toInt) int get cancelledGroupsCount;@JsonKey(fromJson: _toInt) int get hostDisputesCount; ReputationComponentsModel get components; double? get baseScore; double? get activityFactor; double? get adjustedScore; double? get confidenceFactor; DateTime? get lastEqubActivityAt; double? get onTimePaymentRate; double? get hostedCompletionRate; DateTime get updatedAt; ReputationEligibilityModel get eligibility; List<ReputationBadgeModel> get badges;
 /// Create a copy of ReputationProfileModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2532,16 +2556,16 @@ $ReputationProfileModelCopyWith<ReputationProfileModel> get copyWith => _$Reputa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReputationProfileModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.equbsJoined, equbsJoined) || other.equbsJoined == equbsJoined)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsLeftEarly, equbsLeftEarly) || other.equbsLeftEarly == equbsLeftEarly)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.onTimePayments, onTimePayments) || other.onTimePayments == onTimePayments)&&(identical(other.latePayments, latePayments) || other.latePayments == latePayments)&&(identical(other.missedPayments, missedPayments) || other.missedPayments == missedPayments)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.payoutsReceived, payoutsReceived) || other.payoutsReceived == payoutsReceived)&&(identical(other.payoutsConfirmed, payoutsConfirmed) || other.payoutsConfirmed == payoutsConfirmed)&&(identical(other.removalsCount, removalsCount) || other.removalsCount == removalsCount)&&(identical(other.disputesCount, disputesCount) || other.disputesCount == disputesCount)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount)&&(identical(other.components, components) || other.components == components)&&(identical(other.baseScore, baseScore) || other.baseScore == baseScore)&&(identical(other.activityFactor, activityFactor) || other.activityFactor == activityFactor)&&(identical(other.adjustedScore, adjustedScore) || other.adjustedScore == adjustedScore)&&(identical(other.confidenceFactor, confidenceFactor) || other.confidenceFactor == confidenceFactor)&&(identical(other.lastEqubActivityAt, lastEqubActivityAt) || other.lastEqubActivityAt == lastEqubActivityAt)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.eligibility, eligibility) || other.eligibility == eligibility)&&const DeepCollectionEquality().equals(other.badges, badges));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReputationProfileModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.level, level) || other.level == level)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.displayLabel, displayLabel) || other.displayLabel == displayLabel)&&(identical(other.hostTitle, hostTitle) || other.hostTitle == hostTitle)&&(identical(other.equbsJoined, equbsJoined) || other.equbsJoined == equbsJoined)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsLeftEarly, equbsLeftEarly) || other.equbsLeftEarly == equbsLeftEarly)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.onTimePayments, onTimePayments) || other.onTimePayments == onTimePayments)&&(identical(other.latePayments, latePayments) || other.latePayments == latePayments)&&(identical(other.missedPayments, missedPayments) || other.missedPayments == missedPayments)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.payoutsReceived, payoutsReceived) || other.payoutsReceived == payoutsReceived)&&(identical(other.payoutsConfirmed, payoutsConfirmed) || other.payoutsConfirmed == payoutsConfirmed)&&(identical(other.removalsCount, removalsCount) || other.removalsCount == removalsCount)&&(identical(other.disputesCount, disputesCount) || other.disputesCount == disputesCount)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount)&&(identical(other.components, components) || other.components == components)&&(identical(other.baseScore, baseScore) || other.baseScore == baseScore)&&(identical(other.activityFactor, activityFactor) || other.activityFactor == activityFactor)&&(identical(other.adjustedScore, adjustedScore) || other.adjustedScore == adjustedScore)&&(identical(other.confidenceFactor, confidenceFactor) || other.confidenceFactor == confidenceFactor)&&(identical(other.lastEqubActivityAt, lastEqubActivityAt) || other.lastEqubActivityAt == lastEqubActivityAt)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.eligibility, eligibility) || other.eligibility == eligibility)&&const DeepCollectionEquality().equals(other.badges, badges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,userId,trustScore,trustLevel,summaryLabel,equbsJoined,equbsCompleted,equbsLeftEarly,equbsHosted,hostedEqubsCompleted,onTimePayments,latePayments,missedPayments,turnsParticipated,payoutsReceived,payoutsConfirmed,removalsCount,disputesCount,cancelledGroupsCount,hostDisputesCount,components,baseScore,activityFactor,adjustedScore,confidenceFactor,lastEqubActivityAt,onTimePaymentRate,hostedCompletionRate,updatedAt,eligibility,const DeepCollectionEquality().hash(badges)]);
+int get hashCode => Object.hashAll([runtimeType,userId,trustScore,trustLevel,summaryLabel,level,icon,displayLabel,hostTitle,equbsJoined,equbsCompleted,equbsLeftEarly,equbsHosted,hostedEqubsCompleted,onTimePayments,latePayments,missedPayments,turnsParticipated,payoutsReceived,payoutsConfirmed,removalsCount,disputesCount,cancelledGroupsCount,hostDisputesCount,components,baseScore,activityFactor,adjustedScore,confidenceFactor,lastEqubActivityAt,onTimePaymentRate,hostedCompletionRate,updatedAt,eligibility,const DeepCollectionEquality().hash(badges)]);
 
 @override
 String toString() {
-  return 'ReputationProfileModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, equbsJoined: $equbsJoined, equbsCompleted: $equbsCompleted, equbsLeftEarly: $equbsLeftEarly, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, onTimePayments: $onTimePayments, latePayments: $latePayments, missedPayments: $missedPayments, turnsParticipated: $turnsParticipated, payoutsReceived: $payoutsReceived, payoutsConfirmed: $payoutsConfirmed, removalsCount: $removalsCount, disputesCount: $disputesCount, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount, components: $components, baseScore: $baseScore, activityFactor: $activityFactor, adjustedScore: $adjustedScore, confidenceFactor: $confidenceFactor, lastEqubActivityAt: $lastEqubActivityAt, onTimePaymentRate: $onTimePaymentRate, hostedCompletionRate: $hostedCompletionRate, updatedAt: $updatedAt, eligibility: $eligibility, badges: $badges)';
+  return 'ReputationProfileModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, level: $level, icon: $icon, displayLabel: $displayLabel, hostTitle: $hostTitle, equbsJoined: $equbsJoined, equbsCompleted: $equbsCompleted, equbsLeftEarly: $equbsLeftEarly, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, onTimePayments: $onTimePayments, latePayments: $latePayments, missedPayments: $missedPayments, turnsParticipated: $turnsParticipated, payoutsReceived: $payoutsReceived, payoutsConfirmed: $payoutsConfirmed, removalsCount: $removalsCount, disputesCount: $disputesCount, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount, components: $components, baseScore: $baseScore, activityFactor: $activityFactor, adjustedScore: $adjustedScore, confidenceFactor: $confidenceFactor, lastEqubActivityAt: $lastEqubActivityAt, onTimePaymentRate: $onTimePaymentRate, hostedCompletionRate: $hostedCompletionRate, updatedAt: $updatedAt, eligibility: $eligibility, badges: $badges)';
 }
 
 
@@ -2552,7 +2576,7 @@ abstract mixin class $ReputationProfileModelCopyWith<$Res>  {
   factory $ReputationProfileModelCopyWith(ReputationProfileModel value, $Res Function(ReputationProfileModel) _then) = _$ReputationProfileModelCopyWithImpl;
 @useResult
 $Res call({
- String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String summaryLabel,@JsonKey(fromJson: _toInt) int equbsJoined,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsLeftEarly,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int onTimePayments,@JsonKey(fromJson: _toInt) int latePayments,@JsonKey(fromJson: _toInt) int missedPayments,@JsonKey(fromJson: _toInt) int turnsParticipated,@JsonKey(fromJson: _toInt) int payoutsReceived,@JsonKey(fromJson: _toInt) int payoutsConfirmed,@JsonKey(fromJson: _toInt) int removalsCount,@JsonKey(fromJson: _toInt) int disputesCount,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount, ReputationComponentsModel components, double? baseScore, double? activityFactor, double? adjustedScore, double? confidenceFactor, DateTime? lastEqubActivityAt, double? onTimePaymentRate, double? hostedCompletionRate, DateTime updatedAt, ReputationEligibilityModel eligibility, List<ReputationBadgeModel> badges
+ String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String? summaryLabel, String? level, String? icon, String? displayLabel, String? hostTitle,@JsonKey(fromJson: _toInt) int equbsJoined,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsLeftEarly,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int onTimePayments,@JsonKey(fromJson: _toInt) int latePayments,@JsonKey(fromJson: _toInt) int missedPayments,@JsonKey(fromJson: _toInt) int turnsParticipated,@JsonKey(fromJson: _toInt) int payoutsReceived,@JsonKey(fromJson: _toInt) int payoutsConfirmed,@JsonKey(fromJson: _toInt) int removalsCount,@JsonKey(fromJson: _toInt) int disputesCount,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount, ReputationComponentsModel components, double? baseScore, double? activityFactor, double? adjustedScore, double? confidenceFactor, DateTime? lastEqubActivityAt, double? onTimePaymentRate, double? hostedCompletionRate, DateTime updatedAt, ReputationEligibilityModel eligibility, List<ReputationBadgeModel> badges
 });
 
 
@@ -2569,13 +2593,17 @@ class _$ReputationProfileModelCopyWithImpl<$Res>
 
 /// Create a copy of ReputationProfileModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = null,Object? equbsJoined = null,Object? equbsCompleted = null,Object? equbsLeftEarly = null,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? onTimePayments = null,Object? latePayments = null,Object? missedPayments = null,Object? turnsParticipated = null,Object? payoutsReceived = null,Object? payoutsConfirmed = null,Object? removalsCount = null,Object? disputesCount = null,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,Object? components = null,Object? baseScore = freezed,Object? activityFactor = freezed,Object? adjustedScore = freezed,Object? confidenceFactor = freezed,Object? lastEqubActivityAt = freezed,Object? onTimePaymentRate = freezed,Object? hostedCompletionRate = freezed,Object? updatedAt = null,Object? eligibility = null,Object? badges = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = freezed,Object? level = freezed,Object? icon = freezed,Object? displayLabel = freezed,Object? hostTitle = freezed,Object? equbsJoined = null,Object? equbsCompleted = null,Object? equbsLeftEarly = null,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? onTimePayments = null,Object? latePayments = null,Object? missedPayments = null,Object? turnsParticipated = null,Object? payoutsReceived = null,Object? payoutsConfirmed = null,Object? removalsCount = null,Object? disputesCount = null,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,Object? components = null,Object? baseScore = freezed,Object? activityFactor = freezed,Object? adjustedScore = freezed,Object? confidenceFactor = freezed,Object? lastEqubActivityAt = freezed,Object? onTimePaymentRate = freezed,Object? hostedCompletionRate = freezed,Object? updatedAt = null,Object? eligibility = null,Object? badges = null,}) {
   return _then(_self.copyWith(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,trustScore: null == trustScore ? _self.trustScore : trustScore // ignore: cast_nullable_to_non_nullable
 as int,trustLevel: null == trustLevel ? _self.trustLevel : trustLevel // ignore: cast_nullable_to_non_nullable
-as String,summaryLabel: null == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
-as String,equbsJoined: null == equbsJoined ? _self.equbsJoined : equbsJoined // ignore: cast_nullable_to_non_nullable
+as String,summaryLabel: freezed == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
+as String?,level: freezed == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
+as String?,icon: freezed == icon ? _self.icon : icon // ignore: cast_nullable_to_non_nullable
+as String?,displayLabel: freezed == displayLabel ? _self.displayLabel : displayLabel // ignore: cast_nullable_to_non_nullable
+as String?,hostTitle: freezed == hostTitle ? _self.hostTitle : hostTitle // ignore: cast_nullable_to_non_nullable
+as String?,equbsJoined: null == equbsJoined ? _self.equbsJoined : equbsJoined // ignore: cast_nullable_to_non_nullable
 as int,equbsCompleted: null == equbsCompleted ? _self.equbsCompleted : equbsCompleted // ignore: cast_nullable_to_non_nullable
 as int,equbsLeftEarly: null == equbsLeftEarly ? _self.equbsLeftEarly : equbsLeftEarly // ignore: cast_nullable_to_non_nullable
 as int,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable
@@ -2701,10 +2729,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsJoined, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsLeftEarly, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int onTimePayments, @JsonKey(fromJson: _toInt)  int latePayments, @JsonKey(fromJson: _toInt)  int missedPayments, @JsonKey(fromJson: _toInt)  int turnsParticipated, @JsonKey(fromJson: _toInt)  int payoutsReceived, @JsonKey(fromJson: _toInt)  int payoutsConfirmed, @JsonKey(fromJson: _toInt)  int removalsCount, @JsonKey(fromJson: _toInt)  int disputesCount, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount,  ReputationComponentsModel components,  double? baseScore,  double? activityFactor,  double? adjustedScore,  double? confidenceFactor,  DateTime? lastEqubActivityAt,  double? onTimePaymentRate,  double? hostedCompletionRate,  DateTime updatedAt,  ReputationEligibilityModel eligibility,  List<ReputationBadgeModel> badges)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsJoined, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsLeftEarly, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int onTimePayments, @JsonKey(fromJson: _toInt)  int latePayments, @JsonKey(fromJson: _toInt)  int missedPayments, @JsonKey(fromJson: _toInt)  int turnsParticipated, @JsonKey(fromJson: _toInt)  int payoutsReceived, @JsonKey(fromJson: _toInt)  int payoutsConfirmed, @JsonKey(fromJson: _toInt)  int removalsCount, @JsonKey(fromJson: _toInt)  int disputesCount, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount,  ReputationComponentsModel components,  double? baseScore,  double? activityFactor,  double? adjustedScore,  double? confidenceFactor,  DateTime? lastEqubActivityAt,  double? onTimePaymentRate,  double? hostedCompletionRate,  DateTime updatedAt,  ReputationEligibilityModel eligibility,  List<ReputationBadgeModel> badges)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ReputationProfileModel() when $default != null:
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsJoined,_that.equbsCompleted,_that.equbsLeftEarly,_that.equbsHosted,_that.hostedEqubsCompleted,_that.onTimePayments,_that.latePayments,_that.missedPayments,_that.turnsParticipated,_that.payoutsReceived,_that.payoutsConfirmed,_that.removalsCount,_that.disputesCount,_that.cancelledGroupsCount,_that.hostDisputesCount,_that.components,_that.baseScore,_that.activityFactor,_that.adjustedScore,_that.confidenceFactor,_that.lastEqubActivityAt,_that.onTimePaymentRate,_that.hostedCompletionRate,_that.updatedAt,_that.eligibility,_that.badges);case _:
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsJoined,_that.equbsCompleted,_that.equbsLeftEarly,_that.equbsHosted,_that.hostedEqubsCompleted,_that.onTimePayments,_that.latePayments,_that.missedPayments,_that.turnsParticipated,_that.payoutsReceived,_that.payoutsConfirmed,_that.removalsCount,_that.disputesCount,_that.cancelledGroupsCount,_that.hostDisputesCount,_that.components,_that.baseScore,_that.activityFactor,_that.adjustedScore,_that.confidenceFactor,_that.lastEqubActivityAt,_that.onTimePaymentRate,_that.hostedCompletionRate,_that.updatedAt,_that.eligibility,_that.badges);case _:
   return orElse();
 
 }
@@ -2722,10 +2750,10 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsJoined, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsLeftEarly, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int onTimePayments, @JsonKey(fromJson: _toInt)  int latePayments, @JsonKey(fromJson: _toInt)  int missedPayments, @JsonKey(fromJson: _toInt)  int turnsParticipated, @JsonKey(fromJson: _toInt)  int payoutsReceived, @JsonKey(fromJson: _toInt)  int payoutsConfirmed, @JsonKey(fromJson: _toInt)  int removalsCount, @JsonKey(fromJson: _toInt)  int disputesCount, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount,  ReputationComponentsModel components,  double? baseScore,  double? activityFactor,  double? adjustedScore,  double? confidenceFactor,  DateTime? lastEqubActivityAt,  double? onTimePaymentRate,  double? hostedCompletionRate,  DateTime updatedAt,  ReputationEligibilityModel eligibility,  List<ReputationBadgeModel> badges)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsJoined, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsLeftEarly, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int onTimePayments, @JsonKey(fromJson: _toInt)  int latePayments, @JsonKey(fromJson: _toInt)  int missedPayments, @JsonKey(fromJson: _toInt)  int turnsParticipated, @JsonKey(fromJson: _toInt)  int payoutsReceived, @JsonKey(fromJson: _toInt)  int payoutsConfirmed, @JsonKey(fromJson: _toInt)  int removalsCount, @JsonKey(fromJson: _toInt)  int disputesCount, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount,  ReputationComponentsModel components,  double? baseScore,  double? activityFactor,  double? adjustedScore,  double? confidenceFactor,  DateTime? lastEqubActivityAt,  double? onTimePaymentRate,  double? hostedCompletionRate,  DateTime updatedAt,  ReputationEligibilityModel eligibility,  List<ReputationBadgeModel> badges)  $default,) {final _that = this;
 switch (_that) {
 case _ReputationProfileModel():
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsJoined,_that.equbsCompleted,_that.equbsLeftEarly,_that.equbsHosted,_that.hostedEqubsCompleted,_that.onTimePayments,_that.latePayments,_that.missedPayments,_that.turnsParticipated,_that.payoutsReceived,_that.payoutsConfirmed,_that.removalsCount,_that.disputesCount,_that.cancelledGroupsCount,_that.hostDisputesCount,_that.components,_that.baseScore,_that.activityFactor,_that.adjustedScore,_that.confidenceFactor,_that.lastEqubActivityAt,_that.onTimePaymentRate,_that.hostedCompletionRate,_that.updatedAt,_that.eligibility,_that.badges);}
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsJoined,_that.equbsCompleted,_that.equbsLeftEarly,_that.equbsHosted,_that.hostedEqubsCompleted,_that.onTimePayments,_that.latePayments,_that.missedPayments,_that.turnsParticipated,_that.payoutsReceived,_that.payoutsConfirmed,_that.removalsCount,_that.disputesCount,_that.cancelledGroupsCount,_that.hostDisputesCount,_that.components,_that.baseScore,_that.activityFactor,_that.adjustedScore,_that.confidenceFactor,_that.lastEqubActivityAt,_that.onTimePaymentRate,_that.hostedCompletionRate,_that.updatedAt,_that.eligibility,_that.badges);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -2739,10 +2767,10 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String summaryLabel, @JsonKey(fromJson: _toInt)  int equbsJoined, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsLeftEarly, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int onTimePayments, @JsonKey(fromJson: _toInt)  int latePayments, @JsonKey(fromJson: _toInt)  int missedPayments, @JsonKey(fromJson: _toInt)  int turnsParticipated, @JsonKey(fromJson: _toInt)  int payoutsReceived, @JsonKey(fromJson: _toInt)  int payoutsConfirmed, @JsonKey(fromJson: _toInt)  int removalsCount, @JsonKey(fromJson: _toInt)  int disputesCount, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount,  ReputationComponentsModel components,  double? baseScore,  double? activityFactor,  double? adjustedScore,  double? confidenceFactor,  DateTime? lastEqubActivityAt,  double? onTimePaymentRate,  double? hostedCompletionRate,  DateTime updatedAt,  ReputationEligibilityModel eligibility,  List<ReputationBadgeModel> badges)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String userId, @JsonKey(fromJson: _toInt)  int trustScore,  String trustLevel,  String? summaryLabel,  String? level,  String? icon,  String? displayLabel,  String? hostTitle, @JsonKey(fromJson: _toInt)  int equbsJoined, @JsonKey(fromJson: _toInt)  int equbsCompleted, @JsonKey(fromJson: _toInt)  int equbsLeftEarly, @JsonKey(fromJson: _toInt)  int equbsHosted, @JsonKey(fromJson: _toInt)  int hostedEqubsCompleted, @JsonKey(fromJson: _toInt)  int onTimePayments, @JsonKey(fromJson: _toInt)  int latePayments, @JsonKey(fromJson: _toInt)  int missedPayments, @JsonKey(fromJson: _toInt)  int turnsParticipated, @JsonKey(fromJson: _toInt)  int payoutsReceived, @JsonKey(fromJson: _toInt)  int payoutsConfirmed, @JsonKey(fromJson: _toInt)  int removalsCount, @JsonKey(fromJson: _toInt)  int disputesCount, @JsonKey(fromJson: _toInt)  int cancelledGroupsCount, @JsonKey(fromJson: _toInt)  int hostDisputesCount,  ReputationComponentsModel components,  double? baseScore,  double? activityFactor,  double? adjustedScore,  double? confidenceFactor,  DateTime? lastEqubActivityAt,  double? onTimePaymentRate,  double? hostedCompletionRate,  DateTime updatedAt,  ReputationEligibilityModel eligibility,  List<ReputationBadgeModel> badges)?  $default,) {final _that = this;
 switch (_that) {
 case _ReputationProfileModel() when $default != null:
-return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.equbsJoined,_that.equbsCompleted,_that.equbsLeftEarly,_that.equbsHosted,_that.hostedEqubsCompleted,_that.onTimePayments,_that.latePayments,_that.missedPayments,_that.turnsParticipated,_that.payoutsReceived,_that.payoutsConfirmed,_that.removalsCount,_that.disputesCount,_that.cancelledGroupsCount,_that.hostDisputesCount,_that.components,_that.baseScore,_that.activityFactor,_that.adjustedScore,_that.confidenceFactor,_that.lastEqubActivityAt,_that.onTimePaymentRate,_that.hostedCompletionRate,_that.updatedAt,_that.eligibility,_that.badges);case _:
+return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabel,_that.level,_that.icon,_that.displayLabel,_that.hostTitle,_that.equbsJoined,_that.equbsCompleted,_that.equbsLeftEarly,_that.equbsHosted,_that.hostedEqubsCompleted,_that.onTimePayments,_that.latePayments,_that.missedPayments,_that.turnsParticipated,_that.payoutsReceived,_that.payoutsConfirmed,_that.removalsCount,_that.disputesCount,_that.cancelledGroupsCount,_that.hostDisputesCount,_that.components,_that.baseScore,_that.activityFactor,_that.adjustedScore,_that.confidenceFactor,_that.lastEqubActivityAt,_that.onTimePaymentRate,_that.hostedCompletionRate,_that.updatedAt,_that.eligibility,_that.badges);case _:
   return null;
 
 }
@@ -2754,13 +2782,17 @@ return $default(_that.userId,_that.trustScore,_that.trustLevel,_that.summaryLabe
 @JsonSerializable()
 
 class _ReputationProfileModel extends ReputationProfileModel {
-  const _ReputationProfileModel({required this.userId, @JsonKey(fromJson: _toInt) required this.trustScore, required this.trustLevel, required this.summaryLabel, @JsonKey(fromJson: _toInt) required this.equbsJoined, @JsonKey(fromJson: _toInt) required this.equbsCompleted, @JsonKey(fromJson: _toInt) this.equbsLeftEarly = 0, @JsonKey(fromJson: _toInt) required this.equbsHosted, @JsonKey(fromJson: _toInt) required this.hostedEqubsCompleted, @JsonKey(fromJson: _toInt) required this.onTimePayments, @JsonKey(fromJson: _toInt) required this.latePayments, @JsonKey(fromJson: _toInt) required this.missedPayments, @JsonKey(fromJson: _toInt) this.turnsParticipated = 0, @JsonKey(fromJson: _toInt) required this.payoutsReceived, @JsonKey(fromJson: _toInt) required this.payoutsConfirmed, @JsonKey(fromJson: _toInt) required this.removalsCount, @JsonKey(fromJson: _toInt) required this.disputesCount, @JsonKey(fromJson: _toInt) this.cancelledGroupsCount = 0, @JsonKey(fromJson: _toInt) this.hostDisputesCount = 0, required this.components, this.baseScore, this.activityFactor, this.adjustedScore, this.confidenceFactor, this.lastEqubActivityAt, this.onTimePaymentRate, this.hostedCompletionRate, required this.updatedAt, required this.eligibility, final  List<ReputationBadgeModel> badges = const <ReputationBadgeModel>[]}): _badges = badges,super._();
+  const _ReputationProfileModel({required this.userId, @JsonKey(fromJson: _toInt) required this.trustScore, required this.trustLevel, this.summaryLabel, this.level, this.icon, this.displayLabel, this.hostTitle, @JsonKey(fromJson: _toInt) required this.equbsJoined, @JsonKey(fromJson: _toInt) required this.equbsCompleted, @JsonKey(fromJson: _toInt) this.equbsLeftEarly = 0, @JsonKey(fromJson: _toInt) required this.equbsHosted, @JsonKey(fromJson: _toInt) required this.hostedEqubsCompleted, @JsonKey(fromJson: _toInt) required this.onTimePayments, @JsonKey(fromJson: _toInt) required this.latePayments, @JsonKey(fromJson: _toInt) required this.missedPayments, @JsonKey(fromJson: _toInt) this.turnsParticipated = 0, @JsonKey(fromJson: _toInt) required this.payoutsReceived, @JsonKey(fromJson: _toInt) required this.payoutsConfirmed, @JsonKey(fromJson: _toInt) required this.removalsCount, @JsonKey(fromJson: _toInt) required this.disputesCount, @JsonKey(fromJson: _toInt) this.cancelledGroupsCount = 0, @JsonKey(fromJson: _toInt) this.hostDisputesCount = 0, required this.components, this.baseScore, this.activityFactor, this.adjustedScore, this.confidenceFactor, this.lastEqubActivityAt, this.onTimePaymentRate, this.hostedCompletionRate, required this.updatedAt, required this.eligibility, final  List<ReputationBadgeModel> badges = const <ReputationBadgeModel>[]}): _badges = badges,super._();
   factory _ReputationProfileModel.fromJson(Map<String, dynamic> json) => _$ReputationProfileModelFromJson(json);
 
 @override final  String userId;
 @override@JsonKey(fromJson: _toInt) final  int trustScore;
 @override final  String trustLevel;
-@override final  String summaryLabel;
+@override final  String? summaryLabel;
+@override final  String? level;
+@override final  String? icon;
+@override final  String? displayLabel;
+@override final  String? hostTitle;
 @override@JsonKey(fromJson: _toInt) final  int equbsJoined;
 @override@JsonKey(fromJson: _toInt) final  int equbsCompleted;
 @override@JsonKey(fromJson: _toInt) final  int equbsLeftEarly;
@@ -2807,16 +2839,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReputationProfileModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.equbsJoined, equbsJoined) || other.equbsJoined == equbsJoined)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsLeftEarly, equbsLeftEarly) || other.equbsLeftEarly == equbsLeftEarly)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.onTimePayments, onTimePayments) || other.onTimePayments == onTimePayments)&&(identical(other.latePayments, latePayments) || other.latePayments == latePayments)&&(identical(other.missedPayments, missedPayments) || other.missedPayments == missedPayments)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.payoutsReceived, payoutsReceived) || other.payoutsReceived == payoutsReceived)&&(identical(other.payoutsConfirmed, payoutsConfirmed) || other.payoutsConfirmed == payoutsConfirmed)&&(identical(other.removalsCount, removalsCount) || other.removalsCount == removalsCount)&&(identical(other.disputesCount, disputesCount) || other.disputesCount == disputesCount)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount)&&(identical(other.components, components) || other.components == components)&&(identical(other.baseScore, baseScore) || other.baseScore == baseScore)&&(identical(other.activityFactor, activityFactor) || other.activityFactor == activityFactor)&&(identical(other.adjustedScore, adjustedScore) || other.adjustedScore == adjustedScore)&&(identical(other.confidenceFactor, confidenceFactor) || other.confidenceFactor == confidenceFactor)&&(identical(other.lastEqubActivityAt, lastEqubActivityAt) || other.lastEqubActivityAt == lastEqubActivityAt)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.eligibility, eligibility) || other.eligibility == eligibility)&&const DeepCollectionEquality().equals(other._badges, _badges));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReputationProfileModel&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.trustScore, trustScore) || other.trustScore == trustScore)&&(identical(other.trustLevel, trustLevel) || other.trustLevel == trustLevel)&&(identical(other.summaryLabel, summaryLabel) || other.summaryLabel == summaryLabel)&&(identical(other.level, level) || other.level == level)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.displayLabel, displayLabel) || other.displayLabel == displayLabel)&&(identical(other.hostTitle, hostTitle) || other.hostTitle == hostTitle)&&(identical(other.equbsJoined, equbsJoined) || other.equbsJoined == equbsJoined)&&(identical(other.equbsCompleted, equbsCompleted) || other.equbsCompleted == equbsCompleted)&&(identical(other.equbsLeftEarly, equbsLeftEarly) || other.equbsLeftEarly == equbsLeftEarly)&&(identical(other.equbsHosted, equbsHosted) || other.equbsHosted == equbsHosted)&&(identical(other.hostedEqubsCompleted, hostedEqubsCompleted) || other.hostedEqubsCompleted == hostedEqubsCompleted)&&(identical(other.onTimePayments, onTimePayments) || other.onTimePayments == onTimePayments)&&(identical(other.latePayments, latePayments) || other.latePayments == latePayments)&&(identical(other.missedPayments, missedPayments) || other.missedPayments == missedPayments)&&(identical(other.turnsParticipated, turnsParticipated) || other.turnsParticipated == turnsParticipated)&&(identical(other.payoutsReceived, payoutsReceived) || other.payoutsReceived == payoutsReceived)&&(identical(other.payoutsConfirmed, payoutsConfirmed) || other.payoutsConfirmed == payoutsConfirmed)&&(identical(other.removalsCount, removalsCount) || other.removalsCount == removalsCount)&&(identical(other.disputesCount, disputesCount) || other.disputesCount == disputesCount)&&(identical(other.cancelledGroupsCount, cancelledGroupsCount) || other.cancelledGroupsCount == cancelledGroupsCount)&&(identical(other.hostDisputesCount, hostDisputesCount) || other.hostDisputesCount == hostDisputesCount)&&(identical(other.components, components) || other.components == components)&&(identical(other.baseScore, baseScore) || other.baseScore == baseScore)&&(identical(other.activityFactor, activityFactor) || other.activityFactor == activityFactor)&&(identical(other.adjustedScore, adjustedScore) || other.adjustedScore == adjustedScore)&&(identical(other.confidenceFactor, confidenceFactor) || other.confidenceFactor == confidenceFactor)&&(identical(other.lastEqubActivityAt, lastEqubActivityAt) || other.lastEqubActivityAt == lastEqubActivityAt)&&(identical(other.onTimePaymentRate, onTimePaymentRate) || other.onTimePaymentRate == onTimePaymentRate)&&(identical(other.hostedCompletionRate, hostedCompletionRate) || other.hostedCompletionRate == hostedCompletionRate)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.eligibility, eligibility) || other.eligibility == eligibility)&&const DeepCollectionEquality().equals(other._badges, _badges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,userId,trustScore,trustLevel,summaryLabel,equbsJoined,equbsCompleted,equbsLeftEarly,equbsHosted,hostedEqubsCompleted,onTimePayments,latePayments,missedPayments,turnsParticipated,payoutsReceived,payoutsConfirmed,removalsCount,disputesCount,cancelledGroupsCount,hostDisputesCount,components,baseScore,activityFactor,adjustedScore,confidenceFactor,lastEqubActivityAt,onTimePaymentRate,hostedCompletionRate,updatedAt,eligibility,const DeepCollectionEquality().hash(_badges)]);
+int get hashCode => Object.hashAll([runtimeType,userId,trustScore,trustLevel,summaryLabel,level,icon,displayLabel,hostTitle,equbsJoined,equbsCompleted,equbsLeftEarly,equbsHosted,hostedEqubsCompleted,onTimePayments,latePayments,missedPayments,turnsParticipated,payoutsReceived,payoutsConfirmed,removalsCount,disputesCount,cancelledGroupsCount,hostDisputesCount,components,baseScore,activityFactor,adjustedScore,confidenceFactor,lastEqubActivityAt,onTimePaymentRate,hostedCompletionRate,updatedAt,eligibility,const DeepCollectionEquality().hash(_badges)]);
 
 @override
 String toString() {
-  return 'ReputationProfileModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, equbsJoined: $equbsJoined, equbsCompleted: $equbsCompleted, equbsLeftEarly: $equbsLeftEarly, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, onTimePayments: $onTimePayments, latePayments: $latePayments, missedPayments: $missedPayments, turnsParticipated: $turnsParticipated, payoutsReceived: $payoutsReceived, payoutsConfirmed: $payoutsConfirmed, removalsCount: $removalsCount, disputesCount: $disputesCount, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount, components: $components, baseScore: $baseScore, activityFactor: $activityFactor, adjustedScore: $adjustedScore, confidenceFactor: $confidenceFactor, lastEqubActivityAt: $lastEqubActivityAt, onTimePaymentRate: $onTimePaymentRate, hostedCompletionRate: $hostedCompletionRate, updatedAt: $updatedAt, eligibility: $eligibility, badges: $badges)';
+  return 'ReputationProfileModel(userId: $userId, trustScore: $trustScore, trustLevel: $trustLevel, summaryLabel: $summaryLabel, level: $level, icon: $icon, displayLabel: $displayLabel, hostTitle: $hostTitle, equbsJoined: $equbsJoined, equbsCompleted: $equbsCompleted, equbsLeftEarly: $equbsLeftEarly, equbsHosted: $equbsHosted, hostedEqubsCompleted: $hostedEqubsCompleted, onTimePayments: $onTimePayments, latePayments: $latePayments, missedPayments: $missedPayments, turnsParticipated: $turnsParticipated, payoutsReceived: $payoutsReceived, payoutsConfirmed: $payoutsConfirmed, removalsCount: $removalsCount, disputesCount: $disputesCount, cancelledGroupsCount: $cancelledGroupsCount, hostDisputesCount: $hostDisputesCount, components: $components, baseScore: $baseScore, activityFactor: $activityFactor, adjustedScore: $adjustedScore, confidenceFactor: $confidenceFactor, lastEqubActivityAt: $lastEqubActivityAt, onTimePaymentRate: $onTimePaymentRate, hostedCompletionRate: $hostedCompletionRate, updatedAt: $updatedAt, eligibility: $eligibility, badges: $badges)';
 }
 
 
@@ -2827,7 +2859,7 @@ abstract mixin class _$ReputationProfileModelCopyWith<$Res> implements $Reputati
   factory _$ReputationProfileModelCopyWith(_ReputationProfileModel value, $Res Function(_ReputationProfileModel) _then) = __$ReputationProfileModelCopyWithImpl;
 @override @useResult
 $Res call({
- String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String summaryLabel,@JsonKey(fromJson: _toInt) int equbsJoined,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsLeftEarly,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int onTimePayments,@JsonKey(fromJson: _toInt) int latePayments,@JsonKey(fromJson: _toInt) int missedPayments,@JsonKey(fromJson: _toInt) int turnsParticipated,@JsonKey(fromJson: _toInt) int payoutsReceived,@JsonKey(fromJson: _toInt) int payoutsConfirmed,@JsonKey(fromJson: _toInt) int removalsCount,@JsonKey(fromJson: _toInt) int disputesCount,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount, ReputationComponentsModel components, double? baseScore, double? activityFactor, double? adjustedScore, double? confidenceFactor, DateTime? lastEqubActivityAt, double? onTimePaymentRate, double? hostedCompletionRate, DateTime updatedAt, ReputationEligibilityModel eligibility, List<ReputationBadgeModel> badges
+ String userId,@JsonKey(fromJson: _toInt) int trustScore, String trustLevel, String? summaryLabel, String? level, String? icon, String? displayLabel, String? hostTitle,@JsonKey(fromJson: _toInt) int equbsJoined,@JsonKey(fromJson: _toInt) int equbsCompleted,@JsonKey(fromJson: _toInt) int equbsLeftEarly,@JsonKey(fromJson: _toInt) int equbsHosted,@JsonKey(fromJson: _toInt) int hostedEqubsCompleted,@JsonKey(fromJson: _toInt) int onTimePayments,@JsonKey(fromJson: _toInt) int latePayments,@JsonKey(fromJson: _toInt) int missedPayments,@JsonKey(fromJson: _toInt) int turnsParticipated,@JsonKey(fromJson: _toInt) int payoutsReceived,@JsonKey(fromJson: _toInt) int payoutsConfirmed,@JsonKey(fromJson: _toInt) int removalsCount,@JsonKey(fromJson: _toInt) int disputesCount,@JsonKey(fromJson: _toInt) int cancelledGroupsCount,@JsonKey(fromJson: _toInt) int hostDisputesCount, ReputationComponentsModel components, double? baseScore, double? activityFactor, double? adjustedScore, double? confidenceFactor, DateTime? lastEqubActivityAt, double? onTimePaymentRate, double? hostedCompletionRate, DateTime updatedAt, ReputationEligibilityModel eligibility, List<ReputationBadgeModel> badges
 });
 
 
@@ -2844,13 +2876,17 @@ class __$ReputationProfileModelCopyWithImpl<$Res>
 
 /// Create a copy of ReputationProfileModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = null,Object? equbsJoined = null,Object? equbsCompleted = null,Object? equbsLeftEarly = null,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? onTimePayments = null,Object? latePayments = null,Object? missedPayments = null,Object? turnsParticipated = null,Object? payoutsReceived = null,Object? payoutsConfirmed = null,Object? removalsCount = null,Object? disputesCount = null,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,Object? components = null,Object? baseScore = freezed,Object? activityFactor = freezed,Object? adjustedScore = freezed,Object? confidenceFactor = freezed,Object? lastEqubActivityAt = freezed,Object? onTimePaymentRate = freezed,Object? hostedCompletionRate = freezed,Object? updatedAt = null,Object? eligibility = null,Object? badges = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userId = null,Object? trustScore = null,Object? trustLevel = null,Object? summaryLabel = freezed,Object? level = freezed,Object? icon = freezed,Object? displayLabel = freezed,Object? hostTitle = freezed,Object? equbsJoined = null,Object? equbsCompleted = null,Object? equbsLeftEarly = null,Object? equbsHosted = null,Object? hostedEqubsCompleted = null,Object? onTimePayments = null,Object? latePayments = null,Object? missedPayments = null,Object? turnsParticipated = null,Object? payoutsReceived = null,Object? payoutsConfirmed = null,Object? removalsCount = null,Object? disputesCount = null,Object? cancelledGroupsCount = null,Object? hostDisputesCount = null,Object? components = null,Object? baseScore = freezed,Object? activityFactor = freezed,Object? adjustedScore = freezed,Object? confidenceFactor = freezed,Object? lastEqubActivityAt = freezed,Object? onTimePaymentRate = freezed,Object? hostedCompletionRate = freezed,Object? updatedAt = null,Object? eligibility = null,Object? badges = null,}) {
   return _then(_ReputationProfileModel(
 userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,trustScore: null == trustScore ? _self.trustScore : trustScore // ignore: cast_nullable_to_non_nullable
 as int,trustLevel: null == trustLevel ? _self.trustLevel : trustLevel // ignore: cast_nullable_to_non_nullable
-as String,summaryLabel: null == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
-as String,equbsJoined: null == equbsJoined ? _self.equbsJoined : equbsJoined // ignore: cast_nullable_to_non_nullable
+as String,summaryLabel: freezed == summaryLabel ? _self.summaryLabel : summaryLabel // ignore: cast_nullable_to_non_nullable
+as String?,level: freezed == level ? _self.level : level // ignore: cast_nullable_to_non_nullable
+as String?,icon: freezed == icon ? _self.icon : icon // ignore: cast_nullable_to_non_nullable
+as String?,displayLabel: freezed == displayLabel ? _self.displayLabel : displayLabel // ignore: cast_nullable_to_non_nullable
+as String?,hostTitle: freezed == hostTitle ? _self.hostTitle : hostTitle // ignore: cast_nullable_to_non_nullable
+as String?,equbsJoined: null == equbsJoined ? _self.equbsJoined : equbsJoined // ignore: cast_nullable_to_non_nullable
 as int,equbsCompleted: null == equbsCompleted ? _self.equbsCompleted : equbsCompleted // ignore: cast_nullable_to_non_nullable
 as int,equbsLeftEarly: null == equbsLeftEarly ? _self.equbsLeftEarly : equbsLeftEarly // ignore: cast_nullable_to_non_nullable
 as int,equbsHosted: null == equbsHosted ? _self.equbsHosted : equbsHosted // ignore: cast_nullable_to_non_nullable

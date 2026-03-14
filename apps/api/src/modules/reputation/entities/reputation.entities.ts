@@ -63,8 +63,20 @@ export class MemberReliabilitySummaryDto {
   @ApiProperty()
   trustLevel!: string;
 
-  @ApiProperty()
-  summaryLabel!: string;
+  @ApiPropertyOptional({ nullable: true })
+  summaryLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  level!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  icon!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  displayLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostTitle!: string | null;
 
   @ApiProperty()
   equbsCompleted!: number;
@@ -86,8 +98,20 @@ export class HostReputationSummaryDto {
   @ApiProperty()
   trustLevel!: string;
 
-  @ApiProperty()
-  summaryLabel!: string;
+  @ApiPropertyOptional({ nullable: true })
+  summaryLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  level!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  icon!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  displayLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostTitle!: string | null;
 
   @ApiProperty()
   equbsHosted!: number;
@@ -138,8 +162,20 @@ export class ReputationProfileResponseDto {
   @ApiProperty()
   trustLevel!: string;
 
-  @ApiProperty()
-  summaryLabel!: string;
+  @ApiPropertyOptional({ nullable: true })
+  summaryLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  level!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  icon!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  displayLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostTitle!: string | null;
 
   @ApiProperty()
   equbsJoined!: number;

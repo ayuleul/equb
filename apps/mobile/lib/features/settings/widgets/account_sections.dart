@@ -15,7 +15,9 @@ class AccountSummaryCard extends StatelessWidget {
     required this.userName,
     required this.phone,
     required this.profilePhotoBytes,
-    this.trustLevel,
+    this.reputationLabel,
+    this.reputationIcon,
+    this.reputationLevel,
     this.onTap,
     this.profileComplete,
   });
@@ -23,7 +25,9 @@ class AccountSummaryCard extends StatelessWidget {
   final String userName;
   final String phone;
   final Uint8List? profilePhotoBytes;
-  final String? trustLevel;
+  final String? reputationLabel;
+  final String? reputationIcon;
+  final String? reputationLevel;
   final VoidCallback? onTap;
   final bool? profileComplete;
 
@@ -70,8 +74,14 @@ class AccountSummaryCard extends StatelessWidget {
               ],
             ),
           ),
-          if (trustLevel != null && trustLevel!.trim().isNotEmpty) ...[
-            ReputationBadge(trustLevel: trustLevel!, compact: true),
+          if (reputationLabel != null &&
+              reputationLabel!.trim().isNotEmpty) ...[
+            ReputationBadge(
+              label: reputationLabel!,
+              icon: reputationIcon,
+              level: reputationLevel,
+              compact: true,
+            ),
             const SizedBox(width: AppSpacing.xs),
           ] else if (profileComplete != null)
             KitBadge(
@@ -96,8 +106,9 @@ class TrustIdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = buildTrustProgress(profile.trustScore);
     final onTimeRate = formatOnTimeRate(profile.onTimePaymentRate);
+    final hasEarnedLevel = profile.hasEarnedLevel;
+    final progress = buildTrustProgress(profile.trustScore);
 
     return KitCard(
       child: Column(
@@ -108,16 +119,33 @@ class TrustIdentityCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Score ${profile.trustScore} • ${profile.trustLevel}',
+                  hasEarnedLevel
+                      ? 'Score ${profile.trustScore} • ${profile.displayLabel}'
+                      : 'Start building your reputation',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              ReputationBadge(trustLevel: profile.trustLevel),
+              if (hasEarnedLevel)
+                ReputationBadge(
+                  label: profile.displayLabel!,
+                  icon: profile.icon,
+                  level: profile.level,
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+          if (!hasEarnedLevel) ...[
+            KitBanner(
+              title: 'Reputation starts after participation',
+              message:
+                  'Complete your first Equb to start building your reputation.',
+              tone: KitBadgeTone.info,
+              icon: Icons.flag_outlined,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -142,22 +170,24 @@ class TrustIdentityCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            progress.isMaxLevel
-                ? 'Trust progress'
-                : 'Trust progress • ${progress.currentLevel} to ${progress.nextLevel}',
-            style: theme.textTheme.titleSmall,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          LinearProgressIndicator(value: progress.progress),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            progress.isMaxLevel
-                ? 'You are already at the top trust level.'
-                : 'Score: ${progress.currentScore} / ${progress.targetScore}',
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: AppSpacing.md),
+          if (hasEarnedLevel) ...[
+            Text(
+              progress.isMaxLevel
+                  ? 'Trust progress'
+                  : 'Trust progress • ${progress.currentLevel} to ${progress.nextLevel}',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            LinearProgressIndicator(value: progress.progress),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              progress.isMaxLevel
+                  ? 'You are already at the top trust level.'
+                  : 'Score: ${progress.currentScore} / ${progress.targetScore}',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           if (profile.badges.isNotEmpty) ...[
             Text('Badges', style: theme.textTheme.titleSmall),
             const SizedBox(height: AppSpacing.xs),

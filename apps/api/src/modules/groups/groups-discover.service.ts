@@ -53,6 +53,7 @@ type DiscoverCandidateRecord = {
     reputationMetrics: {
       trustScore: number;
       trustLevel: string;
+      equbsCompleted: number;
       equbsHosted: number;
       hostedEqubsCompleted: number;
       turnsParticipated: number;
@@ -137,6 +138,7 @@ export class GroupsDiscoverService {
               select: {
                 trustScore: true,
                 trustLevel: true,
+                equbsCompleted: true,
                 equbsHosted: true,
                 hostedEqubsCompleted: true,
                 turnsParticipated: true,
@@ -540,11 +542,20 @@ export class GroupsDiscoverService {
     reasonLabels: string[],
   ): DiscoverGroupItemResponseDto {
     const hostMetrics = candidate.createdByUser.reputationMetrics;
+    const publicPresentation = this.reputationService.getPublicPresentation({
+      trustScore: hostMetrics?.trustScore ?? 50,
+      equbsCompleted: hostMetrics?.equbsCompleted ?? 0,
+      turnsParticipated: hostMetrics?.turnsParticipated ?? 0,
+    });
     const host: HostReputationSummaryDto = {
       userId: candidate.createdByUserId,
       trustScore: hostMetrics?.trustScore ?? 50,
       trustLevel: hostMetrics?.trustLevel ?? 'New',
-      summaryLabel: hostMetrics?.trustLevel ?? 'New',
+      summaryLabel: publicPresentation.displayLabel,
+      level: publicPresentation.level,
+      icon: publicPresentation.icon,
+      displayLabel: publicPresentation.displayLabel,
+      hostTitle: publicPresentation.hostTitle,
       equbsHosted: hostMetrics?.equbsHosted ?? 0,
       hostedEqubsCompleted: hostMetrics?.hostedEqubsCompleted ?? 0,
       turnsParticipated: hostMetrics?.turnsParticipated ?? 0,
@@ -606,6 +617,10 @@ export class GroupsDiscoverService {
           null,
         trustScore: candidate.discoverMetrics!.hostTrustScore,
         trustLevel: candidate.discoverMetrics!.hostTrustLevel,
+        level: publicPresentation.level,
+        icon: publicPresentation.icon,
+        displayLabel: publicPresentation.displayLabel,
+        hostTitle: publicPresentation.hostTitle,
       },
       reasonLabels,
     };

@@ -319,6 +319,18 @@ export class DiscoverGroupHostDto {
 
   @ApiProperty()
   trustLevel!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  level!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  icon!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  displayLabel!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hostTitle!: string | null;
 }
 
 export class DiscoverGroupItemResponseDto extends PublicGroupSummaryResponseDto {

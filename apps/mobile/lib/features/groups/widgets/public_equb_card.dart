@@ -17,6 +17,10 @@ class PublicEqubCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final host = group.host;
+    final hostName = group.hostName ?? 'Group admin';
+    final hostTitle = host?.hostTitle;
+    final hasEarnedHostTitle = (hostTitle ?? '').trim().isNotEmpty;
 
     return KitCard(
       onTap: () => context.push(AppRoutePaths.publicGroupDetail(group.id)),
@@ -36,7 +40,7 @@ class PublicEqubCard extends StatelessWidget {
               ),
             ],
           ),
-          if (group.host != null) ...[
+          if (host != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Wrap(
               spacing: AppSpacing.xs,
@@ -44,16 +48,19 @@ class PublicEqubCard extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  group.hostName ?? 'Group admin',
+                  hostName,
                   style: textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: colorScheme.onSurface,
                   ),
                 ),
-                ReputationBadge(
-                  trustLevel: group.host!.trustLevel,
-                  compact: true,
-                ),
+                if (hasEarnedHostTitle)
+                  ReputationBadge(
+                    label: hostTitle!,
+                    icon: host.icon,
+                    level: host.level,
+                    compact: true,
+                  ),
               ],
             ),
           ],

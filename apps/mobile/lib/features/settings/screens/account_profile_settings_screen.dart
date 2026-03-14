@@ -72,10 +72,13 @@ class _AccountProfileSettingsScreenState
                   children: [
                     const Spacer(),
                     reputationAsync.maybeWhen(
-                      data: (profile) => profile == null
+                      data: (profile) =>
+                          profile == null || !profile.hasEarnedLevel
                           ? const SizedBox.shrink()
                           : ReputationBadge(
-                              trustLevel: profile.trustLevel,
+                              label: profile.displayLabel!,
+                              icon: profile.icon,
+                              level: profile.level,
                               compact: true,
                             ),
                       orElse: () => const SizedBox.shrink(),

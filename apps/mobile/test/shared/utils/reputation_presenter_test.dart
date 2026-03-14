@@ -1,22 +1,18 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/shared/kit/kit_badge.dart';
 import 'package:mobile/shared/utils/reputation_presenter.dart';
 
 void main() {
   group('reputationVisualSpec', () {
-    test('maps trusted to star styling', () {
-      final spec = reputationVisualSpec('Trusted');
+    test('maps earned pro styling to success tone', () {
+      final spec = reputationVisualSpec('Pro');
 
-      expect(spec.label, 'Trusted');
-      expect(spec.icon, Icons.star_rounded);
       expect(spec.tone, KitBadgeTone.success);
     });
 
-    test('maps new users to new member styling', () {
-      final spec = reputationVisualSpec('New');
+    test('maps rising styling without a default new-member label', () {
+      final spec = reputationVisualSpec('Rising');
 
-      expect(spec.label, 'New Member');
       expect(spec.tone, KitBadgeTone.warning);
     });
   });

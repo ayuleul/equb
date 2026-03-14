@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,7 +22,6 @@ import '../../../shared/utils/turn_status_mapper.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/realtime_status_banner.dart';
-import '../../../shared/widgets/reputation_badge.dart';
 import '../../contributions/cycle_contributions_provider.dart';
 import '../../cycles/current_cycle_provider.dart';
 import '../../cycles/cycles_list_provider.dart';
@@ -160,8 +160,6 @@ class _GroupTurnOverview extends ConsumerWidget {
       child: hasStarted
           ? ListView(
               children: [
-                _TrustSummaryBanner(group: group),
-                const SizedBox(height: AppSpacing.lg),
                 _CurrentTurnHeroCard(
                   group: group,
                   currentCycleAsync: currentCycleAsync,
@@ -211,8 +209,6 @@ class _PreStartGroupView extends ConsumerWidget {
     if (resolvedMode == _GroupPageMode.active) {
       return ListView(
         children: [
-          _TrustSummaryBanner(group: group),
-          const SizedBox(height: AppSpacing.lg),
           _CurrentTurnHeroCard(
             group: group,
             currentCycleAsync: currentCycleAsync,
@@ -248,17 +244,15 @@ class _PreStartGroupView extends ConsumerWidget {
 
     return ListView(
       children: [
-        _TrustSummaryBanner(group: group),
-        const SizedBox(height: AppSpacing.lg),
-        _SetupProgressCard(group: group, rulesAsync: rulesAsync),
-        const SizedBox(height: AppSpacing.lg),
-        _PreStartMembersSection(
+        _StartGroupCard(
           group: group,
           rulesAsync: rulesAsync,
           membersAsync: membersAsync,
         ),
         const SizedBox(height: AppSpacing.lg),
-        _StartGroupCard(
+        _SetupProgressCard(group: group, rulesAsync: rulesAsync),
+        const SizedBox(height: AppSpacing.lg),
+        _PreStartMembersSection(
           group: group,
           rulesAsync: rulesAsync,
           membersAsync: membersAsync,
@@ -277,80 +271,6 @@ _GroupPageMode _resolveMode({
     return _GroupPageMode.active;
   }
   return _GroupPageMode.preStart;
-}
-
-class _TrustSummaryBanner extends StatelessWidget {
-  const _TrustSummaryBanner({required this.group});
-
-  final GroupModel group;
-
-  @override
-  Widget build(BuildContext context) {
-    final trust = group.trustSummary;
-    if (trust == null) {
-      return const SizedBox.shrink();
-    }
-
-    return KitCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Group trust summary',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              ReputationBadge(trustLevel: trust.host.trustLevel),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _TrustSummaryRow(
-            label: 'Group trust level',
-            value: trust.groupTrustLevel,
-          ),
-          _TrustSummaryRow(label: 'Host score', value: '${trust.hostScore}'),
-          _TrustSummaryRow(
-            label: 'Average member score',
-            value: trust.averageMemberScore == null
-                ? 'Not enough data'
-                : '${trust.averageMemberScore!.round()}',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrustSummaryRow extends StatelessWidget {
-  const _TrustSummaryRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          const SizedBox(width: AppSpacing.sm),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _SetupProgressCard extends ConsumerWidget {

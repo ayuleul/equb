@@ -362,17 +362,16 @@ class _GroupTrustCard extends StatelessWidget {
         children: [
           Text('Group trust', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryRow(
-                  label: 'Group trust level',
-                  value: trust.groupTrustLevel,
-                ),
+          if (trust.host.hasEarnedLevel)
+            Align(
+              alignment: Alignment.centerRight,
+              child: ReputationBadge(
+                label: trust.host.hostTitle!,
+                icon: trust.host.icon,
+                level: trust.host.level,
               ),
-              ReputationBadge(trustLevel: trust.host.trustLevel),
-            ],
-          ),
+            ),
+          if (trust.host.hasEarnedLevel) const SizedBox(height: AppSpacing.sm),
           _SummaryRow(label: 'Host score', value: '${trust.hostScore}'),
           _SummaryRow(
             label: 'Average member score',
@@ -414,7 +413,7 @@ class _MemberListRow extends StatelessWidget {
                 member.displayName,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
-              if (member.reputation != null) ...[
+              if (member.reputation?.hasEarnedLevel ?? false) ...[
                 const SizedBox(height: AppSpacing.xxs),
                 Text(
                   'Score ${member.reputation!.trustScore}',
@@ -425,8 +424,12 @@ class _MemberListRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.xs),
-        if (member.reputation != null) ...[
-          ReputationBadge(trustLevel: member.reputation!.trustLevel),
+        if (member.reputation?.hasEarnedLevel ?? false) ...[
+          ReputationBadge(
+            label: member.reputation!.displayLabel!,
+            icon: member.reputation!.icon,
+            level: member.reputation!.level,
+          ),
           const SizedBox(width: AppSpacing.xs),
         ],
         StatusPill.fromLabel(roleLabel),
@@ -553,14 +556,20 @@ class _JoinRequestRowState extends ConsumerState<_JoinRequestRow> {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
-            if (reputation != null)
-              ReputationBadge(trustLevel: reputation.trustLevel),
+            if (reputation?.hasEarnedLevel ?? false)
+              ReputationBadge(
+                label: reputation!.displayLabel!,
+                icon: reputation.icon,
+                level: reputation.level,
+              ),
           ],
         ),
         if (reputation != null) ...[
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Trust score: ${reputation.trustScore} • ${reputation.trustLevel}',
+            reputation.hasEarnedLevel
+                ? 'Trust score: ${reputation.trustScore} • ${reputation.displayLabel}'
+                : 'Trust score: ${reputation.trustScore}',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.xxs),
