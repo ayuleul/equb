@@ -9,6 +9,7 @@ import 'package:mime/mime.dart';
 import '../../app/bootstrap.dart';
 import '../../data/cycles/cycles_repository.dart';
 import '../../data/files/files_repository.dart';
+import '../../data/models/cycle_model.dart';
 import '../../data/payouts/payouts_repository.dart';
 import '../../data/models/create_payout_request.dart';
 import '../../data/models/signed_upload_request.dart';
@@ -198,7 +199,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     state = state.copyWith(clearError: true);
   }
 
-  Future<bool> selectWinner({
+  Future<CycleModel?> selectWinner({
     String? userId,
     bool preferSocketSync = false,
   }) async {
@@ -210,7 +211,7 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
     );
 
     try {
-      await _payoutsRepository.selectWinner(
+      final cycle = await _payoutsRepository.selectWinner(
         args.cycleId,
         userId: _normalizeOptional(userId),
       );
@@ -234,14 +235,14 @@ class PayoutActionController extends StateNotifier<PayoutActionState> {
         actionType: PayoutActionType.none,
         clearError: true,
       );
-      return true;
+      return cycle;
     } catch (error) {
       state = state.copyWith(
         isLoading: false,
         actionType: PayoutActionType.none,
         errorMessage: mapApiErrorToMessage(error),
       );
-      return false;
+      return null;
     }
   }
 

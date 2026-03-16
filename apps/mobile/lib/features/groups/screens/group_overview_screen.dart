@@ -699,7 +699,11 @@ class _GroupOverviewMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isAdmin) {
-      return GroupMoreActionsButton(groupName: group.name, isAdmin: false);
+      return GroupMoreActionsButton(
+        groupId: group.id,
+        groupName: group.name,
+        isAdmin: false,
+      );
     }
 
     return PopupMenuButton<_OverviewMenuAction>(

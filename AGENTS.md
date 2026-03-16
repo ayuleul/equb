@@ -433,6 +433,9 @@
 - Ethiopian login mobile validation accepts only national numbers starting with `9` or `7` (local `09`/`07`, or international `+2519`/`+2517`).
 - Reusable editable phone-entry UIs (for example login/auth flows) must share the same `KitPhoneNumberField` and shared phone metadata/normalization utilities so picker behavior and validation stay identical across flows.
 - Phone numbers are immutable login identifiers; account/profile editing screens must display phone as read-only and `/me/profile` must not accept phone updates.
+- Lottery draw/reveal flows must use stable participant identities (`userId`) and a fixed wheel spin profile; do not key draw visuals off display names or expose user-tunable reveal-duration settings.
+- Lottery wheel timing/speed tunables must live in a centralized motion-profile definition used by the draw widget API; do not scatter raw speed/duration constants across call sites.
+- Lottery draw participant lists in mobile must exclude users who already have `selectedWinnerUserId` in earlier cycles from the same round, so the wheel mirrors round-fairness rules.
 - Default in-app back navigation UI must use the shared rounded-square chevron style (`KitBackButton` in `shared/kit/kit_app_bar.dart`) unless a screen has an explicit product exception.
 - Shared `KitAppBar` should use the profile-style hierarchy (avatar + title + optional status/subtitle) app-wide, while preserving the existing `KitBackButton` visual style.
 - Dropdown selectors must use the shared `KitDropdownField` (no direct `DropdownButtonFormField` in feature screens) so selector visuals and interaction stay consistent app-wide.

@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/kit/kit.dart';
 
 enum _GroupMoreAction { edit, report, boost, leave }
 
-class GroupMoreActionsButton extends StatelessWidget {
+class GroupMoreActionsButton extends ConsumerWidget {
   const GroupMoreActionsButton({
     super.key,
+    required this.groupId,
     required this.groupName,
     this.isAdmin = false,
     this.iconColor,
   });
 
+  final String groupId;
   final String groupName;
   final bool isAdmin;
   final Color? iconColor;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? colorScheme.onSurfaceVariant;
     final items = <PopupMenuEntry<_GroupMoreAction>>[
@@ -50,7 +53,7 @@ class GroupMoreActionsButton extends StatelessWidget {
     return PopupMenuButton<_GroupMoreAction>(
       tooltip: 'More actions',
       offset: const Offset(0, 10),
-      onSelected: (value) => _handleAction(context, value),
+      onSelected: (value) => _handleAction(context, ref, value),
       itemBuilder: (context) => items,
       child: Container(
         width: 46,
@@ -71,6 +74,7 @@ class GroupMoreActionsButton extends StatelessWidget {
 
   Future<void> _handleAction(
     BuildContext context,
+    WidgetRef ref,
     _GroupMoreAction action,
   ) async {
     switch (action) {

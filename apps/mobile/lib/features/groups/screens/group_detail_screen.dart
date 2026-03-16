@@ -77,7 +77,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             : () => context.push(AppRoutePaths.groupOverview(groupId)),
         actions: [
           if (group != null)
-            GroupMoreActionsButton(groupName: group.name, isAdmin: isAdmin),
+            GroupMoreActionsButton(
+              groupId: groupId,
+              groupName: group.name,
+              isAdmin: isAdmin,
+            ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: () => ref

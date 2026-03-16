@@ -1,3 +1,4 @@
+import '../models/cycle_model.dart';
 import '../models/confirm_payout_request.dart';
 import '../models/create_payout_request.dart';
 import '../models/payout_model.dart';
@@ -12,9 +13,10 @@ class PayoutsRepository {
   final Map<String, Future<PayoutModel?>> _pendingPayoutRequests =
       <String, Future<PayoutModel?>>{};
 
-  Future<void> selectWinner(String cycleId, {String? userId}) async {
-    await _api.selectWinner(cycleId, userId: userId);
+  Future<CycleModel> selectWinner(String cycleId, {String? userId}) async {
+    final payload = await _api.selectWinner(cycleId, userId: userId);
     _cyclePayoutCache.remove(cycleId);
+    return CycleModel.fromJson(payload);
   }
 
   Future<PayoutModel> disburseTurnPayout(

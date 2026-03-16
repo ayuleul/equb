@@ -12,12 +12,14 @@ import '../../../data/models/member_model.dart';
 import '../../../data/models/member_status_utils.dart';
 import '../../../data/models/payout_model.dart';
 import '../../../features/auth/auth_controller.dart';
+import '../../../features/rounds/widgets/lottery_reveal_animation.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/api_error_mapper.dart';
 import '../../../shared/utils/date_formatter.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/cycle_detail_provider.dart';
+import '../../cycles/cycles_list_provider.dart';
 import '../../groups/group_detail_controller.dart';
 import '../../groups/group_rules_provider.dart';
 import '../cycle_payout_provider.dart';
@@ -725,12 +727,18 @@ class _WinnerSelectionContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = rules?.payoutMode ?? GroupRulePayoutModeModel.unknown;
     final requiresVerification = rules?.requiresMemberVerification ?? false;
+    final currentRoundWinnerIds = _winnerIdsForRound(
+      cycles:
+          ref.watch(cyclesListProvider(args.groupId)).valueOrNull ?? const [],
+      cycle: cycle,
+    );
     final eligibleMembers = members
         .where(
           (member) => requiresVerification
               ? isVerifiedMemberStatus(member.status)
               : isParticipatingMemberStatus(member.status),
         )
+        .where((member) => !currentRoundWinnerIds.contains(member.userId))
         .toList(growable: false);
 
     final isSelecting =
@@ -738,14 +746,59 @@ class _WinnerSelectionContent extends ConsumerWidget {
         actionState.actionType == PayoutActionType.selectingWinner;
 
     Future<void> runSelection({String? userId}) async {
-      final success = await ref
+      if (mode == GroupRulePayoutModeModel.lottery) {
+        final didComplete = await showLotteryRevealAnimation(
+          context: context,
+          participants: eligibleMembers
+              .map(
+                (member) => LotteryDrawParticipant(
+                  id: member.userId,
+                  displayName: member.displayName,
+                ),
+              )
+              .toList(growable: false),
+          onDrawWinner: () async {
+            final selectedCycle = await ref
+                .read(payoutActionControllerProvider(args).notifier)
+                .selectWinner(userId: userId, preferSocketSync: true);
+            if (selectedCycle == null) {
+              return null;
+            }
+            final winnerId = selectedCycle.selectedWinnerUserId?.trim();
+            if (winnerId == null || winnerId.isEmpty) {
+              return null;
+            }
+            final winnerName = selectedCycle.selectedWinnerUser?.fullName
+                ?.trim();
+            String? fallbackName;
+            for (final member in eligibleMembers) {
+              if (member.userId == winnerId) {
+                fallbackName = member.displayName;
+                break;
+              }
+            }
+            return LotteryDrawWinner(
+              participantId: winnerId,
+              displayName: winnerName != null && winnerName.isNotEmpty
+                  ? winnerName
+                  : (fallbackName ?? 'Selected member'),
+            );
+          },
+        );
+        if (didComplete && context.mounted) {
+          KitToast.success(context, 'Winner selected.');
+        }
+        return;
+      }
+
+      final selectedCycle = await ref
           .read(payoutActionControllerProvider(args).notifier)
           .selectWinner(userId: userId, preferSocketSync: true);
 
       if (!context.mounted) {
         return;
       }
-      if (success) {
+      if (selectedCycle != null) {
         KitToast.success(context, 'Winner selected.');
       }
     }
@@ -927,4 +980,19 @@ String _selectedWinnerLabel(CycleModel cycle) {
   return cycle.selectedWinnerUserId ??
       cycle.finalPayoutUserId ??
       cycle.payoutUserId;
+}
+
+Set<String> _winnerIdsForRound({
+  required List<CycleModel> cycles,
+  required CycleModel cycle,
+}) {
+  final roundKey = cycle.roundId ?? cycle.id;
+  return cycles
+      .where(
+        (item) => item.id != cycle.id && (item.roundId ?? item.id) == roundKey,
+      )
+      .map((item) => item.selectedWinnerUserId?.trim())
+      .whereType<String>()
+      .where((userId) => userId.isNotEmpty)
+      .toSet();
 }

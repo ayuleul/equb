@@ -446,6 +446,66 @@ Future<void> _handleDrawWinnerAction({
     if (!context.mounted) {
       return;
     }
+    if (mode == GroupRulePayoutModeModel.lottery) {
+      final members = await ref.read(groupMembersProvider(groupId).future);
+      final requiresVerification = rules?.requiresMemberVerification ?? false;
+      final currentRoundWinnerIds = _winnerIdsForRound(
+        cycles: await ref.read(cyclesListProvider(groupId).future),
+        cycle: cycle,
+      );
+      final eligibleMembers = members
+          .where(
+            (member) => requiresVerification
+                ? isVerifiedMemberStatus(member.status)
+                : isParticipatingMemberStatus(member.status),
+          )
+          .where((member) => !currentRoundWinnerIds.contains(member.userId))
+          .toList(growable: false);
+      if (!context.mounted) {
+        return;
+      }
+      final didComplete = await showLotteryRevealAnimation(
+        context: context,
+        participants: eligibleMembers
+            .map(
+              (member) => LotteryDrawParticipant(
+                id: member.userId,
+                displayName: member.displayName,
+              ),
+            )
+            .toList(growable: false),
+        onDrawWinner: () async {
+          final selectedCycle = await ref
+              .read(payoutActionControllerProvider(args).notifier)
+              .selectWinner(preferSocketSync: true);
+          if (selectedCycle == null) {
+            return null;
+          }
+          final winnerId = selectedCycle.selectedWinnerUserId?.trim();
+          if (winnerId == null || winnerId.isEmpty) {
+            return null;
+          }
+          final winnerName = selectedCycle.selectedWinnerUser?.fullName?.trim();
+          String? fallbackName;
+          for (final member in eligibleMembers) {
+            if (member.userId == winnerId) {
+              fallbackName = member.displayName;
+              break;
+            }
+          }
+          return LotteryDrawWinner(
+            participantId: winnerId,
+            displayName: winnerName != null && winnerName.isNotEmpty
+                ? winnerName
+                : (fallbackName ?? 'Selected member'),
+          );
+        },
+      );
+      if (didComplete && context.mounted) {
+        KitToast.success(context, 'Winner selected.');
+      }
+      return;
+    }
     final shouldRun = await KitDialog.confirm(
       context: context,
       title: 'Draw winner?',
@@ -457,7 +517,7 @@ Future<void> _handleDrawWinnerAction({
     }
   }
 
-  final success = await ref
+  final selectedCycle = await ref
       .read(payoutActionControllerProvider(args).notifier)
       .selectWinner(
         userId: mode == GroupRulePayoutModeModel.decision
@@ -465,7 +525,7 @@ Future<void> _handleDrawWinnerAction({
             : null,
         preferSocketSync: true,
       );
-  if (success && context.mounted) {
+  if (selectedCycle != null && context.mounted) {
     KitToast.success(context, 'Winner selected.');
   }
 }
@@ -783,4 +843,19 @@ String _winnerSelectionButtonLabel(GroupRulePayoutModeModel mode) {
     GroupRulePayoutModeModel.decision => 'Select chosen member',
     GroupRulePayoutModeModel.unknown => 'Winner selection unavailable',
   };
+}
+
+Set<String> _winnerIdsForRound({
+  required List<CycleModel> cycles,
+  required CycleModel cycle,
+}) {
+  final roundKey = cycle.roundId ?? cycle.id;
+  return cycles
+      .where(
+        (item) => item.id != cycle.id && (item.roundId ?? item.id) == roundKey,
+      )
+      .map((item) => item.selectedWinnerUserId?.trim())
+      .whereType<String>()
+      .where((userId) => userId.isNotEmpty)
+      .toSet();
 }
