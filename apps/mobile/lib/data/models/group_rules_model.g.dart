@@ -52,8 +52,6 @@ _GroupRulesModel _$GroupRulesModelFromJson(Map<String, dynamic> json) =>
         unknownValue: WinnerSelectionTimingModel.unknown,
       ),
       paymentMethods: _paymentMethodsFromJson(json['paymentMethods']),
-      requiresMemberVerification: json['requiresMemberVerification'] as bool,
-      strictCollection: json['strictCollection'] as bool,
       roundSize: _toInt(json['roundSize']),
       startPolicy: $enumDecode(
         _$StartPolicyModelEnumMap,
@@ -85,8 +83,6 @@ Map<String, dynamic> _$GroupRulesModelToJson(_GroupRulesModel instance) =>
       'winnerSelectionTiming':
           _$WinnerSelectionTimingModelEnumMap[instance.winnerSelectionTiming]!,
       'paymentMethods': _paymentMethodsToJson(instance.paymentMethods),
-      'requiresMemberVerification': instance.requiresMemberVerification,
-      'strictCollection': instance.strictCollection,
       'roundSize': instance.roundSize,
       'startPolicy': _$StartPolicyModelEnumMap[instance.startPolicy]!,
       'startAt': instance.startAt?.toIso8601String(),

@@ -37,7 +37,6 @@ describe('WinnerSelectionService', () => {
     group: {
       rules: {
         payoutMode: GroupRulePayoutMode.LOTTERY,
-        requiresMemberVerification: false,
       },
     },
   };
@@ -90,7 +89,6 @@ describe('WinnerSelectionService', () => {
       group: {
         rules: {
           payoutMode: GroupRulePayoutMode.ROTATION,
-          requiresMemberVerification: false,
         },
       },
     });
@@ -133,7 +131,6 @@ describe('WinnerSelectionService', () => {
       group: {
         rules: {
           payoutMode: GroupRulePayoutMode.DECISION,
-          requiresMemberVerification: false,
         },
       },
     });

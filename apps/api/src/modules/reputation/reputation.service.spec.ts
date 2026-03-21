@@ -579,9 +579,6 @@ describe('ReputationService', () => {
     prisma.equbGroup.findUnique.mockResolvedValue({
       id: 'group-1',
       createdByUserId: 'host-1',
-      rules: {
-        requiresMemberVerification: true,
-      },
       createdByUser: {
         id: 'host-1',
         reputationMetrics: {

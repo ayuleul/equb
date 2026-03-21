@@ -1543,7 +1543,7 @@ String _timingSummary(GroupRulesModel? rules) {
 
 String _policySummary(GroupRulesModel? rules) {
   if (!_isPolicyComplete(rules)) {
-    return 'Set payout mode, late rules, and verification requirements.';
+    return 'Set payout mode and late rules.';
   }
 
   final payoutMode = switch (rules!.payoutMode) {
@@ -1563,10 +1563,7 @@ String _policySummary(GroupRulesModel? rules) {
     WinnerSelectionTimingModel.afterCollection => 'winner after collection',
     WinnerSelectionTimingModel.unknown => 'winner timing pending',
   };
-  final verification = rules.requiresMemberVerification
-      ? 'verification required'
-      : 'joined members eligible';
-  return '$payoutMode, $winnerTiming, ${rules.graceDays} grace day(s), $finePolicy, $verification.';
+  return '$payoutMode, $winnerTiming, ${rules.graceDays} grace day(s), $finePolicy.';
 }
 
 bool _canVerifyMember(MemberStatusModel status) {
@@ -1613,10 +1610,7 @@ String _startDisabledReason({
   if (rules.readiness.isWaitingForMembers || !group.canStartCycle) {
     final count = missingCount ?? 0;
     if (count <= 0) {
-      return 'Invite and verify members before starting.';
-    }
-    if (rules.requiresMemberVerification) {
-      return 'Verify at least $count more member${count == 1 ? '' : 's'}.';
+      return 'Add more members before starting.';
     }
     return 'Add at least $count more eligible member${count == 1 ? '' : 's'}.';
   }

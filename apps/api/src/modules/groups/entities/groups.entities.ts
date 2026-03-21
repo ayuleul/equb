@@ -151,12 +151,6 @@ export class GroupRulesResponseDto {
   paymentMethods!: GroupPaymentMethod[];
 
   @ApiProperty()
-  requiresMemberVerification!: boolean;
-
-  @ApiProperty()
-  strictCollection!: boolean;
-
-  @ApiProperty()
   roundSize!: number;
 
   @ApiProperty({ enum: StartPolicy })

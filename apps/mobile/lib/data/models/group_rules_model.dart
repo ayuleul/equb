@@ -92,8 +92,6 @@ sealed class GroupRulesModel with _$GroupRulesModel {
     required WinnerSelectionTimingModel winnerSelectionTiming,
     @JsonKey(fromJson: _paymentMethodsFromJson, toJson: _paymentMethodsToJson)
     required List<GroupPaymentMethodModel> paymentMethods,
-    required bool requiresMemberVerification,
-    required bool strictCollection,
     @JsonKey(fromJson: _toInt) required int roundSize,
     @JsonKey(unknownEnumValue: StartPolicyModel.unknown)
     required StartPolicyModel startPolicy,

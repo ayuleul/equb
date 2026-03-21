@@ -81,8 +81,6 @@ type GroupRulesRecord = {
   fineAmount: number;
   payoutMode: GroupRulePayoutMode;
   paymentMethods: GroupPaymentMethod[];
-  requiresMemberVerification: boolean;
-  strictCollection: boolean;
   roundSize: number;
   startPolicy: StartPolicy;
   startAt: Date | null;
@@ -613,8 +611,6 @@ describe('Groups (e2e)', () => {
           fineAmount: data.fineAmount ?? 0,
           payoutMode: data.payoutMode ?? GroupRulePayoutMode.LOTTERY,
           paymentMethods: data.paymentMethods ?? [GroupPaymentMethod.CASH_ACK],
-          requiresMemberVerification: data.requiresMemberVerification ?? false,
-          strictCollection: data.strictCollection ?? false,
           roundSize: data.roundSize ?? 2,
           startPolicy: data.startPolicy ?? StartPolicy.WHEN_FULL,
           startAt: data.startAt ?? null,

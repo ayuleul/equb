@@ -622,7 +622,6 @@ export class ContributionsService {
                   graceDays: true,
                   fineType: true,
                   fineAmount: true,
-                  strictCollection: true,
                 },
               },
             },
@@ -763,7 +762,6 @@ export class ContributionsService {
         dueAt: cycle.dueAt,
         graceDays,
         graceDeadline,
-        strictCollection: state.strictCollection,
         allVerified: state.allVerified,
         readyForPayout: state.readyForPayout,
         overdueCount,
@@ -782,7 +780,6 @@ export class ContributionsService {
         overdueCount: evaluation.overdueCount,
         lateMarkedCount: evaluation.lateMarkedCount,
         fineLedgerEntriesCreated: evaluation.fineLedgerEntriesCreated,
-        strictCollection: evaluation.strictCollection,
         readyForPayout: evaluation.readyForPayout,
       },
       evaluation.groupId,
@@ -847,7 +844,6 @@ export class ContributionsService {
       graceDays: evaluation.graceDays,
       graceDeadline: evaluation.graceDeadline,
       evaluatedAt,
-      strictCollection: evaluation.strictCollection,
       allVerified: evaluation.allVerified,
       readyForPayout: evaluation.readyForPayout,
       overdueCount: evaluation.overdueCount,
@@ -1559,7 +1555,6 @@ export class ContributionsService {
     tx: Prisma.TransactionClient,
     cycleId: string,
   ): Promise<{
-    strictCollection: boolean;
     allVerified: boolean;
     readyForPayout: boolean;
   }> {
@@ -1573,7 +1568,6 @@ export class ContributionsService {
             selectedWinnerUserId: string | null;
             group?: {
               rules?: {
-                strictCollection: boolean;
                 winnerSelectionTiming: 'BEFORE_COLLECTION' | 'AFTER_COLLECTION';
               } | null;
             } | null;
@@ -1586,7 +1580,6 @@ export class ContributionsService {
 
     if (typeof cycleDelegate?.findUnique !== 'function') {
       return {
-        strictCollection: false,
         allVerified: false,
         readyForPayout: false,
       };
@@ -1603,7 +1596,6 @@ export class ContributionsService {
           select: {
             rules: {
               select: {
-                strictCollection: true,
                 winnerSelectionTiming: true,
               },
             },
@@ -1622,7 +1614,6 @@ export class ContributionsService {
     }
 
     const contributionItems = cycle.contributions ?? [];
-    const strictCollection = cycle.group?.rules?.strictCollection ?? false;
     const winnerSelectionTiming =
       cycle.group?.rules?.winnerSelectionTiming ?? 'BEFORE_COLLECTION';
     const allVerified =
@@ -1634,7 +1625,7 @@ export class ContributionsService {
       this.isContributionVerified(item.status),
     );
 
-    const readyForPayout = strictCollection ? allVerified : anyVerified;
+    const readyForPayout = anyVerified;
     const targetState = readyForPayout
       ? winnerSelectionTiming === 'BEFORE_COLLECTION' ||
         cycle.selectedWinnerUserId != null
@@ -1657,7 +1648,6 @@ export class ContributionsService {
     }
 
     return {
-      strictCollection,
       allVerified,
       readyForPayout,
     };

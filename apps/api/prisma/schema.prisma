@@ -333,8 +333,6 @@ model GroupRules {
   payoutMode                  GroupRulePayoutMode
   winnerSelectionTiming       WinnerSelectionTiming  @default(BEFORE_COLLECTION)
   paymentMethods              GroupPaymentMethod[]
-  requiresMemberVerification  Boolean                @default(false)
-  strictCollection            Boolean                @default(false)
   createdAt                   DateTime               @default(now())
   updatedAt                   DateTime               @updatedAt
   group                       EqubGroup              @relation(fields: [groupId], references: [id], onDelete: Cascade)

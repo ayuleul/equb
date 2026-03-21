@@ -12,7 +12,6 @@ sealed class CycleCollectionEvaluationModel
     required int graceDays,
     required DateTime graceDeadline,
     required DateTime evaluatedAt,
-    required bool strictCollection,
     required bool allVerified,
     required bool readyForPayout,
     @JsonKey(fromJson: _toInt) required int overdueCount,

@@ -173,9 +173,6 @@ export class CycleEvaluationResponseDto {
   evaluatedAt!: Date;
 
   @ApiProperty()
-  strictCollection!: boolean;
-
-  @ApiProperty()
   allVerified!: boolean;
 
   @ApiProperty()

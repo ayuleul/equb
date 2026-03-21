@@ -548,11 +548,6 @@ export class ReputationService {
       select: {
         id: true,
         createdByUserId: true,
-        rules: {
-          select: {
-            requiresMemberVerification: true,
-          },
-        },
         createdByUser: {
           select: {
             id: true,
@@ -590,7 +585,6 @@ export class ReputationService {
       group as {
         id: string;
         createdByUserId: string;
-        rules: { requiresMemberVerification: boolean } | null;
         createdByUser: {
           id: string;
           reputationMetrics: ReputationMetricsRecord | null;
@@ -1188,7 +1182,6 @@ export class ReputationService {
   private toGroupTrustSummary(group: {
     id: string;
     createdByUserId: string;
-    rules: { requiresMemberVerification: boolean } | null;
     createdByUser: {
       id: string;
       reputationMetrics: ReputationMetricsRecord | null;

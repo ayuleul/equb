@@ -230,8 +230,6 @@ describe('GroupsService', () => {
         payoutMode: 'LOTTERY' as never,
         winnerSelectionTiming: 'BEFORE_COLLECTION' as never,
         paymentMethods: ['CASH_ACK'] as never,
-        requiresMemberVerification: false,
-        strictCollection: false,
         roundSize: 12,
         startPolicy: 'WHEN_FULL' as never,
       }),
@@ -432,8 +430,8 @@ describe('GroupsService', () => {
     prisma.joinRequest.findFirst.mockResolvedValue(null);
     prisma.joinRequest.findFirst.mockResolvedValueOnce(null);
     prisma.joinRequest.findFirst.mockResolvedValueOnce({
-      reviewedAt: new Date('2026-03-11T10:00:00.000Z'),
-      createdAt: new Date('2026-03-11T09:00:00.000Z'),
+      reviewedAt: new Date('2026-03-20T10:00:00.000Z'),
+      createdAt: new Date('2026-03-20T09:00:00.000Z'),
     });
 
     await expect(

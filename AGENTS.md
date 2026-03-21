@@ -240,8 +240,7 @@
 - Client/UI winner labels must treat `selectedWinnerUserId` as the only source of truth for whether a winner exists; `finalPayoutUser*` may be present earlier as a recipient fallback and must not be shown as an already-selected winner.
 - Starting a cycle must create due contribution rows (`PENDING`) for every eligible member snapshot at cycle-start time.
 - Collection readiness rule is locked:
-  - `strictCollection = true`: cycle may move to `READY_FOR_PAYOUT` only when all due contribution rows are `VERIFIED|CONFIRMED`
-  - `strictCollection = false`: payout readiness may proceed when at least one contribution is verified (admin can proceed after evaluation).
+  - payout readiness may proceed when at least one due contribution row is `VERIFIED|CONFIRMED`; group setup must not expose or depend on a strict-collection toggle
 - Collection completion transition is locked:
   - if winner was already selected (`BEFORE_COLLECTION`), `COLLECTING -> READY_FOR_PAYOUT`
   - if winner is still pending (`AFTER_COLLECTION`), `COLLECTING -> READY_FOR_WINNER_SELECTION`
@@ -253,8 +252,7 @@
 - Cycle start eligibility gate is locked:
   - ruleset must be configured
   - eligible member count must be at least `2`
-  - if `requiresMemberVerification = true`, only `VERIFIED` members are eligible
-  - otherwise, joined/participating members are eligible.
+  - joined/participating members are eligible; cycle start and winner selection must not depend on a ruleset-level member-verification toggle
 - Cycle auction impacts only the current cycle’s `finalPayoutUserId`; no pre-generated payout order/schedule is used.
 - Auction winner selection is deterministic: highest bid wins, and ties are resolved by earliest bid `createdAt`.
 - Winner selection is explicit per cycle and must run only after cycle state reaches `READY_FOR_PAYOUT`.

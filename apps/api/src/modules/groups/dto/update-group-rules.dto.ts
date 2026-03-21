@@ -11,7 +11,6 @@ import {
   ArrayNotEmpty,
   ArrayUnique,
   IsArray,
-  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -90,14 +89,6 @@ export class UpdateGroupRulesDto {
   @ArrayUnique()
   @IsEnum(GroupPaymentMethod, { each: true })
   paymentMethods!: GroupPaymentMethod[];
-
-  @ApiProperty({ example: false })
-  @IsBoolean()
-  requiresMemberVerification!: boolean;
-
-  @ApiProperty({ example: false })
-  @IsBoolean()
-  strictCollection!: boolean;
 
   @ApiProperty({
     example: 12,

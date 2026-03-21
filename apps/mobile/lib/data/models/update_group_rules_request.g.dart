@@ -34,8 +34,6 @@ _UpdateGroupRulesRequest _$UpdateGroupRulesRequestFromJson(
     unknownValue: WinnerSelectionTimingModel.unknown,
   ),
   paymentMethods: _paymentMethodsFromJson(json['paymentMethods']),
-  requiresMemberVerification: json['requiresMemberVerification'] as bool,
-  strictCollection: json['strictCollection'] as bool,
   startPolicy: $enumDecode(
     _$StartPolicyModelEnumMap,
     json['startPolicy'],
@@ -61,8 +59,6 @@ Map<String, dynamic> _$UpdateGroupRulesRequestToJson(
   'winnerSelectionTiming':
       _$WinnerSelectionTimingModelEnumMap[instance.winnerSelectionTiming]!,
   'paymentMethods': _paymentMethodsToJson(instance.paymentMethods),
-  'requiresMemberVerification': instance.requiresMemberVerification,
-  'strictCollection': instance.strictCollection,
   'startPolicy': _$StartPolicyModelEnumMap[instance.startPolicy]!,
   'roundSize': instance.roundSize,
   'startAt': _nullableDateToIsoString(instance.startAt),

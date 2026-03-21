@@ -9,15 +9,11 @@ import {
   CycleState,
   CycleStatus,
   GroupRulePayoutMode,
-  MemberStatus,
   Prisma,
 } from '@prisma/client';
 import { randomInt } from 'crypto';
 
-import {
-  PARTICIPATING_MEMBER_STATUSES,
-  VERIFIED_MEMBER_STATUSES,
-} from '../membership/member-status.util';
+import { PARTICIPATING_MEMBER_STATUSES } from '../membership/member-status.util';
 import { RoundEligibilityService } from './round-eligibility.service';
 
 type WinnerSelectionTx = Prisma.TransactionClient;
@@ -67,7 +63,6 @@ export class WinnerSelectionService {
             rules: {
               select: {
                 payoutMode: true,
-                requiresMemberVerification: true,
               },
             },
           },
@@ -98,14 +93,11 @@ export class WinnerSelectionService {
     }
 
     const payoutMode = cycle.group.rules.payoutMode;
-    const eligibleStatuses = this.resolveEligibleStatuses(
-      cycle.group.rules.requiresMemberVerification,
-    );
     const eligibleMembers = await tx.equbMember.findMany({
       where: {
         groupId: cycle.groupId,
         status: {
-          in: eligibleStatuses,
+          in: PARTICIPATING_MEMBER_STATUSES,
         },
       },
       select: {
@@ -300,13 +292,5 @@ export class WinnerSelectionService {
       payoutMode,
       selectionMetadata: selectionMetadata as Prisma.JsonValue,
     };
-  }
-
-  private resolveEligibleStatuses(
-    requiresMemberVerification: boolean,
-  ): MemberStatus[] {
-    return requiresMemberVerification
-      ? VERIFIED_MEMBER_STATUSES
-      : PARTICIPATING_MEMBER_STATUSES;
   }
 }

@@ -40,7 +40,6 @@ describe('ContributionsService.evaluateCycleCollection', () => {
                       graceDays: 0,
                       fineType: GroupRuleFineType.NONE,
                       fineAmount: 0,
-                      strictCollection: true,
                     },
                   },
                   contributions: [
@@ -71,7 +70,6 @@ describe('ContributionsService.evaluateCycleCollection', () => {
                       : null,
                   group: {
                     rules: {
-                      strictCollection: true,
                       winnerSelectionTiming,
                     },
                   },
@@ -248,7 +246,6 @@ describe('ContributionsService.verifyContribution realtime emissions', () => {
           group: {
             rules: {
               graceDays: 0,
-              strictCollection: true,
               winnerSelectionTiming: 'AFTER_COLLECTION',
             },
           },

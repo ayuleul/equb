@@ -34,7 +34,6 @@ import { RoundEligibilityService } from '../../common/cycles/round-eligibility.s
 import { WinnerSelectionService } from '../../common/cycles/winner-selection.service';
 import {
   PARTICIPATING_MEMBER_STATUSES,
-  VERIFIED_MEMBER_STATUSES,
   isParticipatingMemberStatus,
   isSuspendedMemberStatus,
   normalizeMemberStatus,
@@ -180,8 +179,6 @@ export class GroupsService {
             payoutMode: GroupRulePayoutMode.LOTTERY,
             winnerSelectionTiming: WinnerSelectionTiming.BEFORE_COLLECTION,
             paymentMethods: [GroupPaymentMethod.CASH_ACK],
-            requiresMemberVerification: false,
-            strictCollection: false,
             roundSize: 2,
             startPolicy: StartPolicy.WHEN_FULL,
             startAt: null,
@@ -250,7 +247,6 @@ export class GroupsService {
             rules: {
               select: {
                 groupId: true,
-                requiresMemberVerification: true,
                 roundSize: true,
                 startPolicy: true,
                 startAt: true,
@@ -420,7 +416,6 @@ export class GroupsService {
           rules: {
             select: {
               groupId: true,
-              requiresMemberVerification: true,
               roundSize: true,
               startPolicy: true,
               startAt: true,
@@ -568,7 +563,6 @@ export class GroupsService {
 
     const eligibleCount = this.countEligibleMembers(
       members.map((member) => member.status),
-      rules.requiresMemberVerification,
     );
 
     await this.discoverMetricsService.refreshMetricsForGroups([groupId]);
@@ -642,8 +636,6 @@ export class GroupsService {
           payoutMode: dto.payoutMode,
           winnerSelectionTiming: dto.winnerSelectionTiming,
           paymentMethods: dto.paymentMethods,
-          requiresMemberVerification: dto.requiresMemberVerification,
-          strictCollection: dto.strictCollection,
           roundSize: dto.roundSize,
           startPolicy: dto.startPolicy,
           startAt: parsedStartAt,
@@ -662,8 +654,6 @@ export class GroupsService {
           payoutMode: dto.payoutMode,
           winnerSelectionTiming: dto.winnerSelectionTiming,
           paymentMethods: dto.paymentMethods,
-          requiresMemberVerification: dto.requiresMemberVerification,
-          strictCollection: dto.strictCollection,
           roundSize: dto.roundSize,
           startPolicy: dto.startPolicy,
           startAt: parsedStartAt,
@@ -675,7 +665,7 @@ export class GroupsService {
         where: { id: groupId },
         data: {
           contributionAmount: dto.contributionAmount,
-          strictPayout: dto.strictCollection,
+          strictPayout: false,
           frequency:
             dto.frequency === GroupRuleFrequency.WEEKLY
               ? GroupFrequency.WEEKLY
@@ -701,8 +691,6 @@ export class GroupsService {
         payoutMode: rules.payoutMode,
         winnerSelectionTiming: rules.winnerSelectionTiming,
         paymentMethods: rules.paymentMethods,
-        requiresMemberVerification: rules.requiresMemberVerification,
-        strictCollection: rules.strictCollection,
         roundSize: rules.roundSize,
         startPolicy: rules.startPolicy,
         startAt: rules.startAt,
@@ -717,7 +705,6 @@ export class GroupsService {
     });
     const eligibleCount = this.countEligibleMembers(
       members.map((member) => member.status),
-      rules.requiresMemberVerification,
     );
 
     return this.toGroupRulesResponse(rules, eligibleCount);
@@ -1644,7 +1631,6 @@ export class GroupsService {
           rules: {
             select: {
               contributionAmount: true,
-              requiresMemberVerification: true,
               frequency: true,
               customIntervalDays: true,
               roundSize: true,
@@ -1689,15 +1675,11 @@ export class GroupsService {
         );
       }
 
-      const eligibleStatuses = group.rules.requiresMemberVerification
-        ? VERIFIED_MEMBER_STATUSES
-        : PARTICIPATING_MEMBER_STATUSES;
-
       const eligibleMembers = await tx.equbMember.findMany({
         where: {
           groupId,
           status: {
-            in: eligibleStatuses,
+            in: PARTICIPATING_MEMBER_STATUSES,
           },
         },
         select: {
@@ -1760,9 +1742,7 @@ export class GroupsService {
       if (roundId == null) {
         if (uniqueEligibleUserIds.length < 2) {
           throw new BadRequestException(
-            group.rules.requiresMemberVerification
-              ? 'At least 2 verified members are required to start a cycle'
-              : 'At least 2 joined members are required to start a cycle',
+            'At least 2 participating members are required to start a cycle',
           );
         }
 
@@ -2124,7 +2104,6 @@ export class GroupsService {
     },
     rules: {
       groupId: string;
-      requiresMemberVerification: boolean;
       roundSize: number;
       startPolicy: StartPolicy;
       startAt: Date | null;
@@ -2183,7 +2162,6 @@ export class GroupsService {
     },
     rules: {
       groupId: string;
-      requiresMemberVerification: boolean;
       roundSize: number;
       startPolicy: StartPolicy;
       startAt: Date | null;
@@ -2220,8 +2198,6 @@ export class GroupsService {
       payoutMode: GroupRulePayoutMode;
       winnerSelectionTiming: WinnerSelectionTiming;
       paymentMethods: GroupPaymentMethod[];
-      requiresMemberVerification: boolean;
-      strictCollection: boolean;
       roundSize: number;
       startPolicy: StartPolicy;
       startAt: Date | null;
@@ -2251,8 +2227,6 @@ export class GroupsService {
       payoutMode: rules.payoutMode,
       winnerSelectionTiming: rules.winnerSelectionTiming,
       paymentMethods: rules.paymentMethods,
-      requiresMemberVerification: rules.requiresMemberVerification,
-      strictCollection: rules.strictCollection,
       roundSize: rules.roundSize,
       startPolicy: rules.startPolicy,
       startAt: rules.startAt,
@@ -2407,7 +2381,6 @@ export class GroupsService {
   private toRulesGateFlags(
     rules: {
       groupId: string;
-      requiresMemberVerification: boolean;
       roundSize: number;
       startPolicy: StartPolicy;
       startAt: Date | null;
@@ -2430,7 +2403,6 @@ export class GroupsService {
 
     const eligibleCount = this.countEligibleMembers(
       memberStatuses,
-      rules.requiresMemberVerification,
     );
     const requiredToStart = this.resolveRequiredToStart(rules);
     const readiness = this.buildStartReadiness(
@@ -2448,16 +2420,10 @@ export class GroupsService {
     };
   }
 
-  private countEligibleMembers(
-    memberStatuses: MemberStatus[],
-    requiresMemberVerification: boolean,
-  ): number {
-    const eligibleStatuses = requiresMemberVerification
-      ? VERIFIED_MEMBER_STATUSES
-      : PARTICIPATING_MEMBER_STATUSES;
-
-    return memberStatuses.filter((status) => eligibleStatuses.includes(status))
-      .length;
+  private countEligibleMembers(memberStatuses: MemberStatus[]): number {
+    return memberStatuses.filter((status) =>
+      PARTICIPATING_MEMBER_STATUSES.includes(status),
+    ).length;
   }
 
   private validateStartPolicyFields(dto: UpdateGroupRulesDto): void {

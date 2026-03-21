@@ -726,7 +726,6 @@ class _WinnerSelectionContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = rules?.payoutMode ?? GroupRulePayoutModeModel.unknown;
-    final requiresVerification = rules?.requiresMemberVerification ?? false;
     final currentRoundWinnerIds = _winnerIdsForRound(
       cycles:
           ref.watch(cyclesListProvider(args.groupId)).valueOrNull ?? const [],
@@ -734,9 +733,7 @@ class _WinnerSelectionContent extends ConsumerWidget {
     );
     final eligibleMembers = members
         .where(
-          (member) => requiresVerification
-              ? isVerifiedMemberStatus(member.status)
-              : isParticipatingMemberStatus(member.status),
+          (member) => isParticipatingMemberStatus(member.status),
         )
         .where((member) => !currentRoundWinnerIds.contains(member.userId))
         .toList(growable: false);

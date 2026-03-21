@@ -448,16 +448,13 @@ Future<void> _handleDrawWinnerAction({
     }
     if (mode == GroupRulePayoutModeModel.lottery) {
       final members = await ref.read(groupMembersProvider(groupId).future);
-      final requiresVerification = rules?.requiresMemberVerification ?? false;
       final currentRoundWinnerIds = _winnerIdsForRound(
         cycles: await ref.read(cyclesListProvider(groupId).future),
         cycle: cycle,
       );
       final eligibleMembers = members
           .where(
-            (member) => requiresVerification
-                ? isVerifiedMemberStatus(member.status)
-                : isParticipatingMemberStatus(member.status),
+            (member) => isParticipatingMemberStatus(member.status),
           )
           .where((member) => !currentRoundWinnerIds.contains(member.userId))
           .toList(growable: false);
@@ -566,12 +563,9 @@ Future<String?> _promptDecisionWinner({
   required GroupRulesModel? rules,
 }) async {
   final members = await ref.read(groupMembersProvider(groupId).future);
-  final requiresVerification = rules?.requiresMemberVerification ?? false;
   final eligibleMembers = members
       .where(
-        (member) => requiresVerification
-            ? isVerifiedMemberStatus(member.status)
-            : isParticipatingMemberStatus(member.status),
+        (member) => isParticipatingMemberStatus(member.status),
       )
       .toList(growable: false);
   if (eligibleMembers.isEmpty) {

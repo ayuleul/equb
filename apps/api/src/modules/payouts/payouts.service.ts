@@ -582,12 +582,6 @@ export class PayoutsService {
           confirmedContributionUserIds,
         );
 
-        if (cycle.group.strictPayout && !strictEligibility.eligible) {
-          throw new BadRequestException(
-            `Strict payout check failed. Missing confirmed contributions for ${strictEligibility.missingMemberIds.length} active member(s).`,
-          );
-        }
-
         const now = new Date();
         const confirmedPayout = await tx.payout.update({
           where: { id: cycle.payout.id },
@@ -732,7 +726,6 @@ export class PayoutsService {
           currentUser.id,
           {
             payoutId: confirmedPayout.id,
-            strictPayout: cycle.group.strictPayout,
             requiredActiveMemberCount:
               strictEligibility.requiredMemberIds.length,
             confirmedContributionCount:

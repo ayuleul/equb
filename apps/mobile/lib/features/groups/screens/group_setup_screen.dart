@@ -86,8 +86,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   var _paymentMethods = <GroupPaymentMethodModel>{
     GroupPaymentMethodModel.cashAck,
   };
-  var _requiresMemberVerification = false;
-  var _strictCollection = false;
   var _startPolicy = StartPolicyModel.whenFull;
   DateTime? _startAt;
 
@@ -247,8 +245,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _payoutMode = rules.payoutMode;
     _winnerSelectionTiming = rules.winnerSelectionTiming;
     _paymentMethods = rules.paymentMethods.toSet();
-    _requiresMemberVerification = rules.requiresMemberVerification;
-    _strictCollection = rules.strictCollection;
     _startPolicy = rules.startPolicy;
     _startAt = rules.startAt;
   }
@@ -447,8 +443,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           payoutMode: _payoutMode,
           winnerSelectionTiming: _winnerSelectionTiming,
           paymentMethods: _paymentMethods.toList(growable: false),
-          requiresMemberVerification: _requiresMemberVerification,
-          strictCollection: _strictCollection,
           startPolicy: _startPolicy,
           roundSize: roundSize,
           startAt: _startPolicy == StartPolicyModel.onDate ? _startAt : null,
@@ -1032,24 +1026,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             onChanged: _togglePaymentMethod,
           ),
           const SizedBox(height: AppSpacing.sm),
-          SwitchListTile.adaptive(
-            contentPadding: const EdgeInsets.only(left: AppSpacing.sm),
-            title: const Text('Requires member verification'),
-            value: _requiresMemberVerification,
-            onChanged: (value) => setState(() {
-              _requiresMemberVerification = value;
-              _errorMessage = null;
-            }),
-          ),
-          SwitchListTile.adaptive(
-            contentPadding: const EdgeInsets.only(left: AppSpacing.sm),
-            title: const Text('Strict collection before payout'),
-            value: _strictCollection,
-            onChanged: (value) => setState(() {
-              _strictCollection = value;
-              _errorMessage = null;
-            }),
-          ),
           const SizedBox(height: AppSpacing.md),
           KitBanner(
             title: 'Policy summary',
@@ -1105,10 +1081,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       WinnerSelectionTimingModel.afterCollection => 'winner after collection',
       WinnerSelectionTimingModel.unknown => 'winner timing pending',
     };
-    final verificationLabel = _requiresMemberVerification
-        ? 'verification required before start'
-        : 'joined members can count toward start';
-    return '$payoutLabel, $timingLabel, ${_graceDaysController.text.trim().isEmpty ? '0' : _graceDaysController.text.trim()} grace days, $fineLabel, $verificationLabel.';
+    return '$payoutLabel, $timingLabel, ${_graceDaysController.text.trim().isEmpty ? '0' : _graceDaysController.text.trim()} grace days, $fineLabel.';
   }
 
   void _togglePaymentMethod(GroupPaymentMethodModel method, bool isSelected) {
