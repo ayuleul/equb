@@ -193,15 +193,31 @@ void main() {
       expect(find.text('5 of 8 verified'), findsNothing);
     },
   );
+
+  testWidgets('Public groups do not show manual verify actions', (tester) async {
+    await tester.pumpWidget(
+      _buildTestApp(
+        hasStarted: false,
+        visibility: GroupVisibilityModel.public,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Verify'), findsNothing);
+  });
 }
 
 Widget _buildTestApp({
   bool selectedWinnerAssignedForCurrentCycle = true,
   bool completedRound = false,
   bool hasStarted = true,
+  GroupVisibilityModel visibility = GroupVisibilityModel.private,
 }) {
   final groupsRepository = GroupsRepository(
-    _FakeGroupsApi(memberCount: completedRound ? 2 : 5),
+    _FakeGroupsApi(
+      memberCount: completedRound ? 2 : 5,
+      visibility: visibility,
+    ),
   );
   final cyclesRepository = CyclesRepository(
     _FakeCyclesApi(
@@ -292,9 +308,10 @@ Widget _buildTestApp({
 }
 
 class _FakeGroupsApi implements GroupsApi {
-  _FakeGroupsApi({required this.memberCount});
+  _FakeGroupsApi({required this.memberCount, required this.visibility});
 
   final int memberCount;
+  final GroupVisibilityModel visibility;
 
   @override
   Future<List<Map<String, dynamic>>> listPublicGroups() async {
@@ -332,6 +349,10 @@ class _FakeGroupsApi implements GroupsApi {
       'frequency': 'MONTHLY',
       'startDate': DateTime(2026, 1, 1).toIso8601String(),
       'status': 'ACTIVE',
+      'visibility': switch (visibility) {
+        GroupVisibilityModel.public => 'PUBLIC',
+        _ => 'PRIVATE',
+      },
       'rulesetConfigured': true,
       'canInviteMembers': true,
       'canStartCycle': true,

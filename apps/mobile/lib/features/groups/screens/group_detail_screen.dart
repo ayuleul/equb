@@ -561,7 +561,9 @@ class _PreStartMembersSectionState
                       children: [
                         Expanded(
                           child: Text(
-                            'Invite and verify members here.',
+                            widget.group.visibility == GroupVisibilityModel.public
+                                ? 'Invite and review members here.'
+                                : 'Invite and verify members here.',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
@@ -593,11 +595,13 @@ class _PreStartMembersSectionState
                   ],
                   const SizedBox(height: AppSpacing.md),
                   if (members.isEmpty)
-                    const KitEmptyState(
+                    KitEmptyState(
                       icon: Icons.people_outline_rounded,
                       title: 'No members yet',
                       message:
-                          'Invite members here, then verify them when they join.',
+                          widget.group.visibility == GroupVisibilityModel.public
+                              ? 'Invite members here and approve join requests as they arrive.'
+                              : 'Invite members here, then verify them when they join.',
                     )
                   else
                     Column(
@@ -611,6 +615,8 @@ class _PreStartMembersSectionState
                             member: members[index],
                             canVerify:
                                 isAdmin &&
+                                widget.group.visibility !=
+                                    GroupVisibilityModel.public &&
                                 _canVerifyMember(members[index].status),
                             isVerifying:
                                 _verifyingMemberId == members[index].id,

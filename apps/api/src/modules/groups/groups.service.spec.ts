@@ -444,7 +444,7 @@ describe('GroupsService', () => {
     });
   });
 
-  it('approves a join request and creates joined membership', async () => {
+  it('approves a public join request and creates verified membership', async () => {
     const { service, prisma } = createService();
 
     prisma.joinRequest.findFirst.mockResolvedValue({
@@ -456,6 +456,9 @@ describe('GroupsService', () => {
       createdAt: new Date('2026-03-11T08:00:00.000Z'),
       reviewedAt: null,
       reviewedByUserId: null,
+      group: {
+        visibility: GroupVisibility.PUBLIC,
+      },
       user: {
         id: 'user-2',
         phone: '+251922222222',
@@ -469,8 +472,10 @@ describe('GroupsService', () => {
       groupId: 'group-1',
       userId: 'user-2',
       role: MemberRole.MEMBER,
-      status: MemberStatus.JOINED,
+      status: MemberStatus.VERIFIED,
       joinedAt: new Date('2026-03-11T10:00:00.000Z'),
+      verifiedAt: new Date('2026-03-11T10:00:00.000Z'),
+      verifiedByUserId: actor.id,
     });
     prisma.joinRequest.update.mockResolvedValue({
       id: 'request-1',
@@ -499,7 +504,8 @@ describe('GroupsService', () => {
         data: expect.objectContaining({
           groupId: 'group-1',
           userId: 'user-2',
-          status: MemberStatus.JOINED,
+          status: MemberStatus.VERIFIED,
+          verifiedByUserId: actor.id,
         }),
       }),
     );

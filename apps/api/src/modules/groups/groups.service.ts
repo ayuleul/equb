@@ -820,6 +820,7 @@ export class GroupsService {
             select: {
               id: true,
               status: true,
+              visibility: true,
               rules: {
                 select: {
                   groupId: true,
@@ -891,7 +892,14 @@ export class GroupsService {
         );
       }
 
-      await this.upsertJoinedMembership(tx, invite.groupId, currentUser.id);
+      await this.upsertApprovedMembership(
+        tx,
+        invite.groupId,
+        currentUser.id,
+        invite.group.visibility,
+        currentUser.id,
+        new Date(),
+      );
 
       const membership = await tx.equbMember.findUnique({
         where: {
@@ -2715,6 +2723,11 @@ export class GroupsService {
           groupId,
         },
         include: {
+          group: {
+            select: {
+              visibility: true,
+            },
+          },
           user: {
             select: {
               id: true,
@@ -2737,7 +2750,14 @@ export class GroupsService {
 
       if (nextStatus === JoinRequestStatus.APPROVED) {
         await this.assertGroupMembershipOpen(groupId, tx);
-        await this.upsertJoinedMembership(tx, groupId, request.userId);
+        await this.upsertApprovedMembership(
+          tx,
+          groupId,
+          request.userId,
+          request.group.visibility,
+          currentUser.id,
+          reviewedAt,
+        );
         await this.reputationService.applyEvent(tx, {
           userId: request.userId,
           eventType: 'MEMBER_JOINED',
@@ -2776,10 +2796,13 @@ export class GroupsService {
     return result;
   }
 
-  private async upsertJoinedMembership(
+  private async upsertApprovedMembership(
     tx: Prisma.TransactionClient,
     groupId: string,
     userId: string,
+    visibility: GroupVisibility,
+    reviewerUserId: string,
+    reviewedAt: Date,
   ): Promise<void> {
     const existingMembership = await tx.equbMember.findUnique({
       where: {
@@ -2804,16 +2827,20 @@ export class GroupsService {
       throw new ConflictException('User is already a member of this group');
     }
 
-    const joinedAt = new Date();
+    const joinedAt = reviewedAt;
+    const isPublicApproval = visibility === GroupVisibility.PUBLIC;
+    const nextMemberStatus = isPublicApproval
+      ? MemberStatus.VERIFIED
+      : MemberStatus.JOINED;
 
     if (existingMembership) {
       await tx.equbMember.update({
         where: { id: existingMembership.id },
         data: {
-          status: MemberStatus.JOINED,
+          status: nextMemberStatus,
           joinedAt,
-          verifiedAt: null,
-          verifiedByUserId: null,
+          verifiedAt: isPublicApproval ? reviewedAt : null,
+          verifiedByUserId: isPublicApproval ? reviewerUserId : null,
         },
       });
       return;
@@ -2824,8 +2851,10 @@ export class GroupsService {
         groupId,
         userId,
         role: MemberRole.MEMBER,
-        status: MemberStatus.JOINED,
+        status: nextMemberStatus,
         joinedAt,
+        verifiedAt: isPublicApproval ? reviewedAt : null,
+        verifiedByUserId: isPublicApproval ? reviewerUserId : null,
       },
     });
   }
