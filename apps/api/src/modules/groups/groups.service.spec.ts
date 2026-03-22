@@ -28,7 +28,7 @@ describe('GroupsService', () => {
   };
   const notificationsService = { notifyGroupAdmins: jest.fn() };
   const roundEligibilityService = {};
-  const winnerSelectionService = {};
+  const winnerSelectionService = { selectWinner: jest.fn() };
   const reputationService = {
     assertCanHostPublicGroup: jest.fn(),
     assertCanCreatePublicEqub: jest.fn(),
@@ -38,7 +38,10 @@ describe('GroupsService', () => {
     getHostSummary: jest.fn(),
     getGroupTrustSummary: jest.fn(),
   };
-  const realtimeService = { emitGroupEvent: jest.fn() };
+  const realtimeService = {
+    emitGroupEvent: jest.fn(),
+    emitTurnEvent: jest.fn(),
+  };
   const discoverMetricsService = { refreshMetricsForGroups: jest.fn() };
 
   const createService = (overrides?: Record<string, unknown>) => {
@@ -59,11 +62,24 @@ describe('GroupsService', () => {
       },
       equbCycle: {
         findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
       },
       equbMember: {
         findUnique: jest.fn(),
+        findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+      },
+      equbRound: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+      },
+      payoutSchedule: {
+        createMany: jest.fn(),
+      },
+      contribution: {
+        createMany: jest.fn(),
       },
       joinRequest: {
         findFirst: jest.fn(),
@@ -231,7 +247,6 @@ describe('GroupsService', () => {
         winnerSelectionTiming: 'BEFORE_COLLECTION' as never,
         paymentMethods: ['CASH_ACK'] as never,
         roundSize: 12,
-        startPolicy: 'WHEN_FULL' as never,
       }),
     ).rejects.toThrow(
       'Your trust score allows only starter public Equbs with up to 10 members.',
@@ -522,6 +537,78 @@ describe('GroupsService', () => {
         eventType: 'MEMBER_JOINED',
       }),
     );
+  });
+
+  it('uses the actual cycle start day as the first cycle due date for when-full groups', async () => {
+    const { service, prisma } = createService();
+    const actualStart = new Date('2026-04-12T09:00:00.000Z');
+    jest.useFakeTimers();
+    jest.setSystemTime(actualStart);
+
+    try {
+      prisma.equbGroup.findUnique.mockResolvedValue({
+        id: 'group-1',
+        status: GroupStatus.ACTIVE,
+        contributionAmount: 500,
+        frequency: GroupFrequency.MONTHLY,
+        startDate: new Date('2026-03-01T00:00:00.000Z'),
+        timezone: 'Africa/Addis_Ababa',
+        rules: {
+          contributionAmount: 500,
+          frequency: GroupFrequency.MONTHLY,
+          customIntervalDays: null,
+          roundSize: 2,
+          payoutMode: 'LOTTERY',
+          winnerSelectionTiming: 'BEFORE_COLLECTION',
+        },
+      });
+      prisma.equbCycle.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+      prisma.equbMember.findMany.mockResolvedValue([
+        {
+          userId: 'user-1',
+          payoutPosition: null,
+          createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        },
+        {
+          userId: 'user-2',
+          payoutPosition: null,
+          createdAt: new Date('2026-03-02T00:00:00.000Z'),
+        },
+      ]);
+      prisma.equbRound.findFirst.mockResolvedValue(null);
+      prisma.equbRound.create.mockResolvedValue({ id: 'round-1' });
+      prisma.payoutSchedule.createMany.mockResolvedValue({ count: 2 });
+      prisma.contribution.createMany.mockResolvedValue({ count: 2 });
+      prisma.equbCycle.create.mockResolvedValue({
+        id: 'cycle-1',
+        dueDate: actualStart,
+      });
+      prisma.equbCycle.update.mockResolvedValue({});
+      jest.spyOn(service, 'getCycleById').mockResolvedValue({
+        id: 'cycle-1',
+        selectedWinnerUserId: null,
+      } as never);
+
+      await service.startCycle(actor, 'group-1');
+
+      expect(dateService.normalizeGroupDate).toHaveBeenCalledWith(
+        actualStart,
+        'Africa/Addis_Ababa',
+      );
+      expect(prisma.equbCycle.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dueDate: actualStart,
+            dueAt: actualStart,
+          }),
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('lists only public groups in discovery summaries', async () => {

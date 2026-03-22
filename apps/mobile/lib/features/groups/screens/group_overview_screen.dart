@@ -84,14 +84,23 @@ class _GroupOverviewBody extends ConsumerWidget {
       },
       child: ListView(
         children: [
-          if (isAdmin && !group.rulesetConfigured) ...[
+          if (isAdmin) ...[
             KitBanner(
-              title: 'Rules setup required',
-              message:
-                  'Save group rules before inviting members or starting the first cycle.',
-              tone: KitBadgeTone.warning,
-              icon: Icons.rule_folder_outlined,
-              ctaLabel: 'Open setup',
+              title: group.rulesetConfigured
+                  ? 'Configuration ready'
+                  : 'Configuration required',
+              message: group.rulesetConfigured
+                  ? 'Review or update the group configuration at any time.'
+                  : 'Finish group configuration before inviting members or starting the first cycle.',
+              tone: group.rulesetConfigured
+                  ? KitBadgeTone.info
+                  : KitBadgeTone.warning,
+              icon: group.rulesetConfigured
+                  ? Icons.tune_rounded
+                  : Icons.rule_folder_outlined,
+              ctaLabel: group.rulesetConfigured
+                  ? 'Edit configuration'
+                  : 'Open configuration',
               onCtaPressed: () =>
                   context.push(AppRoutePaths.groupSetup(group.id)),
             ),
@@ -334,7 +343,7 @@ class _MembersCard extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
-                'Complete rules setup to enable invites.',
+                'Finish configuration to enable invites.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),

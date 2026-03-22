@@ -12,7 +12,6 @@ import {
   JoinRequestStatus,
   MemberRole,
   MemberStatus,
-  StartPolicy,
   WinnerSelectionTiming,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -114,9 +113,6 @@ export class GroupStartReadinessDto {
 
   @ApiProperty()
   isWaitingForMembers!: boolean;
-
-  @ApiProperty()
-  isWaitingForDate!: boolean;
 }
 
 export class GroupRulesResponseDto {
@@ -152,15 +148,6 @@ export class GroupRulesResponseDto {
 
   @ApiProperty()
   roundSize!: number;
-
-  @ApiProperty({ enum: StartPolicy })
-  startPolicy!: StartPolicy;
-
-  @ApiPropertyOptional({ nullable: true })
-  startAt!: Date | null;
-
-  @ApiPropertyOptional({ nullable: true })
-  minToStart!: number | null;
 
   @ApiProperty()
   requiredToStart!: number;
@@ -212,15 +199,6 @@ export class PublicGroupRulesSummaryResponseDto {
 
   @ApiProperty()
   roundSize!: number;
-
-  @ApiProperty({ enum: StartPolicy })
-  startPolicy!: StartPolicy;
-
-  @ApiPropertyOptional({ nullable: true })
-  startAt!: Date | null;
-
-  @ApiPropertyOptional({ nullable: true })
-  minToStart!: number | null;
 
   @ApiProperty({ enum: WinnerSelectionTiming })
   winnerSelectionTiming!: WinnerSelectionTiming;

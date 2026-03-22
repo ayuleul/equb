@@ -22,11 +22,7 @@ sealed class UpdateGroupRulesRequest with _$UpdateGroupRulesRequest {
     required WinnerSelectionTimingModel winnerSelectionTiming,
     @JsonKey(fromJson: _paymentMethodsFromJson, toJson: _paymentMethodsToJson)
     required List<GroupPaymentMethodModel> paymentMethods,
-    @JsonKey(unknownEnumValue: StartPolicyModel.unknown)
-    required StartPolicyModel startPolicy,
     required int roundSize,
-    @JsonKey(toJson: _nullableDateToIsoString) DateTime? startAt,
-    int? minToStart,
   }) = _UpdateGroupRulesRequest;
 
   factory UpdateGroupRulesRequest.fromJson(Map<String, dynamic> json) =>
@@ -62,8 +58,4 @@ List<String> _paymentMethodsToJson(List<GroupPaymentMethodModel> methods) {
         },
       )
       .toList(growable: false);
-}
-
-String? _nullableDateToIsoString(DateTime? value) {
-  return value?.toUtc().toIso8601String();
 }

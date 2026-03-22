@@ -294,38 +294,22 @@ class _SetupProgressCard extends ConsumerWidget {
         ),
       ),
       data: (rules) {
-        final stepStates = [
-          _SetupStepState(
-            key: 'basics',
-            title: 'Basics',
-            isComplete: _isBasicsComplete(rules),
-            summary: _basicsSummary(group, rules),
-          ),
-          _SetupStepState(
-            key: 'timing',
-            title: 'Timing',
-            isComplete: _isTimingComplete(rules),
-            summary: _timingSummary(rules),
-          ),
-          _SetupStepState(
-            key: 'policy',
-            title: 'Policy',
-            isComplete: _isPolicyComplete(rules),
-            summary: _policySummary(rules),
-          ),
-        ];
-        final completedSteps = stepStates
-            .where((step) => step.isComplete)
-            .length;
+        final isAdmin = group.membership?.role == MemberRoleModel.admin;
+        final completedSteps = [
+          _isBasicsComplete(rules),
+          _isTimingComplete(rules),
+          _isPolicyComplete(rules),
+        ].where((step) => step).length;
+        const totalSteps = 3;
 
         return KitCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                completedSteps == stepStates.length
+                completedSteps == totalSteps
                     ? 'Setup is ready.'
-                    : 'Complete the remaining setup steps.',
+                    : 'Finish the remaining configuration sections.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.md),
@@ -333,114 +317,49 @@ class _SetupProgressCard extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '$completedSteps of ${stepStates.length} steps completed',
+                      '$completedSteps of $totalSteps steps completed',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                   StatusPill(
-                    label: completedSteps == stepStates.length
+                    label: completedSteps == totalSteps
                         ? 'Ready'
                         : 'In progress',
-                    tone: completedSteps == stepStates.length
+                    tone: completedSteps == totalSteps
                         ? KitBadgeTone.success
                         : KitBadgeTone.info,
                   ),
                 ],
               ),
+              if (isAdmin) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: KitTertiaryButton(
+                    onPressed: () =>
+                        context.push(AppRoutePaths.groupSetup(group.id)),
+                    label: completedSteps == totalSteps
+                        ? 'Edit configuration'
+                        : 'Open configuration',
+                    icon: Icons.tune_rounded,
+                    expand: false,
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               ClipRRect(
                 borderRadius: AppRadius.pillRounded,
                 child: LinearProgressIndicator(
-                  value: stepStates.isEmpty
-                      ? 0
-                      : completedSteps / stepStates.length,
+                  value: completedSteps / totalSteps,
                   minHeight: 10,
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              for (var index = 0; index < stepStates.length; index++) ...[
-                _SetupStepRow(
-                  groupId: group.id,
-                  step: stepStates[index],
-                  isAdmin: group.membership?.role == MemberRoleModel.admin,
-                ),
-                if (index != stepStates.length - 1)
-                  const Divider(height: AppSpacing.lg),
-              ],
             ],
           ),
         );
       },
-    );
-  }
-}
-
-class _SetupStepState {
-  const _SetupStepState({
-    required this.key,
-    required this.title,
-    required this.isComplete,
-    required this.summary,
-  });
-
-  final String key;
-  final String title;
-  final bool isComplete;
-  final String summary;
-}
-
-class _SetupStepRow extends StatelessWidget {
-  const _SetupStepRow({
-    required this.groupId,
-    required this.step,
-    required this.isAdmin,
-  });
-
-  final String groupId;
-  final _SetupStepState step;
-  final bool isAdmin;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          step.isComplete
-              ? Icons.task_alt_rounded
-              : Icons.radio_button_unchecked,
-          color: step.isComplete
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                step.title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(step.summary, style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        if (isAdmin)
-          KitTertiaryButton(
-            onPressed: () =>
-                context.push(AppRoutePaths.groupSetup(groupId, step: step.key)),
-            label: step.isComplete ? 'Edit' : 'Open',
-            icon: Icons.chevron_right_rounded,
-            expand: false,
-          ),
-      ],
     );
   }
 }
@@ -561,7 +480,8 @@ class _PreStartMembersSectionState
                       children: [
                         Expanded(
                           child: Text(
-                            widget.group.visibility == GroupVisibilityModel.public
+                            widget.group.visibility ==
+                                    GroupVisibilityModel.public
                                 ? 'Invite and review members here.'
                                 : 'Invite and verify members here.',
                             style: Theme.of(context).textTheme.bodyMedium,
@@ -600,8 +520,8 @@ class _PreStartMembersSectionState
                       title: 'No members yet',
                       message:
                           widget.group.visibility == GroupVisibilityModel.public
-                              ? 'Invite members here and approve join requests as they arrive.'
-                              : 'Invite members here, then verify them when they join.',
+                          ? 'Invite members here and approve join requests as they arrive.'
+                          : 'Invite members here, then verify them when they join.',
                     )
                   else
                     Column(
@@ -1486,15 +1406,11 @@ bool _isTimingComplete(GroupRulesModel? rules) {
   if (rules == null) {
     return false;
   }
-  if (rules.frequency == GroupRuleFrequencyModel.unknown ||
-      rules.startPolicy == StartPolicyModel.unknown) {
+  if (rules.frequency == GroupRuleFrequencyModel.unknown) {
     return false;
   }
   if (rules.frequency == GroupRuleFrequencyModel.customInterval &&
       (rules.customIntervalDays ?? 0) <= 0) {
-    return false;
-  }
-  if (rules.startPolicy == StartPolicyModel.onDate && rules.startAt == null) {
     return false;
   }
   return true;
@@ -1515,61 +1431,6 @@ bool _isPolicyComplete(GroupRulesModel? rules) {
     return false;
   }
   return true;
-}
-
-String _basicsSummary(GroupModel group, GroupRulesModel? rules) {
-  if (!_isBasicsComplete(rules)) {
-    return 'Set contribution amount and round size.';
-  }
-  return '${formatCurrency(rules!.contributionAmount, group.currency)} contribution, ${rules.roundSize} members per round.';
-}
-
-String _timingSummary(GroupRulesModel? rules) {
-  if (!_isTimingComplete(rules)) {
-    return 'Choose frequency, start policy, and start timing.';
-  }
-
-  final frequency = switch (rules!.frequency) {
-    GroupRuleFrequencyModel.weekly => 'Weekly',
-    GroupRuleFrequencyModel.monthly => 'Monthly',
-    GroupRuleFrequencyModel.customInterval =>
-      'Every ${rules.customIntervalDays} days',
-    GroupRuleFrequencyModel.unknown => 'Custom',
-  };
-  final startPolicy = switch (rules.startPolicy) {
-    StartPolicyModel.whenFull => 'Starts when full',
-    StartPolicyModel.manual =>
-      'Manual start at ${rules.requiredToStart} ready members',
-    StartPolicyModel.onDate =>
-      'Starts ${rules.startAt == null ? 'on date' : formatDate(rules.startAt!)}',
-    StartPolicyModel.unknown => 'Start policy pending',
-  };
-  return '$frequency cadence. $startPolicy.';
-}
-
-String _policySummary(GroupRulesModel? rules) {
-  if (!_isPolicyComplete(rules)) {
-    return 'Set payout mode and late rules.';
-  }
-
-  final payoutMode = switch (rules!.payoutMode) {
-    GroupRulePayoutModeModel.lottery => 'Lottery payout',
-    GroupRulePayoutModeModel.auction => 'Auction payout',
-    GroupRulePayoutModeModel.rotation => 'Rotation payout',
-    GroupRulePayoutModeModel.decision => 'Decision payout',
-    GroupRulePayoutModeModel.unknown => 'Custom payout',
-  };
-  final finePolicy = switch (rules.fineType) {
-    GroupRuleFineTypeModel.none => 'no late fine',
-    GroupRuleFineTypeModel.fixedAmount => 'fine ${rules.fineAmount}',
-    GroupRuleFineTypeModel.unknown => 'custom fine',
-  };
-  final winnerTiming = switch (rules.winnerSelectionTiming) {
-    WinnerSelectionTimingModel.beforeCollection => 'winner before collection',
-    WinnerSelectionTimingModel.afterCollection => 'winner after collection',
-    WinnerSelectionTimingModel.unknown => 'winner timing pending',
-  };
-  return '$payoutMode, $winnerTiming, ${rules.graceDays} grace day(s), $finePolicy.';
 }
 
 bool _canVerifyMember(MemberStatusModel status) {
@@ -1603,15 +1464,10 @@ String _startDisabledReason({
   if (!_isBasicsComplete(rules) ||
       !_isTimingComplete(rules) ||
       !_isPolicyComplete(rules)) {
-    return 'Complete setup first.';
+    return 'Finish configuration first.';
   }
   if (rules == null) {
-    return 'Complete setup first.';
-  }
-  if (rules.readiness.isWaitingForDate) {
-    return rules.startAt == null
-        ? 'Wait until the scheduled start date.'
-        : 'Wait until ${formatDate(rules.startAt!)} to start.';
+    return 'Finish configuration first.';
   }
   if (rules.readiness.isWaitingForMembers || !group.canStartCycle) {
     final count = missingCount ?? 0;

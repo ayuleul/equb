@@ -69,7 +69,10 @@ class _CyclesOverviewBody extends ConsumerWidget {
           children: [
             SizedBox(height: AppSpacing.md),
             KitCard(
-              child: SizedBox(height: 180, child: KitSkeletonList(itemCount: 3)),
+              child: SizedBox(
+                height: 180,
+                child: KitSkeletonList(itemCount: 3),
+              ),
             ),
           ],
         ),
@@ -78,7 +81,9 @@ class _CyclesOverviewBody extends ConsumerWidget {
             ErrorView(
               message: mapFriendlyError(error),
               onRetry: () {
-                ref.read(cyclesRepositoryProvider).invalidateGroupCache(group.id);
+                ref
+                    .read(cyclesRepositoryProvider)
+                    .invalidateGroupCache(group.id);
                 ref.invalidate(cyclesListProvider(group.id));
               },
             ),
@@ -90,23 +95,32 @@ class _CyclesOverviewBody extends ConsumerWidget {
           final activeCycleSummary = currentCycle == null
               ? null
               : cycleSummaries.cast<_CycleSummary?>().firstWhere(
-                    (summary) => summary?.roundId == currentCycle.roundId,
-                    orElse: () => null,
-                  );
+                  (summary) => summary?.roundId == currentCycle.roundId,
+                  orElse: () => null,
+                );
           final pastCycleSummaries = cycleSummaries
               .where((summary) => summary.roundId != currentCycle?.roundId)
               .toList(growable: false);
 
           return ListView(
             children: [
-              if (isAdmin && !group.canStartCycle) ...[
+              if (isAdmin) ...[
                 KitBanner(
-                  title: 'Rules setup required',
-                  message:
-                      'Complete setup and ensure at least 2 eligible members before starting the first cycle.',
-                  tone: KitBadgeTone.warning,
-                  icon: Icons.rule_folder_outlined,
-                  ctaLabel: 'Open setup',
+                  title: group.canStartCycle
+                      ? 'Configuration ready'
+                      : 'Configuration required',
+                  message: group.canStartCycle
+                      ? 'Review or update the group configuration at any time.'
+                      : 'Finish group configuration and ensure at least 2 eligible members before starting the first cycle.',
+                  tone: group.canStartCycle
+                      ? KitBadgeTone.info
+                      : KitBadgeTone.warning,
+                  icon: group.canStartCycle
+                      ? Icons.tune_rounded
+                      : Icons.rule_folder_outlined,
+                  ctaLabel: group.canStartCycle
+                      ? 'Edit configuration'
+                      : 'Open configuration',
                   onCtaPressed: () =>
                       context.push(AppRoutePaths.groupSetup(group.id)),
                 ),
@@ -123,15 +137,16 @@ class _CyclesOverviewBody extends ConsumerWidget {
                   onPressed: () =>
                       context.push(AppRoutePaths.groupDetail(group.id)),
                   icon: Icons.add_circle_outline,
-                  label:
-                      cycles.isEmpty ? 'Start First Cycle' : 'Start New Cycle',
+                  label: cycles.isEmpty
+                      ? 'Start First Cycle'
+                      : 'Start New Cycle',
                 ),
               if (isAdmin && currentCycle == null && !group.canStartCycle)
                 KitPrimaryButton(
                   onPressed: () =>
                       context.push(AppRoutePaths.groupSetup(group.id)),
                   icon: Icons.rule_folder_outlined,
-                  label: 'Complete setup to start',
+                  label: 'Finish configuration to start',
                 ),
               if (isAdmin && currentCycle != null)
                 Padding(
@@ -241,7 +256,7 @@ class _EmptyCyclesView extends StatelessWidget {
       message: isAdmin
           ? canStartCycle
                 ? 'Start the first cycle from current turn.'
-                : 'Complete setup before starting the first cycle.'
+                : 'Finish configuration before starting the first cycle.'
           : 'Ask a group admin to start the first cycle.',
     );
   }
@@ -260,8 +275,9 @@ class _CycleListTile extends StatelessWidget {
         title: summary.label,
         subtitle:
             '${summary.turnCount} turns • Last payout: ${summary.lastRecipientLabel}',
-        onTap: () =>
-            context.push(AppRoutePaths.groupCycleDetail(groupId, summary.lastTurn.id)),
+        onTap: () => context.push(
+          AppRoutePaths.groupCycleDetail(groupId, summary.lastTurn.id),
+        ),
         trailing: StatusPill.fromLabel(
           summary.isCompleted ? 'COMPLETED' : 'ACTIVE',
         ),
@@ -308,27 +324,34 @@ List<_CycleSummary> _buildCycleSummaries(List<CycleModel> cycles) {
   }
 
   final roundIdsNewestFirst = grouped.keys.toList(growable: false);
-  final roundIdsOldestFirst = roundIdsNewestFirst.reversed.toList(growable: false);
+  final roundIdsOldestFirst = roundIdsNewestFirst.reversed.toList(
+    growable: false,
+  );
   final roundNumberById = <String, int>{};
   for (var index = 0; index < roundIdsOldestFirst.length; index++) {
     roundNumberById[roundIdsOldestFirst[index]] = index + 1;
   }
 
-  return roundIdsNewestFirst.map((roundId) {
-    final turns = grouped[roundId]!
-      ..sort((a, b) => a.cycleNo.compareTo(b.cycleNo));
-    final lastTurn = turns.last;
-    return _CycleSummary(
-      roundId: roundId,
-      label: 'Cycle ${roundNumberById[roundId]}',
-      turnCount: turns.length,
-      completedTurnCount:
-          turns.where((turn) => turn.status == CycleStatusModel.closed).length,
-      isCompleted: turns.every((turn) => turn.status == CycleStatusModel.closed),
-      lastRecipientLabel: _recipientLabel(lastTurn),
-      lastTurn: lastTurn,
-    );
-  }).toList(growable: false);
+  return roundIdsNewestFirst
+      .map((roundId) {
+        final turns = grouped[roundId]!
+          ..sort((a, b) => a.cycleNo.compareTo(b.cycleNo));
+        final lastTurn = turns.last;
+        return _CycleSummary(
+          roundId: roundId,
+          label: 'Cycle ${roundNumberById[roundId]}',
+          turnCount: turns.length,
+          completedTurnCount: turns
+              .where((turn) => turn.status == CycleStatusModel.closed)
+              .length,
+          isCompleted: turns.every(
+            (turn) => turn.status == CycleStatusModel.closed,
+          ),
+          lastRecipientLabel: _recipientLabel(lastTurn),
+          lastTurn: lastTurn,
+        );
+      })
+      .toList(growable: false);
 }
 
 String _recipientLabel(CycleModel cycle) {

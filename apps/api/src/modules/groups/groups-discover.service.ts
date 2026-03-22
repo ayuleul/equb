@@ -5,7 +5,6 @@ import {
   GroupStatus,
   GroupVisibility,
   JoinRequestStatus,
-  StartPolicy,
   WinnerSelectionTiming,
 } from '@prisma/client';
 
@@ -67,9 +66,6 @@ type DiscoverCandidateRecord = {
     customIntervalDays: number | null;
     payoutMode: GroupRulePayoutMode;
     roundSize: number;
-    startPolicy: StartPolicy;
-    startAt: Date | null;
-    minToStart: number | null;
     winnerSelectionTiming: WinnerSelectionTiming;
   };
   discoverMetrics: {
@@ -155,9 +151,6 @@ export class GroupsDiscoverService {
             customIntervalDays: true,
             payoutMode: true,
             roundSize: true,
-            startPolicy: true,
-            startAt: true,
-            minToStart: true,
             winnerSelectionTiming: true,
           },
         },

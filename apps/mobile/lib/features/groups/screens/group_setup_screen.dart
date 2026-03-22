@@ -20,50 +20,20 @@ import '../group_detail_controller.dart';
 import '../../profile/profile_reputation_provider.dart';
 
 class GroupSetupScreen extends ConsumerStatefulWidget {
-  const GroupSetupScreen({
-    super.key,
-    required this.groupId,
-    this.initialStepKey,
-  });
+  const GroupSetupScreen({super.key, required this.groupId});
 
   final String groupId;
-  final String? initialStepKey;
 
   @override
   ConsumerState<GroupSetupScreen> createState() => _GroupSetupScreenState();
 }
 
 class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
-  static const List<_SetupTab> _setupTabs = [
-    _SetupTab(
-      key: 'basics',
-      label: 'Basics',
-      description:
-          'Set the group name, description, currency, and contribution amount.',
-      section: _RulesSection.basics,
-    ),
-    _SetupTab(
-      key: 'timing',
-      label: 'Timing',
-      description:
-          'Choose round size, frequency, start policy, and start timing.',
-      section: _RulesSection.timing,
-    ),
-    _SetupTab(
-      key: 'policy',
-      label: 'Policy',
-      description:
-          'Set visibility, payout, fine, payment, and verification rules.',
-      section: _RulesSection.policy,
-    ),
-  ];
-
   late final TextEditingController _contributionAmountController;
   late final TextEditingController _groupNameController;
   late final TextEditingController _groupDescriptionController;
   late final TextEditingController _currencyController;
   late final TextEditingController _roundSizeController;
-  late final TextEditingController _minToStartController;
   late final TextEditingController _customIntervalDaysController;
   late final TextEditingController _graceDaysController;
   late final TextEditingController _fineAmountController;
@@ -71,12 +41,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   late final FocusNode _groupNameFocusNode;
   late final FocusNode _groupDescriptionFocusNode;
   late final FocusNode _currencyFocusNode;
-  late final FocusNode _minToStartFocusNode;
   late final FocusNode _customIntervalDaysFocusNode;
   late final FocusNode _graceDaysFocusNode;
   late final FocusNode _fineAmountFocusNode;
-  late final List<GlobalKey> _setupTabKeys;
-  late final ScrollController _setupTabsScrollController;
 
   var _visibility = GroupVisibilityModel.private;
   var _frequency = GroupRuleFrequencyModel.monthly;
@@ -86,12 +53,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   var _paymentMethods = <GroupPaymentMethodModel>{
     GroupPaymentMethodModel.cashAck,
   };
-  var _startPolicy = StartPolicyModel.whenFull;
-  DateTime? _startAt;
 
   var _isLoading = true;
   var _isSubmitting = false;
-  var _currentStep = 0;
   var _isAnyRulesInputFocused = false;
   var _hasFatalLoadError = false;
   String? _errorMessage;
@@ -104,7 +68,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _currencyController = TextEditingController();
     _contributionAmountController = TextEditingController();
     _roundSizeController = TextEditingController(text: '2');
-    _minToStartController = TextEditingController();
     _customIntervalDaysController = TextEditingController();
     _graceDaysController = TextEditingController(text: '0');
     _fineAmountController = TextEditingController(text: '0');
@@ -116,20 +79,12 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       ..addListener(_handleRulesInputFocusChanged);
     _currencyFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
-    _minToStartFocusNode = FocusNode()
-      ..addListener(_handleRulesInputFocusChanged);
     _customIntervalDaysFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
     _graceDaysFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
     _fineAmountFocusNode = FocusNode()
       ..addListener(_handleRulesInputFocusChanged);
-    _setupTabKeys = List<GlobalKey>.generate(
-      _setupTabs.length,
-      (_) => GlobalKey(),
-    );
-    _setupTabsScrollController = ScrollController();
-    _currentStep = _initialStepFromKey(widget.initialStepKey);
     _loadRules();
   }
 
@@ -140,7 +95,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _currencyController.dispose();
     _contributionAmountController.dispose();
     _roundSizeController.dispose();
-    _minToStartController.dispose();
     _customIntervalDaysController.dispose();
     _graceDaysController.dispose();
     _fineAmountController.dispose();
@@ -156,9 +110,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _currencyFocusNode
       ..removeListener(_handleRulesInputFocusChanged)
       ..dispose();
-    _minToStartFocusNode
-      ..removeListener(_handleRulesInputFocusChanged)
-      ..dispose();
     _customIntervalDaysFocusNode
       ..removeListener(_handleRulesInputFocusChanged)
       ..dispose();
@@ -168,14 +119,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _fineAmountFocusNode
       ..removeListener(_handleRulesInputFocusChanged)
       ..dispose();
-    _setupTabsScrollController.dispose();
     super.dispose();
-  }
-
-  int _initialStepFromKey(String? key) {
-    final normalized = key?.trim().toLowerCase();
-    final index = _setupTabs.indexWhere((tab) => tab.key == normalized);
-    return index < 0 ? 0 : index;
   }
 
   void _handleRulesInputFocusChanged() {
@@ -184,7 +128,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         _groupDescriptionFocusNode.hasFocus ||
         _currencyFocusNode.hasFocus ||
         _contributionAmountFocusNode.hasFocus ||
-        _minToStartFocusNode.hasFocus ||
         _customIntervalDaysFocusNode.hasFocus ||
         _graceDaysFocusNode.hasFocus ||
         _fineAmountFocusNode.hasFocus;
@@ -219,7 +162,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         return;
       }
       setState(() => _isLoading = false);
-      _scrollStepTabIntoView(_currentStep, animated: false);
     } catch (error) {
       if (!mounted) {
         return;
@@ -235,7 +177,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
   void _applyRules(GroupRulesModel rules) {
     _contributionAmountController.text = '${rules.contributionAmount}';
     _roundSizeController.text = '${rules.roundSize}';
-    _minToStartController.text = rules.minToStart?.toString() ?? '';
     _customIntervalDaysController.text =
         rules.customIntervalDays?.toString() ?? '';
     _graceDaysController.text = '${rules.graceDays}';
@@ -245,39 +186,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _payoutMode = rules.payoutMode;
     _winnerSelectionTiming = rules.winnerSelectionTiming;
     _paymentMethods = rules.paymentMethods.toSet();
-    _startPolicy = rules.startPolicy;
-    _startAt = rules.startAt;
-  }
-
-  void _setCurrentStep(int step) {
-    final target = step.clamp(0, _setupTabs.length - 1);
-    setState(() {
-      _currentStep = target;
-      _errorMessage = null;
-    });
-    _scrollStepTabIntoView(target);
-  }
-
-  bool _attemptNavigateToStep(int targetStep) {
-    if (targetStep <= _currentStep) {
-      _setCurrentStep(targetStep);
-      return true;
-    }
-    for (var step = _currentStep; step < targetStep; step++) {
-      if (!_validateStep(step)) {
-        return false;
-      }
-    }
-    _setCurrentStep(targetStep);
-    return true;
-  }
-
-  bool _validateStep(int step) {
-    return switch (_setupTabs[step].section) {
-      _RulesSection.basics => _validateBasicsStep(),
-      _RulesSection.timing => _validateTimingStep(),
-      _RulesSection.policy => _validatePolicyStep(),
-    };
   }
 
   bool _validateBasicsStep() {
@@ -308,7 +216,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     final customIntervalDays = int.tryParse(
       _customIntervalDaysController.text.trim(),
     );
-    final minToStart = int.tryParse(_minToStartController.text.trim());
     if (_frequency == GroupRuleFrequencyModel.customInterval &&
         (customIntervalDays == null || customIntervalDays <= 0)) {
       setState(
@@ -318,21 +225,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     }
     if (roundSize < 2) {
       setState(() => _errorMessage = 'Round size must be at least 2.');
-      return false;
-    }
-    if (_startPolicy == StartPolicyModel.onDate && _startAt == null) {
-      setState(
-        () => _errorMessage = 'Start date is required for ON_DATE policy.',
-      );
-      return false;
-    }
-    if (_startPolicy != StartPolicyModel.whenFull &&
-        _minToStartController.text.trim().isNotEmpty &&
-        (minToStart == null || minToStart < 2 || minToStart > roundSize)) {
-      setState(
-        () => _errorMessage =
-            'Minimum to start must be between 2 and round size.',
-      );
       return false;
     }
     return true;
@@ -373,24 +265,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         mode == GroupRulePayoutModeModel.decision;
   }
 
-  void _scrollStepTabIntoView(int index, {bool animated = true}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || index < 0 || index >= _setupTabKeys.length) {
-        return;
-      }
-      final context = _setupTabKeys[index].currentContext;
-      if (context == null) {
-        return;
-      }
-      Scrollable.ensureVisible(
-        context,
-        alignment: 0.5,
-        duration: animated ? const Duration(milliseconds: 140) : Duration.zero,
-        curve: Curves.easeOut,
-      );
-    });
-  }
-
   Future<void> _saveRules() async {
     if (!_validateBasicsStep() ||
         !_validateTimingStep() ||
@@ -410,7 +284,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     );
     final graceDays = int.parse(_graceDaysController.text.trim());
     final fineAmount = int.tryParse(_fineAmountController.text.trim()) ?? 0;
-    final minToStart = int.tryParse(_minToStartController.text.trim());
 
     setState(() {
       _isSubmitting = true;
@@ -443,12 +316,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           payoutMode: _payoutMode,
           winnerSelectionTiming: _winnerSelectionTiming,
           paymentMethods: _paymentMethods.toList(growable: false),
-          startPolicy: _startPolicy,
           roundSize: roundSize,
-          startAt: _startPolicy == StartPolicyModel.onDate ? _startAt : null,
-          minToStart: _startPolicy == StartPolicyModel.whenFull
-              ? null
-              : (_minToStartController.text.trim().isEmpty ? null : minToStart),
         ),
       );
 
@@ -481,7 +349,10 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     final hideBottomCta = isKeyboardOpen || _isAnyRulesInputFocused;
 
     return KitScaffold(
-      appBar: KitAppBar(title: 'Group setup', subtitle: _stepSubtitle),
+      appBar: const KitAppBar(
+        title: 'Group setup',
+        subtitle: 'Set everything once, then save',
+      ),
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusScope.of(context).unfocus(),
@@ -498,96 +369,83 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SingleChildScrollView(
-          controller: _setupTabsScrollController,
-          scrollDirection: Axis.horizontal,
-          child: _buildStepTabs(context),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          _setupTabs[_currentStep].description,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
         Expanded(
-          child: KitCard(
-            child: SingleChildScrollView(
-              child: _buildRulesStep(
+          child: ListView(
+            children: [
+              _buildSectionCard(
                 context,
-                section: _setupTabs[_currentStep].section,
+                title: 'Identity & access',
+                child: _buildRulesStep(context, section: _RulesSection.basics),
               ),
-            ),
+              const SizedBox(height: AppSpacing.md),
+              _buildSectionCard(
+                context,
+                title: 'Cycle timing',
+                child: _buildRulesStep(context, section: _RulesSection.timing),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildSectionCard(
+                context,
+                title: 'Payout & collection',
+                child: _buildRulesStep(context, section: _RulesSection.policy),
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _errorMessage!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
+              if (hideBottomCta) ...[
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton(
+                  onPressed: _isSubmitting ? null : _saveRules,
+                  child: Text(_isSubmitting ? 'Saving...' : 'Save setup'),
+                ),
+              ],
+            ],
           ),
         ),
-        if (_errorMessage != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            _errorMessage!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.error,
-            ),
-          ),
-        ],
         if (!hideBottomCta) ...[
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              if (_currentStep > 0)
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _attemptNavigateToStep(_currentStep - 1),
-                    child: const Text('Back'),
-                  ),
-                ),
-              if (_currentStep > 0) const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : (_currentStep == _setupTabs.length - 1
-                            ? _saveRules
-                            : () => _attemptNavigateToStep(_currentStep + 1)),
-                  child: Text(
-                    _currentStep == _setupTabs.length - 1
-                        ? (_isSubmitting ? 'Saving...' : 'Save setup')
-                        : 'Next',
-                  ),
-                ),
-              ),
-            ],
+          FilledButton(
+            onPressed: _isSubmitting ? null : _saveRules,
+            child: Text(_isSubmitting ? 'Saving...' : 'Save setup'),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildStepTabs(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xs),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Row(
+  Widget _buildSectionCard(
+    BuildContext context, {
+    required String title,
+    String? description,
+    required Widget child,
+  }) {
+    return KitCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var index = 0; index < _setupTabs.length; index++) ...[
-            _SetupTabButton(
-              key: _setupTabKeys[index],
-              index: index,
-              tab: _setupTabs[index],
-              isSelected: _currentStep == index,
-              isCompleted: index < _currentStep,
-              onTap: () => _attemptNavigateToStep(index),
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          if (description != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            description,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            if (index != _setupTabs.length - 1)
-              _StepConnector(isActive: index < _currentStep),
+          ),
           ],
+          const SizedBox(height: AppSpacing.md),
+          child,
         ],
       ),
     );
@@ -598,15 +456,47 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     required _RulesSection section,
   }) {
     final roundSize = int.tryParse(_roundSizeController.text.trim()) ?? 2;
-    final requiredToStart = _startPolicy == StartPolicyModel.whenFull
-        ? roundSize
-        : (int.tryParse(_minToStartController.text.trim()) ?? roundSize);
     final reputationAsync = ref.watch(currentUserReputationProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (section == _RulesSection.basics) ...[
+          if (_visibility == GroupVisibilityModel.public)
+            reputationAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.md),
+                child: KitBanner(
+                  title: 'Checking hosting access',
+                  message: 'Loading your public Equb limits.',
+                  tone: KitBadgeTone.info,
+                  icon: Icons.shield_outlined,
+                ),
+              ),
+              error: (error, _) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: KitBanner(
+                  title: 'Unable to load hosting access',
+                  message: mapApiErrorToMessage(error),
+                  tone: KitBadgeTone.warning,
+                  icon: Icons.info_outline_rounded,
+                ),
+              ),
+              data: (profile) => profile == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: KitBanner(
+                        title: 'Public hosting access',
+                        message:
+                            '${hostRestrictionMessage(profile)} Improve your score by completing Equbs and paying contributions on time.',
+                        tone: profile.eligibility.hostTier == null
+                            ? KitBadgeTone.warning
+                            : KitBadgeTone.info,
+                        icon: Icons.shield_outlined,
+                      ),
+                    ),
+            ),
           AppTextField(
             controller: _groupNameController,
             focusNode: _groupNameFocusNode,
@@ -631,6 +521,33 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             onChanged: (_) => setState(() => _errorMessage = null),
           ),
           const SizedBox(height: AppSpacing.md),
+          KitDropdownField<GroupVisibilityModel>(
+            value: _visibility,
+            label: 'Visibility',
+            items: const [
+              DropdownMenuItem(
+                value: GroupVisibilityModel.private,
+                child: Text('Private'),
+              ),
+              DropdownMenuItem(
+                value: GroupVisibilityModel.public,
+                child: Text('Public'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              setState(() {
+                _visibility = value;
+                _errorMessage = null;
+              });
+            },
+            supportText: _visibility == GroupVisibilityModel.public
+                ? 'Visible to others. People can request to join.'
+                : 'Join by invite code only.',
+          ),
+          const SizedBox(height: AppSpacing.md),
           AppTextField(
             controller: _contributionAmountController,
             focusNode: _contributionAmountFocusNode,
@@ -641,9 +558,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
           KitBanner(
-            title: 'Basics summary',
+            title: 'Identity summary',
             message:
-                '${_groupNameController.text.trim().isEmpty ? 'This group' : _groupNameController.text.trim()} collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} ${_currencyController.text.trim().isEmpty ? 'ETB' : _currencyController.text.trim().toUpperCase()} per turn.',
+                '${_groupNameController.text.trim().isEmpty ? 'This group' : _groupNameController.text.trim()} is ${_visibility == GroupVisibilityModel.public ? 'public' : 'private'} and collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} ${_currencyController.text.trim().isEmpty ? 'ETB' : _currencyController.text.trim().toUpperCase()} per turn.',
             tone: KitBadgeTone.info,
             icon: Icons.info_outline_rounded,
           ),
@@ -665,12 +582,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               }
               setState(() {
                 _roundSizeController.text = '$value';
-                final currentMin = int.tryParse(
-                  _minToStartController.text.trim(),
-                );
-                if (currentMin != null && currentMin > value) {
-                  _minToStartController.text = '$value';
-                }
                 _errorMessage = null;
               });
             },
@@ -715,168 +626,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          KitDropdownField<StartPolicyModel>(
-            value: _startPolicy,
-            label: 'Start policy',
-            items: const [
-              DropdownMenuItem(
-                value: StartPolicyModel.whenFull,
-                child: Text('WHEN_FULL'),
-              ),
-              DropdownMenuItem(
-                value: StartPolicyModel.onDate,
-                child: Text('ON_DATE'),
-              ),
-              DropdownMenuItem(
-                value: StartPolicyModel.manual,
-                child: Text('MANUAL'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-              setState(() {
-                _startPolicy = value;
-                if (_startPolicy != StartPolicyModel.onDate) {
-                  _startAt = null;
-                }
-                if (_startPolicy == StartPolicyModel.whenFull) {
-                  _minToStartController.clear();
-                }
-                _errorMessage = null;
-              });
-            },
-          ),
-          if (_startPolicy == StartPolicyModel.onDate) ...[
-            const SizedBox(height: AppSpacing.md),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Start date',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  _startAt == null
-                      ? 'Select a date'
-                      : MaterialLocalizations.of(
-                          context,
-                        ).formatMediumDate(_startAt!),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                OutlinedButton(
-                  onPressed: () async {
-                    final now = DateTime.now();
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _startAt ?? now,
-                      firstDate: now.subtract(const Duration(days: 1)),
-                      lastDate: now.add(const Duration(days: 3650)),
-                    );
-                    if (!mounted || picked == null) {
-                      return;
-                    }
-                    setState(() {
-                      _startAt = DateTime(
-                        picked.year,
-                        picked.month,
-                        picked.day,
-                        9,
-                      );
-                      _errorMessage = null;
-                    });
-                  },
-                  child: const Text('Pick date'),
-                ),
-              ],
-            ),
-          ],
-          if (_startPolicy != StartPolicyModel.whenFull) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              controller: _minToStartController,
-              focusNode: _minToStartFocusNode,
-              label: 'Minimum to start (optional)',
-              labelTooltip: 'Leave blank to use round size as the minimum.',
-              hint: '$roundSize',
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() => _errorMessage = null),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           KitBanner(
             title: 'Timing summary',
-            message: _timingSummary(requiredToStart),
+            message: _timingSummary(roundSize),
             tone: KitBadgeTone.info,
             icon: Icons.schedule_rounded,
           ),
         ],
         if (section == _RulesSection.policy) ...[
-          if (_visibility == GroupVisibilityModel.public)
-            reputationAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.only(bottom: AppSpacing.md),
-                child: KitBanner(
-                  title: 'Checking hosting access',
-                  message: 'Loading your public Equb limits.',
-                  tone: KitBadgeTone.info,
-                  icon: Icons.shield_outlined,
-                ),
-              ),
-              error: (error, _) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: KitBanner(
-                  title: 'Unable to load hosting access',
-                  message: mapApiErrorToMessage(error),
-                  tone: KitBadgeTone.warning,
-                  icon: Icons.info_outline_rounded,
-                ),
-              ),
-              data: (profile) => profile == null
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: KitBanner(
-                        title: 'Public hosting access',
-                        message:
-                            '${hostRestrictionMessage(profile)} Improve your score by completing Equbs and paying contributions on time.',
-                        tone: profile.eligibility.hostTier == null
-                            ? KitBadgeTone.warning
-                            : KitBadgeTone.info,
-                        icon: Icons.shield_outlined,
-                      ),
-                    ),
-            ),
-          KitDropdownField<GroupVisibilityModel>(
-            value: _visibility,
-            label: 'Visibility',
-            items: const [
-              DropdownMenuItem(
-                value: GroupVisibilityModel.private,
-                child: Text('Private'),
-              ),
-              DropdownMenuItem(
-                value: GroupVisibilityModel.public,
-                child: Text('Public'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-              setState(() {
-                _visibility = value;
-                _errorMessage = null;
-              });
-            },
-            supportText: _visibility == GroupVisibilityModel.public
-                ? 'Visible to others. People can request to join.'
-                : 'Join by invite code only.',
-          ),
-          const SizedBox(height: AppSpacing.md),
           KitDropdownField<GroupRulePayoutModeModel>(
             value: _payoutMode,
             label: 'Payout mode',
@@ -1038,7 +796,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     );
   }
 
-  String _timingSummary(int requiredToStart) {
+  String _timingSummary(int roundSize) {
     final frequencyLabel = switch (_frequency) {
       GroupRuleFrequencyModel.weekly => 'Weekly',
       GroupRuleFrequencyModel.monthly => 'Monthly',
@@ -1046,20 +804,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
         'Every ${_customIntervalDaysController.text.trim().isEmpty ? '?' : _customIntervalDaysController.text.trim()} days',
       GroupRuleFrequencyModel.unknown => 'Custom',
     };
-
-    final startLabel = switch (_startPolicy) {
-      StartPolicyModel.whenFull =>
-        'Starts when all $requiredToStart seats are filled',
-      StartPolicyModel.manual =>
-        'Starts manually once $requiredToStart members are ready',
-      StartPolicyModel.onDate =>
-        _startAt == null
-            ? 'Starts on a selected date'
-            : 'Starts on ${MaterialLocalizations.of(context).formatMediumDate(_startAt!)}',
-      StartPolicyModel.unknown => 'Start policy pending',
-    };
-
-    return '$frequencyLabel cadence. $startLabel.';
+    return '$frequencyLabel cadence. Admins can start once $roundSize members are ready.';
   }
 
   String _policySummary() {
@@ -1094,105 +839,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
       _errorMessage = null;
     });
   }
-
-  String get _stepSubtitle =>
-      'Step ${_currentStep + 1} of ${_setupTabs.length}: ${_setupTabs[_currentStep].label}';
-}
-
-class _SetupTabButton extends StatelessWidget {
-  const _SetupTabButton({
-    super.key,
-    required this.index,
-    required this.tab,
-    required this.isSelected,
-    required this.isCompleted,
-    required this.onTap,
-  });
-
-  final int index;
-  final _SetupTab tab;
-  final bool isSelected;
-  final bool isCompleted;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final fillColor = isSelected
-        ? colorScheme.primary
-        : isCompleted
-        ? colorScheme.primaryContainer
-        : colorScheme.surface;
-    final textColor = isSelected
-        ? colorScheme.onPrimary
-        : isCompleted
-        ? colorScheme.onPrimaryContainer
-        : colorScheme.onSurface;
-
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            color: fillColor,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 12,
-                backgroundColor: isSelected
-                    ? colorScheme.onPrimary.withValues(alpha: 0.14)
-                    : colorScheme.surfaceContainerHighest,
-                child: Text(
-                  '${index + 1}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                tab.label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StepConnector extends StatelessWidget {
-  const _StepConnector({required this.isActive});
-
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: 24,
-      height: 2,
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-      color: isActive
-          ? colorScheme.primary
-          : colorScheme.outlineVariant.withValues(alpha: 0.65),
-    );
-  }
 }
 
 class _PaymentMethodTile extends StatelessWidget {
@@ -1218,20 +864,6 @@ class _PaymentMethodTile extends StatelessWidget {
       onChanged: (checked) => onChanged(value, checked ?? false),
     );
   }
-}
-
-class _SetupTab {
-  const _SetupTab({
-    required this.key,
-    required this.label,
-    required this.description,
-    required this.section,
-  });
-
-  final String key;
-  final String label;
-  final String description;
-  final _RulesSection section;
 }
 
 enum _RulesSection { basics, timing, policy }

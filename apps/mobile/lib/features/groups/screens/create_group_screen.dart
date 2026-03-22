@@ -6,6 +6,7 @@ import '../../../app/bootstrap.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/create_group_request.dart';
+import '../../../data/models/group_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
 import '../../../shared/utils/api_error_mapper.dart';
@@ -23,6 +24,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _currencyController;
+  var _visibility = GroupVisibilityModel.private;
 
   bool _isSubmitting = false;
   String? _formError;
@@ -69,6 +71,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           name: name,
           description: description.isEmpty ? null : description,
           currency: currency,
+          visibility: _visibility,
         ),
       );
 
@@ -107,14 +110,36 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     return KitScaffold(
       appBar: const KitAppBar(
         title: 'Create group',
-        subtitle: 'Create a group, then configure its rules',
+        subtitle: 'Start with identity and access',
       ),
       child: ListView(
         children: [
+          KitBanner(
+            title: 'What happens next',
+            message:
+                'Create the group first, then finish timing, payout, and collection rules in one setup screen.',
+            tone: KitBadgeTone.info,
+            icon: Icons.route_outlined,
+          ),
+          const SizedBox(height: AppSpacing.md),
           EqubCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Identity',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Give the Equb a name, short context, and default currency.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 AppTextField(
                   controller: _nameController,
                   label: 'Group name',
@@ -134,6 +159,54 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   label: 'Currency',
                   hint: 'ETB',
                   onChanged: (_) => setState(() => _formError = null),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          EqubCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Access',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Decide whether people join by invite only or can request access publicly.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                KitDropdownField<GroupVisibilityModel>(
+                  value: _visibility,
+                  label: 'Visibility',
+                  items: const [
+                    DropdownMenuItem(
+                      value: GroupVisibilityModel.private,
+                      child: Text('Private'),
+                    ),
+                    DropdownMenuItem(
+                      value: GroupVisibilityModel.public,
+                      child: Text('Public'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() {
+                      _visibility = value;
+                      _formError = null;
+                    });
+                  },
+                  supportText: _visibility == GroupVisibilityModel.public
+                      ? 'Visible to others. People request to join.'
+                      : 'Invite code only.',
                 ),
               ],
             ),

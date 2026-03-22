@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PublicGroupRulesModel {
 
-@JsonKey(fromJson: _toInt) int get contributionAmount;@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel get frequency; int? get customIntervalDays;@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel get payoutMode;@JsonKey(fromJson: _toInt) int get roundSize;@JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown) PublicGroupStartPolicyModel get startPolicy; DateTime? get startAt; int? get minToStart;@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) WinnerSelectionTimingModel get winnerSelectionTiming;
+@JsonKey(fromJson: _toInt) int get contributionAmount;@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel get frequency; int? get customIntervalDays;@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel get payoutMode;@JsonKey(fromJson: _toInt) int get roundSize;@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) WinnerSelectionTimingModel get winnerSelectionTiming;
 /// Create a copy of PublicGroupRulesModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $PublicGroupRulesModelCopyWith<PublicGroupRulesModel> get copyWith => _$PublicGr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PublicGroupRulesModel&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customIntervalDays, customIntervalDays) || other.customIntervalDays == customIntervalDays)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.roundSize, roundSize) || other.roundSize == roundSize)&&(identical(other.startPolicy, startPolicy) || other.startPolicy == startPolicy)&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.minToStart, minToStart) || other.minToStart == minToStart)&&(identical(other.winnerSelectionTiming, winnerSelectionTiming) || other.winnerSelectionTiming == winnerSelectionTiming));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PublicGroupRulesModel&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customIntervalDays, customIntervalDays) || other.customIntervalDays == customIntervalDays)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.roundSize, roundSize) || other.roundSize == roundSize)&&(identical(other.winnerSelectionTiming, winnerSelectionTiming) || other.winnerSelectionTiming == winnerSelectionTiming));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,contributionAmount,frequency,customIntervalDays,payoutMode,roundSize,startPolicy,startAt,minToStart,winnerSelectionTiming);
+int get hashCode => Object.hash(runtimeType,contributionAmount,frequency,customIntervalDays,payoutMode,roundSize,winnerSelectionTiming);
 
 @override
 String toString() {
-  return 'PublicGroupRulesModel(contributionAmount: $contributionAmount, frequency: $frequency, customIntervalDays: $customIntervalDays, payoutMode: $payoutMode, roundSize: $roundSize, startPolicy: $startPolicy, startAt: $startAt, minToStart: $minToStart, winnerSelectionTiming: $winnerSelectionTiming)';
+  return 'PublicGroupRulesModel(contributionAmount: $contributionAmount, frequency: $frequency, customIntervalDays: $customIntervalDays, payoutMode: $payoutMode, roundSize: $roundSize, winnerSelectionTiming: $winnerSelectionTiming)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $PublicGroupRulesModelCopyWith<$Res>  {
   factory $PublicGroupRulesModelCopyWith(PublicGroupRulesModel value, $Res Function(PublicGroupRulesModel) _then) = _$PublicGroupRulesModelCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency, int? customIntervalDays,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel payoutMode,@JsonKey(fromJson: _toInt) int roundSize,@JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown) PublicGroupStartPolicyModel startPolicy, DateTime? startAt, int? minToStart,@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) WinnerSelectionTimingModel winnerSelectionTiming
+@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency, int? customIntervalDays,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel payoutMode,@JsonKey(fromJson: _toInt) int roundSize,@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) WinnerSelectionTimingModel winnerSelectionTiming
 });
 
 
@@ -65,17 +65,14 @@ class _$PublicGroupRulesModelCopyWithImpl<$Res>
 
 /// Create a copy of PublicGroupRulesModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? contributionAmount = null,Object? frequency = null,Object? customIntervalDays = freezed,Object? payoutMode = null,Object? roundSize = null,Object? startPolicy = null,Object? startAt = freezed,Object? minToStart = freezed,Object? winnerSelectionTiming = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? contributionAmount = null,Object? frequency = null,Object? customIntervalDays = freezed,Object? payoutMode = null,Object? roundSize = null,Object? winnerSelectionTiming = null,}) {
   return _then(_self.copyWith(
 contributionAmount: null == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
 as int,frequency: null == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
 as PublicGroupFrequencyModel,customIntervalDays: freezed == customIntervalDays ? _self.customIntervalDays : customIntervalDays // ignore: cast_nullable_to_non_nullable
 as int?,payoutMode: null == payoutMode ? _self.payoutMode : payoutMode // ignore: cast_nullable_to_non_nullable
 as PublicGroupPayoutModeModel,roundSize: null == roundSize ? _self.roundSize : roundSize // ignore: cast_nullable_to_non_nullable
-as int,startPolicy: null == startPolicy ? _self.startPolicy : startPolicy // ignore: cast_nullable_to_non_nullable
-as PublicGroupStartPolicyModel,startAt: freezed == startAt ? _self.startAt : startAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,minToStart: freezed == minToStart ? _self.minToStart : minToStart // ignore: cast_nullable_to_non_nullable
-as int?,winnerSelectionTiming: null == winnerSelectionTiming ? _self.winnerSelectionTiming : winnerSelectionTiming // ignore: cast_nullable_to_non_nullable
+as int,winnerSelectionTiming: null == winnerSelectionTiming ? _self.winnerSelectionTiming : winnerSelectionTiming // ignore: cast_nullable_to_non_nullable
 as WinnerSelectionTimingModel,
   ));
 }
@@ -158,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency,  int? customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel payoutMode, @JsonKey(fromJson: _toInt)  int roundSize, @JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown)  PublicGroupStartPolicyModel startPolicy,  DateTime? startAt,  int? minToStart, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)  WinnerSelectionTimingModel winnerSelectionTiming)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency,  int? customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel payoutMode, @JsonKey(fromJson: _toInt)  int roundSize, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)  WinnerSelectionTimingModel winnerSelectionTiming)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PublicGroupRulesModel() when $default != null:
-return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDays,_that.payoutMode,_that.roundSize,_that.startPolicy,_that.startAt,_that.minToStart,_that.winnerSelectionTiming);case _:
+return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDays,_that.payoutMode,_that.roundSize,_that.winnerSelectionTiming);case _:
   return orElse();
 
 }
@@ -179,10 +176,10 @@ return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDay
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency,  int? customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel payoutMode, @JsonKey(fromJson: _toInt)  int roundSize, @JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown)  PublicGroupStartPolicyModel startPolicy,  DateTime? startAt,  int? minToStart, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)  WinnerSelectionTimingModel winnerSelectionTiming)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency,  int? customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel payoutMode, @JsonKey(fromJson: _toInt)  int roundSize, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)  WinnerSelectionTimingModel winnerSelectionTiming)  $default,) {final _that = this;
 switch (_that) {
 case _PublicGroupRulesModel():
-return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDays,_that.payoutMode,_that.roundSize,_that.startPolicy,_that.startAt,_that.minToStart,_that.winnerSelectionTiming);}
+return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDays,_that.payoutMode,_that.roundSize,_that.winnerSelectionTiming);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -196,10 +193,10 @@ return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDay
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency,  int? customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel payoutMode, @JsonKey(fromJson: _toInt)  int roundSize, @JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown)  PublicGroupStartPolicyModel startPolicy,  DateTime? startAt,  int? minToStart, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)  WinnerSelectionTimingModel winnerSelectionTiming)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(fromJson: _toInt)  int contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown)  PublicGroupFrequencyModel frequency,  int? customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)  PublicGroupPayoutModeModel payoutMode, @JsonKey(fromJson: _toInt)  int roundSize, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)  WinnerSelectionTimingModel winnerSelectionTiming)?  $default,) {final _that = this;
 switch (_that) {
 case _PublicGroupRulesModel() when $default != null:
-return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDays,_that.payoutMode,_that.roundSize,_that.startPolicy,_that.startAt,_that.minToStart,_that.winnerSelectionTiming);case _:
+return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDays,_that.payoutMode,_that.roundSize,_that.winnerSelectionTiming);case _:
   return null;
 
 }
@@ -211,7 +208,7 @@ return $default(_that.contributionAmount,_that.frequency,_that.customIntervalDay
 @JsonSerializable()
 
 class _PublicGroupRulesModel implements PublicGroupRulesModel {
-  const _PublicGroupRulesModel({@JsonKey(fromJson: _toInt) required this.contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) required this.frequency, this.customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) required this.payoutMode, @JsonKey(fromJson: _toInt) required this.roundSize, @JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown) required this.startPolicy, this.startAt, this.minToStart, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) required this.winnerSelectionTiming});
+  const _PublicGroupRulesModel({@JsonKey(fromJson: _toInt) required this.contributionAmount, @JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) required this.frequency, this.customIntervalDays, @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) required this.payoutMode, @JsonKey(fromJson: _toInt) required this.roundSize, @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) required this.winnerSelectionTiming});
   factory _PublicGroupRulesModel.fromJson(Map<String, dynamic> json) => _$PublicGroupRulesModelFromJson(json);
 
 @override@JsonKey(fromJson: _toInt) final  int contributionAmount;
@@ -219,9 +216,6 @@ class _PublicGroupRulesModel implements PublicGroupRulesModel {
 @override final  int? customIntervalDays;
 @override@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) final  PublicGroupPayoutModeModel payoutMode;
 @override@JsonKey(fromJson: _toInt) final  int roundSize;
-@override@JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown) final  PublicGroupStartPolicyModel startPolicy;
-@override final  DateTime? startAt;
-@override final  int? minToStart;
 @override@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) final  WinnerSelectionTimingModel winnerSelectionTiming;
 
 /// Create a copy of PublicGroupRulesModel
@@ -237,16 +231,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PublicGroupRulesModel&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customIntervalDays, customIntervalDays) || other.customIntervalDays == customIntervalDays)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.roundSize, roundSize) || other.roundSize == roundSize)&&(identical(other.startPolicy, startPolicy) || other.startPolicy == startPolicy)&&(identical(other.startAt, startAt) || other.startAt == startAt)&&(identical(other.minToStart, minToStart) || other.minToStart == minToStart)&&(identical(other.winnerSelectionTiming, winnerSelectionTiming) || other.winnerSelectionTiming == winnerSelectionTiming));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PublicGroupRulesModel&&(identical(other.contributionAmount, contributionAmount) || other.contributionAmount == contributionAmount)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customIntervalDays, customIntervalDays) || other.customIntervalDays == customIntervalDays)&&(identical(other.payoutMode, payoutMode) || other.payoutMode == payoutMode)&&(identical(other.roundSize, roundSize) || other.roundSize == roundSize)&&(identical(other.winnerSelectionTiming, winnerSelectionTiming) || other.winnerSelectionTiming == winnerSelectionTiming));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,contributionAmount,frequency,customIntervalDays,payoutMode,roundSize,startPolicy,startAt,minToStart,winnerSelectionTiming);
+int get hashCode => Object.hash(runtimeType,contributionAmount,frequency,customIntervalDays,payoutMode,roundSize,winnerSelectionTiming);
 
 @override
 String toString() {
-  return 'PublicGroupRulesModel(contributionAmount: $contributionAmount, frequency: $frequency, customIntervalDays: $customIntervalDays, payoutMode: $payoutMode, roundSize: $roundSize, startPolicy: $startPolicy, startAt: $startAt, minToStart: $minToStart, winnerSelectionTiming: $winnerSelectionTiming)';
+  return 'PublicGroupRulesModel(contributionAmount: $contributionAmount, frequency: $frequency, customIntervalDays: $customIntervalDays, payoutMode: $payoutMode, roundSize: $roundSize, winnerSelectionTiming: $winnerSelectionTiming)';
 }
 
 
@@ -257,7 +251,7 @@ abstract mixin class _$PublicGroupRulesModelCopyWith<$Res> implements $PublicGro
   factory _$PublicGroupRulesModelCopyWith(_PublicGroupRulesModel value, $Res Function(_PublicGroupRulesModel) _then) = __$PublicGroupRulesModelCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency, int? customIntervalDays,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel payoutMode,@JsonKey(fromJson: _toInt) int roundSize,@JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown) PublicGroupStartPolicyModel startPolicy, DateTime? startAt, int? minToStart,@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) WinnerSelectionTimingModel winnerSelectionTiming
+@JsonKey(fromJson: _toInt) int contributionAmount,@JsonKey(unknownEnumValue: PublicGroupFrequencyModel.unknown) PublicGroupFrequencyModel frequency, int? customIntervalDays,@JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown) PublicGroupPayoutModeModel payoutMode,@JsonKey(fromJson: _toInt) int roundSize,@JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown) WinnerSelectionTimingModel winnerSelectionTiming
 });
 
 
@@ -274,17 +268,14 @@ class __$PublicGroupRulesModelCopyWithImpl<$Res>
 
 /// Create a copy of PublicGroupRulesModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? contributionAmount = null,Object? frequency = null,Object? customIntervalDays = freezed,Object? payoutMode = null,Object? roundSize = null,Object? startPolicy = null,Object? startAt = freezed,Object? minToStart = freezed,Object? winnerSelectionTiming = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? contributionAmount = null,Object? frequency = null,Object? customIntervalDays = freezed,Object? payoutMode = null,Object? roundSize = null,Object? winnerSelectionTiming = null,}) {
   return _then(_PublicGroupRulesModel(
 contributionAmount: null == contributionAmount ? _self.contributionAmount : contributionAmount // ignore: cast_nullable_to_non_nullable
 as int,frequency: null == frequency ? _self.frequency : frequency // ignore: cast_nullable_to_non_nullable
 as PublicGroupFrequencyModel,customIntervalDays: freezed == customIntervalDays ? _self.customIntervalDays : customIntervalDays // ignore: cast_nullable_to_non_nullable
 as int?,payoutMode: null == payoutMode ? _self.payoutMode : payoutMode // ignore: cast_nullable_to_non_nullable
 as PublicGroupPayoutModeModel,roundSize: null == roundSize ? _self.roundSize : roundSize // ignore: cast_nullable_to_non_nullable
-as int,startPolicy: null == startPolicy ? _self.startPolicy : startPolicy // ignore: cast_nullable_to_non_nullable
-as PublicGroupStartPolicyModel,startAt: freezed == startAt ? _self.startAt : startAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,minToStart: freezed == minToStart ? _self.minToStart : minToStart // ignore: cast_nullable_to_non_nullable
-as int?,winnerSelectionTiming: null == winnerSelectionTiming ? _self.winnerSelectionTiming : winnerSelectionTiming // ignore: cast_nullable_to_non_nullable
+as int,winnerSelectionTiming: null == winnerSelectionTiming ? _self.winnerSelectionTiming : winnerSelectionTiming // ignore: cast_nullable_to_non_nullable
 as WinnerSelectionTimingModel,
   ));
 }

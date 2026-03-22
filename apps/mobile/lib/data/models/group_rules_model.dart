@@ -51,23 +51,12 @@ enum GroupPaymentMethodModel {
   unknown,
 }
 
-enum StartPolicyModel {
-  @JsonValue('WHEN_FULL')
-  whenFull,
-  @JsonValue('ON_DATE')
-  onDate,
-  @JsonValue('MANUAL')
-  manual,
-  unknown,
-}
-
 @freezed
 sealed class GroupStartReadinessModel with _$GroupStartReadinessModel {
   const factory GroupStartReadinessModel({
     @JsonKey(fromJson: _toInt) required int eligibleCount,
     required bool isReadyToStart,
     required bool isWaitingForMembers,
-    required bool isWaitingForDate,
   }) = _GroupStartReadinessModel;
 
   factory GroupStartReadinessModel.fromJson(Map<String, dynamic> json) =>
@@ -93,10 +82,6 @@ sealed class GroupRulesModel with _$GroupRulesModel {
     @JsonKey(fromJson: _paymentMethodsFromJson, toJson: _paymentMethodsToJson)
     required List<GroupPaymentMethodModel> paymentMethods,
     @JsonKey(fromJson: _toInt) required int roundSize,
-    @JsonKey(unknownEnumValue: StartPolicyModel.unknown)
-    required StartPolicyModel startPolicy,
-    DateTime? startAt,
-    @JsonKey(fromJson: _toNullableInt) int? minToStart,
     @JsonKey(fromJson: _toInt) required int requiredToStart,
     required GroupStartReadinessModel readiness,
     required DateTime createdAt,

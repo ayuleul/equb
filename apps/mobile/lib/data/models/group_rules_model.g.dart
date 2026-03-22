@@ -12,7 +12,6 @@ _GroupStartReadinessModel _$GroupStartReadinessModelFromJson(
   eligibleCount: _toInt(json['eligibleCount']),
   isReadyToStart: json['isReadyToStart'] as bool,
   isWaitingForMembers: json['isWaitingForMembers'] as bool,
-  isWaitingForDate: json['isWaitingForDate'] as bool,
 );
 
 Map<String, dynamic> _$GroupStartReadinessModelToJson(
@@ -21,7 +20,6 @@ Map<String, dynamic> _$GroupStartReadinessModelToJson(
   'eligibleCount': instance.eligibleCount,
   'isReadyToStart': instance.isReadyToStart,
   'isWaitingForMembers': instance.isWaitingForMembers,
-  'isWaitingForDate': instance.isWaitingForDate,
 };
 
 _GroupRulesModel _$GroupRulesModelFromJson(Map<String, dynamic> json) =>
@@ -53,15 +51,6 @@ _GroupRulesModel _$GroupRulesModelFromJson(Map<String, dynamic> json) =>
       ),
       paymentMethods: _paymentMethodsFromJson(json['paymentMethods']),
       roundSize: _toInt(json['roundSize']),
-      startPolicy: $enumDecode(
-        _$StartPolicyModelEnumMap,
-        json['startPolicy'],
-        unknownValue: StartPolicyModel.unknown,
-      ),
-      startAt: json['startAt'] == null
-          ? null
-          : DateTime.parse(json['startAt'] as String),
-      minToStart: _toNullableInt(json['minToStart']),
       requiredToStart: _toInt(json['requiredToStart']),
       readiness: GroupStartReadinessModel.fromJson(
         json['readiness'] as Map<String, dynamic>,
@@ -84,9 +73,6 @@ Map<String, dynamic> _$GroupRulesModelToJson(_GroupRulesModel instance) =>
           _$WinnerSelectionTimingModelEnumMap[instance.winnerSelectionTiming]!,
       'paymentMethods': _paymentMethodsToJson(instance.paymentMethods),
       'roundSize': instance.roundSize,
-      'startPolicy': _$StartPolicyModelEnumMap[instance.startPolicy]!,
-      'startAt': instance.startAt?.toIso8601String(),
-      'minToStart': instance.minToStart,
       'requiredToStart': instance.requiredToStart,
       'readiness': instance.readiness,
       'createdAt': instance.createdAt.toIso8601String(),
@@ -118,11 +104,4 @@ const _$WinnerSelectionTimingModelEnumMap = {
   WinnerSelectionTimingModel.beforeCollection: 'BEFORE_COLLECTION',
   WinnerSelectionTimingModel.afterCollection: 'AFTER_COLLECTION',
   WinnerSelectionTimingModel.unknown: 'unknown',
-};
-
-const _$StartPolicyModelEnumMap = {
-  StartPolicyModel.whenFull: 'WHEN_FULL',
-  StartPolicyModel.onDate: 'ON_DATE',
-  StartPolicyModel.manual: 'MANUAL',
-  StartPolicyModel.unknown: 'unknown',
 };

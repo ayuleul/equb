@@ -97,9 +97,6 @@ describe('GroupsDiscoverService', () => {
             customIntervalDays: null,
             payoutMode: 'LOTTERY',
             roundSize: 10,
-            startPolicy: 'WHEN_FULL',
-            startAt: null,
-            minToStart: null,
             winnerSelectionTiming: 'BEFORE_COLLECTION',
           },
           discoverMetrics: {

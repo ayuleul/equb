@@ -3,7 +3,6 @@ import {
   GroupRuleFineType,
   GroupRuleFrequency,
   GroupRulePayoutMode,
-  StartPolicy,
   WinnerSelectionTiming,
 } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -13,8 +12,6 @@ import {
   IsArray,
   IsEnum,
   IsInt,
-  IsOptional,
-  IsDateString,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -98,32 +95,4 @@ export class UpdateGroupRulesDto {
   @IsInt()
   @Min(2)
   roundSize!: number;
-
-  @ApiProperty({
-    enum: StartPolicy,
-    example: StartPolicy.WHEN_FULL,
-    default: StartPolicy.WHEN_FULL,
-  })
-  @IsEnum(StartPolicy)
-  startPolicy: StartPolicy = StartPolicy.WHEN_FULL;
-
-  @ApiPropertyOptional({
-    example: '2026-04-01T08:00:00.000Z',
-    nullable: true,
-    description: 'Required only when startPolicy is ON_DATE',
-  })
-  @IsOptional()
-  @IsDateString()
-  startAt?: string | null;
-
-  @ApiPropertyOptional({
-    example: 8,
-    nullable: true,
-    description:
-      'Optional minimum member count to start early for ON_DATE/MANUAL policies',
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(2)
-  minToStart?: number | null;
 }

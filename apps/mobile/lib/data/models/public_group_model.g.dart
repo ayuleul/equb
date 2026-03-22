@@ -22,15 +22,6 @@ _PublicGroupRulesModel _$PublicGroupRulesModelFromJson(
     unknownValue: PublicGroupPayoutModeModel.unknown,
   ),
   roundSize: _toInt(json['roundSize']),
-  startPolicy: $enumDecode(
-    _$PublicGroupStartPolicyModelEnumMap,
-    json['startPolicy'],
-    unknownValue: PublicGroupStartPolicyModel.unknown,
-  ),
-  startAt: json['startAt'] == null
-      ? null
-      : DateTime.parse(json['startAt'] as String),
-  minToStart: (json['minToStart'] as num?)?.toInt(),
   winnerSelectionTiming: $enumDecode(
     _$WinnerSelectionTimingModelEnumMap,
     json['winnerSelectionTiming'],
@@ -46,9 +37,6 @@ Map<String, dynamic> _$PublicGroupRulesModelToJson(
   'customIntervalDays': instance.customIntervalDays,
   'payoutMode': _$PublicGroupPayoutModeModelEnumMap[instance.payoutMode]!,
   'roundSize': instance.roundSize,
-  'startPolicy': _$PublicGroupStartPolicyModelEnumMap[instance.startPolicy]!,
-  'startAt': instance.startAt?.toIso8601String(),
-  'minToStart': instance.minToStart,
   'winnerSelectionTiming':
       _$WinnerSelectionTimingModelEnumMap[instance.winnerSelectionTiming]!,
 };
@@ -66,13 +54,6 @@ const _$PublicGroupPayoutModeModelEnumMap = {
   PublicGroupPayoutModeModel.rotation: 'ROTATION',
   PublicGroupPayoutModeModel.decision: 'DECISION',
   PublicGroupPayoutModeModel.unknown: 'unknown',
-};
-
-const _$PublicGroupStartPolicyModelEnumMap = {
-  PublicGroupStartPolicyModel.whenFull: 'WHEN_FULL',
-  PublicGroupStartPolicyModel.onDate: 'ON_DATE',
-  PublicGroupStartPolicyModel.manual: 'MANUAL',
-  PublicGroupStartPolicyModel.unknown: 'unknown',
 };
 
 const _$WinnerSelectionTimingModelEnumMap = {

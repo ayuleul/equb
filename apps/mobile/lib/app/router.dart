@@ -68,13 +68,7 @@ class AppRoutePaths {
   static String groupDetail(String groupId) => '/groups/$groupId';
   static String publicGroupDetail(String groupId) =>
       '/groups/discover/$groupId';
-  static String groupSetup(String groupId, {String? step}) {
-    final base = '/groups/$groupId/setup';
-    if (step == null || step.isEmpty) {
-      return base;
-    }
-    return '$base?step=$step';
-  }
+  static String groupSetup(String groupId) => '/groups/$groupId/setup';
 
   static String groupOverview(String groupId) => '/groups/$groupId/overview';
   static String groupCycles(String groupId) => '/groups/$groupId/cycles';
@@ -206,10 +200,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       path: 'setup',
                       builder: (context, state) {
                         final groupId = state.pathParameters['id'] ?? '';
-                        return GroupSetupScreen(
-                          groupId: groupId,
-                          initialStepKey: state.uri.queryParameters['step'],
-                        );
+                        return GroupSetupScreen(groupId: groupId);
                       },
                     ),
                     GoRoute(

@@ -34,16 +34,7 @@ _UpdateGroupRulesRequest _$UpdateGroupRulesRequestFromJson(
     unknownValue: WinnerSelectionTimingModel.unknown,
   ),
   paymentMethods: _paymentMethodsFromJson(json['paymentMethods']),
-  startPolicy: $enumDecode(
-    _$StartPolicyModelEnumMap,
-    json['startPolicy'],
-    unknownValue: StartPolicyModel.unknown,
-  ),
   roundSize: (json['roundSize'] as num).toInt(),
-  startAt: json['startAt'] == null
-      ? null
-      : DateTime.parse(json['startAt'] as String),
-  minToStart: (json['minToStart'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$UpdateGroupRulesRequestToJson(
@@ -59,10 +50,7 @@ Map<String, dynamic> _$UpdateGroupRulesRequestToJson(
   'winnerSelectionTiming':
       _$WinnerSelectionTimingModelEnumMap[instance.winnerSelectionTiming]!,
   'paymentMethods': _paymentMethodsToJson(instance.paymentMethods),
-  'startPolicy': _$StartPolicyModelEnumMap[instance.startPolicy]!,
   'roundSize': instance.roundSize,
-  'startAt': _nullableDateToIsoString(instance.startAt),
-  'minToStart': instance.minToStart,
 };
 
 const _$GroupRuleFrequencyModelEnumMap = {
@@ -90,11 +78,4 @@ const _$WinnerSelectionTimingModelEnumMap = {
   WinnerSelectionTimingModel.beforeCollection: 'BEFORE_COLLECTION',
   WinnerSelectionTimingModel.afterCollection: 'AFTER_COLLECTION',
   WinnerSelectionTimingModel.unknown: 'unknown',
-};
-
-const _$StartPolicyModelEnumMap = {
-  StartPolicyModel.whenFull: 'WHEN_FULL',
-  StartPolicyModel.onDate: 'ON_DATE',
-  StartPolicyModel.manual: 'MANUAL',
-  StartPolicyModel.unknown: 'unknown',
 };

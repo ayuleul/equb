@@ -196,10 +196,6 @@ class _PublicGroupDetailScreenState
                           value: '${group.rules!.roundSize}',
                         ),
                         _DetailRow(
-                          label: 'Start policy',
-                          value: _startPolicyLabel(group.rules!.startPolicy),
-                        ),
-                        _DetailRow(
                           label: 'Winner timing',
                           value: switch (group.rules!.winnerSelectionTiming) {
                             WinnerSelectionTimingModel.beforeCollection =>
@@ -264,15 +260,6 @@ class _DetailRow extends StatelessWidget {
       ),
     );
   }
-}
-
-String _startPolicyLabel(PublicGroupStartPolicyModel policy) {
-  return switch (policy) {
-    PublicGroupStartPolicyModel.whenFull => 'When full',
-    PublicGroupStartPolicyModel.onDate => 'On date',
-    PublicGroupStartPolicyModel.manual => 'Manual',
-    PublicGroupStartPolicyModel.unknown => 'Unknown',
-  };
 }
 
 String _frequencyLabel(

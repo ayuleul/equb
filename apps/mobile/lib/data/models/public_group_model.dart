@@ -27,16 +27,6 @@ enum PublicGroupPayoutModeModel {
   unknown,
 }
 
-enum PublicGroupStartPolicyModel {
-  @JsonValue('WHEN_FULL')
-  whenFull,
-  @JsonValue('ON_DATE')
-  onDate,
-  @JsonValue('MANUAL')
-  manual,
-  unknown,
-}
-
 enum WinnerSelectionTimingModel {
   @JsonValue('BEFORE_COLLECTION')
   beforeCollection,
@@ -55,10 +45,6 @@ sealed class PublicGroupRulesModel with _$PublicGroupRulesModel {
     @JsonKey(unknownEnumValue: PublicGroupPayoutModeModel.unknown)
     required PublicGroupPayoutModeModel payoutMode,
     @JsonKey(fromJson: _toInt) required int roundSize,
-    @JsonKey(unknownEnumValue: PublicGroupStartPolicyModel.unknown)
-    required PublicGroupStartPolicyModel startPolicy,
-    DateTime? startAt,
-    int? minToStart,
     @JsonKey(unknownEnumValue: WinnerSelectionTimingModel.unknown)
     required WinnerSelectionTimingModel winnerSelectionTiming,
   }) = _PublicGroupRulesModel;

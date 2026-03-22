@@ -192,19 +192,12 @@
 - Group ruleset is a required gate after group creation; invite creation, invite acceptance/join, and cycle start must return `409` (`GROUP_RULESET_REQUIRED`) until rules are configured.
 - Group rules lookup endpoint behavior is locked: `GET /groups/:id/rules` returns `200` with `null` when the group exists but no ruleset has been configured yet; only unknown groups return `404`.
 - Group response payloads must include computed flags: `rulesetConfigured`, `canInviteMembers`, and `canStartCycle` (invite/start flags are true only when rules are configured).
-- Group start configuration is locked to four canonical fields on ruleset:
+- Group start configuration is locked to one canonical field on ruleset:
   - `roundSize` (`>= 2`)
-  - `startPolicy` (`WHEN_FULL | ON_DATE | MANUAL`)
-  - `startAt` (required only for `ON_DATE`)
-  - `minToStart` (optional for `ON_DATE`/`MANUAL`; `null` means implicit `roundSize`)
 - Winner selection timing is a required ruleset field:
   - `winnerSelectionTiming` (`BEFORE_COLLECTION | AFTER_COLLECTION`)
   - `BEFORE_COLLECTION` is allowed only with automatic payout modes (`LOTTERY | ROTATION`)
   - `AUCTION` and `DECISION` require `winnerSelectionTiming = AFTER_COLLECTION`
-- Start-policy validation is locked:
-  - `WHEN_FULL` -> `startAt = null`, `minToStart = null`
-  - `ON_DATE` -> `startAt` required, optional `minToStart` in `[2, roundSize]`
-  - `MANUAL` -> `startAt = null`, optional `minToStart` in `[2, roundSize]`
 - Membership lifecycle is verification-based:
   - canonical statuses: `INVITED` -> `JOINED` -> `VERIFIED`
   - suspension/removal state: `SUSPENDED`
@@ -224,12 +217,10 @@
 - Only one `OPEN` cycle is allowed per group at any time.
 - Each Equb round must snapshot its participant user IDs when the first turn starts; every turn in that round reuses that same participant pool for contributions, while winner eligibility is `round participants who have not already confirmed payout in the same round`.
 - Cycle start endpoint is locked to `POST /groups/:id/cycles/start`; legacy round/draw-next/payout-order and batch-generation routes are removed.
-- Cycle start gating is locked to start policy readiness:
-  - `requiredToStart = (minToStart ?? roundSize)` for `ON_DATE`/`MANUAL`, and `roundSize` for `WHEN_FULL`
-  - readiness preview fields: `requiredToStart`, `readiness.eligibleCount`, `readiness.isReadyToStart`, `readiness.isWaitingForMembers`, `readiness.isWaitingForDate`
-  - `WHEN_FULL`: start only when eligible count equals `roundSize`
-  - `ON_DATE`: start only when now >= `startAt` and eligible count >= `requiredToStart`
-  - `MANUAL`: start only when eligible count >= `requiredToStart`
+- Cycle start gating is locked to manual-start readiness:
+  - `requiredToStart = roundSize`
+  - readiness preview fields: `requiredToStart`, `readiness.eligibleCount`, `readiness.isReadyToStart`, `readiness.isWaitingForMembers`
+  - cycle start is allowed only when eligible count is at least `roundSize`
 - Cycle lifecycle state machine is locked to:
   - `SETUP -> COLLECTING -> READY_FOR_WINNER_SELECTION -> READY_FOR_PAYOUT -> PAYOUT_SENT -> COMPLETED`
 - Winner selection is locked to a single rule-driven moment per cycle:
@@ -250,6 +241,7 @@
   - `WEEKLY`: add exactly 7 days
   - `MONTHLY`: add one calendar month and clamp to last day when day-of-month overflows (timezone-aware)
   - `CUSTOM_INTERVAL` (ruleset frequency): add exactly `customIntervalDays` days (timezone-aware day boundaries)
+- First-cycle due-date baseline is locked to the actual cycle-start date.
 - Cycle start eligibility gate is locked:
   - ruleset must be configured
   - eligible member count must be at least `2`

@@ -24,7 +24,6 @@ import {
   NotificationType,
   PayoutMode,
   Prisma,
-  StartPolicy,
   WinnerSelectionTiming,
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -180,9 +179,6 @@ export class GroupsService {
             winnerSelectionTiming: WinnerSelectionTiming.BEFORE_COLLECTION,
             paymentMethods: [GroupPaymentMethod.CASH_ACK],
             roundSize: 2,
-            startPolicy: StartPolicy.WHEN_FULL,
-            startAt: null,
-            minToStart: null,
           },
         });
       }
@@ -248,9 +244,6 @@ export class GroupsService {
               select: {
                 groupId: true,
                 roundSize: true,
-                startPolicy: true,
-                startAt: true,
-                minToStart: true,
               },
             },
             members: {
@@ -309,9 +302,6 @@ export class GroupsService {
             customIntervalDays: true,
             payoutMode: true,
             roundSize: true,
-            startPolicy: true,
-            startAt: true,
-            minToStart: true,
             winnerSelectionTiming: true,
           },
         },
@@ -360,9 +350,6 @@ export class GroupsService {
             customIntervalDays: true,
             payoutMode: true,
             roundSize: true,
-            startPolicy: true,
-            startAt: true,
-            minToStart: true,
             winnerSelectionTiming: true,
           },
         },
@@ -417,9 +404,6 @@ export class GroupsService {
             select: {
               groupId: true,
               roundSize: true,
-              startPolicy: true,
-              startAt: true,
-              minToStart: true,
             },
           },
           members: {
@@ -577,9 +561,7 @@ export class GroupsService {
   ): Promise<GroupRulesResponseDto> {
     const fineAmount =
       dto.fineType === GroupRuleFineType.NONE ? 0 : dto.fineAmount;
-    this.validateStartPolicyFields(dto);
     this.validateWinnerSelectionTiming(dto);
-    const parsedStartAt = dto.startAt != null ? new Date(dto.startAt) : null;
 
     if (
       dto.frequency === GroupRuleFrequency.CUSTOM_INTERVAL &&
@@ -637,9 +619,6 @@ export class GroupsService {
           winnerSelectionTiming: dto.winnerSelectionTiming,
           paymentMethods: dto.paymentMethods,
           roundSize: dto.roundSize,
-          startPolicy: dto.startPolicy,
-          startAt: parsedStartAt,
-          minToStart: dto.minToStart ?? null,
         },
         update: {
           contributionAmount: dto.contributionAmount,
@@ -655,9 +634,6 @@ export class GroupsService {
           winnerSelectionTiming: dto.winnerSelectionTiming,
           paymentMethods: dto.paymentMethods,
           roundSize: dto.roundSize,
-          startPolicy: dto.startPolicy,
-          startAt: parsedStartAt,
-          minToStart: dto.minToStart ?? null,
         },
       });
 
@@ -692,9 +668,6 @@ export class GroupsService {
         winnerSelectionTiming: rules.winnerSelectionTiming,
         paymentMethods: rules.paymentMethods,
         roundSize: rules.roundSize,
-        startPolicy: rules.startPolicy,
-        startAt: rules.startAt,
-        minToStart: rules.minToStart,
       },
       groupId,
     );
@@ -1642,9 +1615,6 @@ export class GroupsService {
               frequency: true,
               customIntervalDays: true,
               roundSize: true,
-              startPolicy: true,
-              startAt: true,
-              minToStart: true,
               payoutMode: true,
               winnerSelectionTiming: true,
             },
@@ -1757,18 +1727,10 @@ export class GroupsService {
         const requiredToStart = this.resolveRequiredToStart(group.rules);
         const readiness = this.buildStartReadiness(
           uniqueEligibleUserIds.length,
-          group.rules.startPolicy,
-          group.rules.startAt,
           requiredToStart,
-          group.rules.roundSize,
         );
 
         if (!readiness.isReadyToStart) {
-          if (readiness.isWaitingForDate) {
-            throw new BadRequestException(
-              `Cycle start date has not arrived. Start is allowed on or after ${group.rules.startAt?.toISOString()}.`,
-            );
-          }
           throw new BadRequestException(
             `Not enough eligible members to start this cycle. Required: ${requiredToStart}, eligible: ${uniqueEligibleUserIds.length}.`,
           );
@@ -1823,6 +1785,7 @@ export class GroupsService {
         },
       });
 
+      const firstCycleDueBase = this.resolveFirstCycleDueBase(new Date());
       const dueDate = latestCycle
         ? group.rules.frequency === GroupRuleFrequency.CUSTOM_INTERVAL
           ? this.dateService.advanceDueDateByDays(
@@ -1835,7 +1798,10 @@ export class GroupsService {
               group.frequency,
               group.timezone,
             )
-        : this.dateService.normalizeGroupDate(group.startDate, group.timezone);
+        : this.dateService.normalizeGroupDate(
+            firstCycleDueBase,
+            group.timezone,
+          );
       const latestRoundCycle = await tx.equbCycle.findFirst({
         where: {
           roundId: roundId!,
@@ -2113,9 +2079,6 @@ export class GroupsService {
     rules: {
       groupId: string;
       roundSize: number;
-      startPolicy: StartPolicy;
-      startAt: Date | null;
-      minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
   ): GroupSummaryResponseDto {
@@ -2171,9 +2134,6 @@ export class GroupsService {
     rules: {
       groupId: string;
       roundSize: number;
-      startPolicy: StartPolicy;
-      startAt: Date | null;
-      minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
     trustSummary: GroupTrustSummaryDto,
@@ -2207,9 +2167,6 @@ export class GroupsService {
       winnerSelectionTiming: WinnerSelectionTiming;
       paymentMethods: GroupPaymentMethod[];
       roundSize: number;
-      startPolicy: StartPolicy;
-      startAt: Date | null;
-      minToStart: number | null;
       createdAt: Date;
       updatedAt: Date;
     },
@@ -2218,10 +2175,7 @@ export class GroupsService {
     const requiredToStart = this.resolveRequiredToStart(rules);
     const readiness = this.buildStartReadiness(
       eligibleCount,
-      rules.startPolicy,
-      rules.startAt,
       requiredToStart,
-      rules.roundSize,
     );
 
     return {
@@ -2236,9 +2190,6 @@ export class GroupsService {
       winnerSelectionTiming: rules.winnerSelectionTiming,
       paymentMethods: rules.paymentMethods,
       roundSize: rules.roundSize,
-      startPolicy: rules.startPolicy,
-      startAt: rules.startAt,
-      minToStart: rules.minToStart,
       requiredToStart,
       readiness,
       createdAt: rules.createdAt,
@@ -2252,9 +2203,6 @@ export class GroupsService {
     customIntervalDays: number | null;
     payoutMode: GroupRulePayoutMode;
     roundSize: number;
-    startPolicy: StartPolicy;
-    startAt: Date | null;
-    minToStart: number | null;
     winnerSelectionTiming: WinnerSelectionTiming;
   }): PublicGroupRulesSummaryResponseDto {
     return {
@@ -2263,9 +2211,6 @@ export class GroupsService {
       customIntervalDays: rules.customIntervalDays,
       payoutMode: rules.payoutMode,
       roundSize: rules.roundSize,
-      startPolicy: rules.startPolicy,
-      startAt: rules.startAt,
-      minToStart: rules.minToStart,
       winnerSelectionTiming: rules.winnerSelectionTiming,
     };
   }
@@ -2286,9 +2231,6 @@ export class GroupsService {
         customIntervalDays: number | null;
         payoutMode: GroupRulePayoutMode;
         roundSize: number;
-        startPolicy: StartPolicy;
-        startAt: Date | null;
-        minToStart: number | null;
         winnerSelectionTiming: WinnerSelectionTiming;
       } | null;
       _count: {
@@ -2354,9 +2296,6 @@ export class GroupsService {
         customIntervalDays: number | null;
         payoutMode: GroupRulePayoutMode;
         roundSize: number;
-        startPolicy: StartPolicy;
-        startAt: Date | null;
-        minToStart: number | null;
         winnerSelectionTiming: WinnerSelectionTiming;
       } | null;
       members: { id: string }[];
@@ -2390,9 +2329,6 @@ export class GroupsService {
     rules: {
       groupId: string;
       roundSize: number;
-      startPolicy: StartPolicy;
-      startAt: Date | null;
-      minToStart: number | null;
     } | null,
     memberStatuses: MemberStatus[],
   ): {
@@ -2415,10 +2351,7 @@ export class GroupsService {
     const requiredToStart = this.resolveRequiredToStart(rules);
     const readiness = this.buildStartReadiness(
       eligibleCount,
-      rules.startPolicy,
-      rules.startAt,
       requiredToStart,
-      rules.roundSize,
     );
 
     return {
@@ -2432,43 +2365,6 @@ export class GroupsService {
     return memberStatuses.filter((status) =>
       PARTICIPATING_MEMBER_STATUSES.includes(status),
     ).length;
-  }
-
-  private validateStartPolicyFields(dto: UpdateGroupRulesDto): void {
-    const minToStart = dto.minToStart ?? null;
-    const startAt = dto.startAt ?? null;
-
-    if (dto.startPolicy === StartPolicy.WHEN_FULL) {
-      if (startAt != null) {
-        throw new BadRequestException(
-          'startAt must be null when startPolicy is WHEN_FULL',
-        );
-      }
-      if (minToStart != null) {
-        throw new BadRequestException(
-          'minToStart must be null when startPolicy is WHEN_FULL',
-        );
-      }
-      return;
-    }
-
-    if (dto.startPolicy === StartPolicy.ON_DATE && startAt == null) {
-      throw new BadRequestException(
-        'startAt is required when startPolicy is ON_DATE',
-      );
-    }
-
-    if (dto.startPolicy === StartPolicy.MANUAL && startAt != null) {
-      throw new BadRequestException(
-        'startAt must be null when startPolicy is MANUAL',
-      );
-    }
-
-    if (minToStart != null && minToStart > dto.roundSize) {
-      throw new BadRequestException(
-        'minToStart must be less than or equal to roundSize',
-      );
-    }
   }
 
   private validateWinnerSelectionTiming(dto: UpdateGroupRulesDto): void {
@@ -2489,44 +2385,24 @@ export class GroupsService {
 
   private resolveRequiredToStart(rules: {
     roundSize: number;
-    startPolicy: StartPolicy;
-    minToStart: number | null;
   }): number {
-    if (rules.startPolicy === StartPolicy.WHEN_FULL) {
-      return rules.roundSize;
-    }
-
-    return rules.minToStart ?? rules.roundSize;
+    return rules.roundSize;
   }
 
   private buildStartReadiness(
     eligibleCount: number,
-    startPolicy: StartPolicy,
-    startAt: Date | null,
     requiredToStart: number,
-    roundSize: number,
   ): {
     eligibleCount: number;
     isReadyToStart: boolean;
     isWaitingForMembers: boolean;
-    isWaitingForDate: boolean;
   } {
-    const hasEnoughMembers =
-      startPolicy === StartPolicy.WHEN_FULL
-        ? eligibleCount === roundSize
-        : eligibleCount >= requiredToStart;
-    const waitingForDate =
-      startPolicy === StartPolicy.ON_DATE &&
-      hasEnoughMembers &&
-      startAt != null &&
-      new Date() < startAt;
-    const ready = hasEnoughMembers && !waitingForDate;
+    const hasEnoughMembers = eligibleCount >= requiredToStart;
 
     return {
       eligibleCount,
-      isReadyToStart: ready,
+      isReadyToStart: hasEnoughMembers,
       isWaitingForMembers: !hasEnoughMembers,
-      isWaitingForDate: waitingForDate,
     };
   }
 
@@ -3036,5 +2912,9 @@ export class GroupsService {
       timestamp: new Date().toISOString(),
       summary: options?.summary,
     };
+  }
+
+  private resolveFirstCycleDueBase(startedAt: Date): Date {
+    return startedAt;
   }
 }
