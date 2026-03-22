@@ -500,6 +500,223 @@ export class ContributionsService {
     return this.toContributionResponse(contribution, true);
   }
 
+  async markContributionPaid(
+    currentUser: AuthenticatedUser,
+    contributionId: string,
+    note?: string,
+  ): Promise<ContributionResponseDto> {
+    const contribution = await this.prisma.$transaction(
+      async (tx): Promise<ContributionWithUser> => {
+        const txCompat = tx as TxCompatibility;
+        const existing = await tx.contribution.findUnique({
+          where: {
+            id: contributionId,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        if (!existing) {
+          throw new NotFoundException('Contribution not found');
+        }
+
+        if (
+          existing.status !== ContributionStatus.PENDING &&
+          existing.status !== ContributionStatus.LATE &&
+          existing.status !== ContributionStatus.REJECTED
+        ) {
+          throw new BadRequestException(
+            'Only pending, late, or rejected contributions can be marked paid',
+          );
+        }
+
+        const cycle = await tx.equbCycle.findUnique({
+          where: { id: existing.cycleId },
+          select: {
+            id: true,
+            dueAt: true,
+            group: {
+              select: {
+                rules: {
+                  select: {
+                    graceDays: true,
+                    paymentMethods: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!cycle) {
+          throw new NotFoundException('Cycle not found');
+        }
+
+        if (
+          !cycle.group.rules ||
+          !cycle.group.rules.paymentMethods.includes(GroupPaymentMethod.CASH_ACK)
+        ) {
+          throw new BadRequestException(
+            'Manual payment marking is only allowed when CASH_ACK is enabled for the group',
+          );
+        }
+
+        const normalizedNote = note?.trim();
+        const confirmedAt = new Date();
+        const graceDays = Math.max(cycle.group.rules.graceDays, 0);
+        const graceDeadline = this.addDays(cycle.dueAt, graceDays);
+        const paidOnTime =
+          existing.status !== ContributionStatus.LATE &&
+          confirmedAt.getTime() <= graceDeadline.getTime();
+
+        const updated = await tx.contribution.update({
+          where: { id: contributionId },
+          data: {
+            status: ContributionStatus.VERIFIED,
+            paymentMethod: GroupPaymentMethod.CASH_ACK,
+            note: normalizedNote ?? existing.note,
+            submittedAt: existing.submittedAt ?? confirmedAt,
+            confirmedAt,
+            confirmedByUserId: currentUser.id,
+            rejectedAt: null,
+            rejectedByUserId: null,
+            rejectReason: null,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        await txCompat.contributionReceipt?.upsert({
+          where: {
+            contributionId: updated.id,
+          },
+          create: {
+            groupId: updated.groupId,
+            cycleId: updated.cycleId,
+            contributionId: updated.id,
+            userId: updated.userId,
+            method: GroupPaymentMethod.CASH_ACK,
+            reference: null,
+            receiptFileKey: null,
+            note: normalizedNote ?? null,
+          },
+          update: {
+            method: GroupPaymentMethod.CASH_ACK,
+            reference: null,
+            receiptFileKey: null,
+            note: normalizedNote ?? null,
+          },
+        });
+
+        await txCompat.ledgerEntry?.create({
+          data: {
+            groupId: updated.groupId,
+            cycleId: updated.cycleId,
+            contributionId: updated.id,
+            userId: updated.userId,
+            type: LedgerEntryType.MEMBER_PAYMENT,
+            amount: updated.amount,
+            method: GroupPaymentMethod.CASH_ACK,
+            reference: null,
+            receiptFileKey: null,
+            note: normalizedNote ?? 'Marked paid manually by admin.',
+          },
+        });
+
+        await txCompat.ledgerEntry?.create({
+          data: {
+            groupId: updated.groupId,
+            cycleId: updated.cycleId,
+            contributionId: updated.id,
+            userId: updated.userId,
+            type: LedgerEntryType.CONTRIBUTION_VERIFIED,
+            amount: updated.amount,
+            method: GroupPaymentMethod.CASH_ACK,
+            reference: null,
+            receiptFileKey: null,
+            note: normalizedNote ?? 'Manual payment acknowledged by admin.',
+            confirmedAt,
+            confirmedByUserId: currentUser.id,
+          },
+        });
+
+        if (paidOnTime) {
+          await this.reputationService.applyEvent(tx, {
+            userId: updated.userId,
+            eventType: 'ON_TIME_PAYMENT_VERIFIED',
+            metricChanges: {
+              onTimePayments: 1,
+            },
+            idempotencyKey: `reputation:payment-on-time:${updated.cycleId}:${updated.userId}`,
+            relatedGroupId: updated.groupId,
+            relatedCycleId: updated.cycleId,
+            metadata: {
+              confirmedAt: confirmedAt.toISOString(),
+              graceDeadline: graceDeadline.toISOString(),
+              method: GroupPaymentMethod.CASH_ACK,
+              markedByAdmin: true,
+            },
+          });
+        }
+
+        await this.syncCycleContributionCounts(tx, updated.cycleId);
+        await this.recomputeCycleCollectionState(tx, updated.cycleId);
+
+        return updated;
+      },
+    );
+
+    await this.auditService.log(
+      'CONTRIBUTION_MARKED_PAID',
+      currentUser.id,
+      {
+        contributionId: contribution.id,
+      },
+      contribution.groupId,
+    );
+
+    await this.notificationsService.notifyUser(contribution.user.id, {
+      type: NotificationType.CONTRIBUTION_CONFIRMED,
+      title: 'Contribution marked paid',
+      body: 'An admin marked your manual contribution as paid.',
+      groupId: contribution.groupId,
+      data: {
+        contributionId: contribution.id,
+        cycleId: contribution.cycleId,
+        groupId: contribution.groupId,
+      },
+    });
+
+    this.emitContributionRealtimeEvent(
+      'contribution.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.id,
+    );
+    this.emitContributionRealtimeEvent(
+      'turn.updated',
+      contribution.groupId,
+      contribution.cycleId,
+      contribution.cycleId,
+    );
+
+    return this.toContributionResponse(contribution, true);
+  }
+
   async rejectContribution(
     currentUser: AuthenticatedUser,
     contributionId: string,

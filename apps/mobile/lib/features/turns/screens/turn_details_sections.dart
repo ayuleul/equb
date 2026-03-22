@@ -398,9 +398,34 @@ class _ContributionRow extends ConsumerWidget {
     final hasProof = contribution.proofFileKey?.trim().isNotEmpty == true;
     final timestamp = _contributionTimestamp(contribution);
     final args = (groupId: group.id, cycleId: cycle.id);
+    final rules = ref.watch(groupRulesProvider(group.id)).valueOrNull;
+    final manualPaymentAllowed =
+        rules?.paymentMethods.contains(GroupPaymentMethodModel.cashAck) ??
+        false;
+    final supportedMethods = supportedContributionPaymentMethods(rules);
 
     Future<void> openActions() async {
       final actions = <KitActionSheetItem>[
+        if (isAdmin &&
+            manualPaymentAllowed &&
+            (contribution.status == ContributionStatusModel.pending ||
+                contribution.status == ContributionStatusModel.late ||
+                contribution.status == ContributionStatusModel.rejected))
+          KitActionSheetItem(
+            label: 'Mark paid',
+            icon: Icons.task_alt_outlined,
+            onPressed: () async {
+              final success = await ref
+                  .read(
+                    adminContributionActionsControllerProvider(args).notifier,
+                  )
+                  .markPaid(contribution.id, preferSocketSync: true);
+              if (!context.mounted || !success) {
+                return;
+              }
+              KitToast.success(context, 'Contribution marked paid');
+            },
+          ),
         if (isAdmin && _canVerify(contribution.status))
           KitActionSheetItem(
             label: 'Verify',
@@ -462,8 +487,11 @@ class _ContributionRow extends ConsumerWidget {
                 ? 'Pay ${formatCurrency(group.contributionAmount, group.currency)}'
                 : 'Update payment',
             icon: Icons.upload_file_outlined,
-            onPressed: () => context.push(
-              AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
+            onPressed: () => showContributionPaymentMethodSheet(
+              context,
+              groupId: group.id,
+              cycleId: cycle.id,
+              supportedMethods: supportedMethods,
             ),
           ),
         if (isMe && hasProof)

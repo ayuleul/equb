@@ -8,14 +8,17 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../data/models/contribution_model.dart';
 import '../../../data/models/cycle_model.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/group_rules_model.dart';
 import '../../../features/auth/auth_controller.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../cycles/cycle_detail_provider.dart';
 import '../../groups/group_detail_controller.dart';
+import '../../groups/group_rules_provider.dart';
 import '../admin_contribution_actions_controller.dart';
 import '../cycle_contributions_provider.dart';
+import '../payment_method_sheet.dart';
 
 enum _ContributionFilter { all, pending, late, submitted, confirmed, rejected }
 
@@ -49,6 +52,7 @@ class _ContributionsListScreenState
       cycleDetailProvider((groupId: groupId, cycleId: cycleId)),
     );
     final groupAsync = ref.watch(groupDetailProvider(groupId));
+    final rulesAsync = ref.watch(groupRulesProvider(groupId));
     final currentUser = ref.watch(currentUserProvider);
     final adminState = ref.watch(
       adminContributionActionsControllerProvider(args),
@@ -175,14 +179,14 @@ class _ContributionsListScreenState
                 ],
                 if (canSubmit)
                   KitPrimaryButton(
-                    onPressed: () {
-                      context.push(
-                        AppRoutePaths.groupCycleContributionsSubmit(
-                          groupId,
-                          cycleId,
-                        ),
-                      );
-                    },
+                    onPressed: () => showContributionPaymentMethodSheet(
+                      context,
+                      groupId: groupId,
+                      cycleId: cycleId,
+                      supportedMethods: supportedContributionPaymentMethods(
+                        rulesAsync.valueOrNull,
+                      ),
+                    ),
                     icon: Icons.upload_file,
                     label: myContribution == null
                         ? 'Pay now'
@@ -204,6 +208,11 @@ class _ContributionsListScreenState
                         args: args,
                         contribution: contribution,
                         isAdmin: isAdmin,
+                        manualPaymentAllowed:
+                            rulesAsync.valueOrNull?.paymentMethods.contains(
+                              GroupPaymentMethodModel.cashAck,
+                            ) ??
+                            false,
                         adminState: adminState,
                         onViewProof: (proofFileKey) async {
                           await _viewProof(context, ref, proofFileKey);
@@ -349,6 +358,7 @@ class _ContributionCard extends ConsumerWidget {
     required this.args,
     required this.contribution,
     required this.isAdmin,
+    required this.manualPaymentAllowed,
     required this.adminState,
     required this.onViewProof,
   });
@@ -356,6 +366,7 @@ class _ContributionCard extends ConsumerWidget {
   final CycleContributionsArgs args;
   final ContributionModel contribution;
   final bool isAdmin;
+  final bool manualPaymentAllowed;
   final AdminContributionActionsState adminState;
   final Future<void> Function(String proofFileKey) onViewProof;
 
@@ -424,7 +435,10 @@ class _ContributionCard extends ConsumerWidget {
                   expand: false,
                 ),
               if (isAdmin &&
-                  (contribution.status ==
+                  (contribution.status == ContributionStatusModel.pending ||
+                      contribution.status == ContributionStatusModel.late ||
+                      contribution.status == ContributionStatusModel.rejected ||
+                      contribution.status ==
                           ContributionStatusModel.paidSubmitted ||
                       contribution.status == ContributionStatusModel.submitted))
                 KitTertiaryButton(
@@ -435,6 +449,7 @@ class _ContributionCard extends ConsumerWidget {
                           ref,
                           args,
                           contribution,
+                          manualPaymentAllowed,
                         ),
                   icon: Icons.more_horiz,
                   label: 'Admin actions',
@@ -463,11 +478,30 @@ Future<void> _showAdminActionsSheet(
   WidgetRef ref,
   CycleContributionsArgs args,
   ContributionModel contribution,
+  bool manualPaymentAllowed,
 ) async {
-  await KitActionSheet.show(
-    context: context,
-    title: 'Admin actions',
-    actions: [
+  final actions = <KitActionSheetItem>[
+    if (manualPaymentAllowed &&
+        (contribution.status == ContributionStatusModel.pending ||
+            contribution.status == ContributionStatusModel.late ||
+            contribution.status == ContributionStatusModel.rejected))
+      KitActionSheetItem(
+        label: 'Mark paid',
+        icon: Icons.task_alt_outlined,
+        onPressed: () async {
+          final success = await ref
+              .read(adminContributionActionsControllerProvider(args).notifier)
+              .markPaid(contribution.id);
+          if (!context.mounted) {
+            return;
+          }
+          if (success) {
+            KitToast.success(context, 'Contribution marked paid');
+          }
+        },
+      ),
+    if (contribution.status == ContributionStatusModel.paidSubmitted ||
+        contribution.status == ContributionStatusModel.submitted)
       KitActionSheetItem(
         label: 'Verify contribution',
         icon: Icons.check_circle_outline,
@@ -483,6 +517,8 @@ Future<void> _showAdminActionsSheet(
           }
         },
       ),
+    if (contribution.status == ContributionStatusModel.paidSubmitted ||
+        contribution.status == ContributionStatusModel.submitted)
       KitActionSheetItem(
         label: 'Reject contribution',
         icon: Icons.cancel_outlined,
@@ -503,7 +539,12 @@ Future<void> _showAdminActionsSheet(
           }
         },
       ),
-    ],
+  ];
+
+  await KitActionSheet.show(
+    context: context,
+    title: 'Admin actions',
+    actions: actions,
   );
 }
 

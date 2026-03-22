@@ -52,6 +52,7 @@ _TurnAction? _resolveTurnAction({
   required BuildContext context,
   required GroupModel group,
   required CycleModel cycle,
+  required List<GroupPaymentMethodModel> supportedPaymentMethods,
   required PayoutModel? payout,
   required ContributionModel? contribution,
   required bool isAdmin,
@@ -101,8 +102,11 @@ _TurnAction? _resolveTurnAction({
     return _TurnAction(
       label: 'Pay ${formatCurrency(group.contributionAmount, group.currency)}',
       icon: Icons.upload_file_outlined,
-      onPressed: () => context.push(
-        AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
+      onPressed: () => showContributionPaymentMethodSheet(
+        context,
+        groupId: group.id,
+        cycleId: cycle.id,
+        supportedMethods: supportedPaymentMethods,
       ),
       scope: _TurnActionScope.contribution,
       kind: _TurnActionKind.payNow,
@@ -113,8 +117,11 @@ _TurnAction? _resolveTurnAction({
     ContributionStatusModel.rejected => _TurnAction(
       label: 'Fix & resubmit',
       icon: Icons.refresh_rounded,
-      onPressed: () => context.push(
-        AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
+      onPressed: () => showContributionPaymentMethodSheet(
+        context,
+        groupId: group.id,
+        cycleId: cycle.id,
+        supportedMethods: supportedPaymentMethods,
       ),
       scope: _TurnActionScope.contribution,
       kind: _TurnActionKind.fixResubmit,
@@ -122,8 +129,11 @@ _TurnAction? _resolveTurnAction({
     ContributionStatusModel.late => _TurnAction(
       label: 'Pay ${formatCurrency(group.contributionAmount, group.currency)}',
       icon: Icons.warning_amber_rounded,
-      onPressed: () => context.push(
-        AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
+      onPressed: () => showContributionPaymentMethodSheet(
+        context,
+        groupId: group.id,
+        cycleId: cycle.id,
+        supportedMethods: supportedPaymentMethods,
       ),
       scope: _TurnActionScope.contribution,
       kind: _TurnActionKind.payNow,
@@ -139,8 +149,11 @@ _TurnAction? _resolveTurnAction({
     ContributionStatusModel.pending => _TurnAction(
       label: 'Pay ${formatCurrency(group.contributionAmount, group.currency)}',
       icon: Icons.upload_file_outlined,
-      onPressed: () => context.push(
-        AppRoutePaths.groupCycleContributionsSubmit(group.id, cycle.id),
+      onPressed: () => showContributionPaymentMethodSheet(
+        context,
+        groupId: group.id,
+        cycleId: cycle.id,
+        supportedMethods: supportedPaymentMethods,
       ),
       scope: _TurnActionScope.contribution,
       kind: _TurnActionKind.uploadReceipt,
@@ -453,9 +466,7 @@ Future<void> _handleDrawWinnerAction({
         cycle: cycle,
       );
       final eligibleMembers = members
-          .where(
-            (member) => isParticipatingMemberStatus(member.status),
-          )
+          .where((member) => isParticipatingMemberStatus(member.status))
           .where((member) => !currentRoundWinnerIds.contains(member.userId))
           .toList(growable: false);
       if (!context.mounted) {
@@ -564,9 +575,7 @@ Future<String?> _promptDecisionWinner({
 }) async {
   final members = await ref.read(groupMembersProvider(groupId).future);
   final eligibleMembers = members
-      .where(
-        (member) => isParticipatingMemberStatus(member.status),
-      )
+      .where((member) => isParticipatingMemberStatus(member.status))
       .toList(growable: false);
   if (eligibleMembers.isEmpty) {
     if (context.mounted) {

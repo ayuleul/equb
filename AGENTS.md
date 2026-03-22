@@ -252,6 +252,10 @@
 - Bid visibility rule is locked: active admins can view all cycle bids; other active members can view only their own bid.
 
 ## Contribution rules
+- Allowed group payment methods must govern contribution flows end-to-end:
+  - member payment submission may use only methods enabled on the group ruleset
+  - `CASH_ACK` is the manual-payment method and does not require proof upload, but mobile may attach an optional reference image for admins
+  - admin `mark paid` is allowed only when `CASH_ACK` is enabled on the group ruleset
 - Contribution proof object key format is locked to:
   - `groups/<groupId>/cycles/<cycleId>/users/<userId>/<uuid>_<sanitizedFileName>`
 - Proof file keys must match the submitting member's `groupId/cycleId/userId` scope.
@@ -409,6 +413,7 @@
 - Mobile env example: `apps/mobile/.env.example` must include `API_BASE_URL`.
 
 ## Mobile rules
+- Mobile payment-method surfaces must expose only `CASH_ACK` (Manual) and `TELEBIRR`; `BANK` stays unsupported in mobile setup/submission UI, and `TELEBIRR` may route to a coming-soon screen until its real flow ships.
 - Env strategy is locked to `flutter_dotenv`:
   - Load `.env` at startup from `apps/mobile/.env`
   - `API_BASE_URL` is required and must fail-fast if missing

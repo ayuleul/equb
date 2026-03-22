@@ -25,6 +25,7 @@ import '../../../shared/widgets/realtime_status_banner.dart';
 import '../../auth/auth_controller.dart';
 import '../../contributions/admin_contribution_actions_controller.dart';
 import '../../contributions/cycle_contributions_provider.dart';
+import '../../contributions/payment_method_sheet.dart';
 import '../../cycles/cycle_auction_controller.dart';
 import '../../cycles/cycle_bids_provider.dart';
 import '../../cycles/cycle_detail_provider.dart';
@@ -78,6 +79,7 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
   Widget build(BuildContext context) {
     final args = (groupId: widget.groupId, cycleId: widget.turnId);
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
+    final rulesAsync = ref.watch(groupRulesProvider(widget.groupId));
     final cycleAsync = ref.watch(cycleDetailProvider(args));
     final group = groupAsync.valueOrNull;
     final cycle = cycleAsync.valueOrNull;
@@ -155,6 +157,10 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                     context: context,
                     group: group,
                     cycle: cycle,
+                    supportedPaymentMethods:
+                        supportedContributionPaymentMethods(
+                          rulesAsync.valueOrNull,
+                        ),
                     payout: payout,
                     contribution: _findContribution(
                       contributionList,

@@ -7,7 +7,6 @@ import '../../../data/models/group_model.dart';
 import '../../../data/models/group_rules_model.dart';
 import '../../../shared/kit/kit.dart';
 import '../../../shared/ui/ui.dart';
-import '../../../shared/utils/formatters.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../cycles/cycle_detail_provider.dart';
@@ -20,10 +19,12 @@ class SubmitContributionScreen extends ConsumerStatefulWidget {
     super.key,
     required this.groupId,
     required this.cycleId,
+    this.initialMethodKey,
   });
 
   final String groupId;
   final String cycleId;
+  final String? initialMethodKey;
 
   @override
   ConsumerState<SubmitContributionScreen> createState() =>
@@ -35,7 +36,6 @@ class _SubmitContributionScreenState
   late final TextEditingController _amountController;
   late final TextEditingController _paymentRefController;
   late final TextEditingController _noteController;
-  var _method = GroupPaymentMethodModel.bank;
   String? _formError;
 
   @override
@@ -78,8 +78,17 @@ class _SubmitContributionScreenState
       _amountController.text = group.contributionAmount.toString();
     }
 
+    final selectedMethod =
+        _paymentMethodFromKey(widget.initialMethodKey) ??
+        GroupPaymentMethodModel.cashAck;
+    final screenTitle = switch (selectedMethod) {
+      GroupPaymentMethodModel.cashAck => 'Manual payment',
+      GroupPaymentMethodModel.telebirr => 'Telebirr',
+      _ => 'Manual payment',
+    };
+
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Submit contribution'),
+      appBar: KitAppBar(title: screenTitle),
       child: groupAsync.when(
         loading: () => const LoadingView(message: 'Loading group...'),
         error: (error, _) => ErrorView(
@@ -100,23 +109,25 @@ class _SubmitContributionScreenState
                 )),
               ),
             ),
-            data: (cycleData) => _SubmitForm(
-              args: args,
-              group: groupData,
-              cycle: cycleData,
-              method: _method,
-              onMethodChanged: (value) {
-                setState(() => _method = value);
-              },
-              amountController: _amountController,
-              paymentRefController: _paymentRefController,
-              noteController: _noteController,
-              submitState: submitState,
-              formError: _formError,
-              onFormErrorChanged: (value) {
-                setState(() => _formError = value);
-              },
-            ),
+            data: (cycleData) {
+              if (selectedMethod == GroupPaymentMethodModel.telebirr) {
+                return const _TelebirrComingSoonView();
+              }
+
+              return _ManualSubmitForm(
+                args: args,
+                group: groupData,
+                cycle: cycleData,
+                amountController: _amountController,
+                paymentRefController: _paymentRefController,
+                noteController: _noteController,
+                submitState: submitState,
+                formError: _formError,
+                onFormErrorChanged: (value) {
+                  setState(() => _formError = value);
+                },
+              );
+            },
           );
         },
       ),
@@ -124,13 +135,29 @@ class _SubmitContributionScreenState
   }
 }
 
-class _SubmitForm extends ConsumerWidget {
-  const _SubmitForm({
+class _TelebirrComingSoonView extends StatelessWidget {
+  const _TelebirrComingSoonView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.lg),
+        child: KitEmptyState(
+          icon: Icons.phone_android,
+          title: 'Telebirr coming soon',
+          message: 'Telebirr payment is not ready yet.',
+        ),
+      ),
+    );
+  }
+}
+
+class _ManualSubmitForm extends ConsumerWidget {
+  const _ManualSubmitForm({
     required this.args,
     required this.group,
     required this.cycle,
-    required this.method,
-    required this.onMethodChanged,
     required this.amountController,
     required this.paymentRefController,
     required this.noteController,
@@ -142,8 +169,6 @@ class _SubmitForm extends ConsumerWidget {
   final CycleContributionsArgs args;
   final GroupModel group;
   final CycleModel cycle;
-  final GroupPaymentMethodModel method;
-  final ValueChanged<GroupPaymentMethodModel> onMethodChanged;
   final TextEditingController amountController;
   final TextEditingController paymentRefController;
   final TextEditingController noteController;
@@ -166,15 +191,10 @@ class _SubmitForm extends ConsumerWidget {
         return;
       }
 
-      if (submitState.image == null) {
-        onFormErrorChanged('Please attach a receipt image.');
-        return;
-      }
-
       onFormErrorChanged(null);
 
       final success = await controller.submit(
-        method: method,
+        method: GroupPaymentMethodModel.cashAck,
         amount: amount,
         paymentRef: paymentRefController.text,
         note: noteController.text,
@@ -191,26 +211,7 @@ class _SubmitForm extends ConsumerWidget {
 
     return ListView(
       children: [
-        KitCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(group.name, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Cycle #${cycle.cycleNo} • Due ${formatDate(cycle.dueDate)}',
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              AmountText(
-                amount: group.contributionAmount,
-                currency: group.currency,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ],
-          ),
-        ),
         if (!isCycleOpen) ...[
-          const SizedBox(height: AppSpacing.md),
           const KitEmptyState(
             icon: Icons.lock_clock_outlined,
             title: 'Cycle is closed',
@@ -222,10 +223,11 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(
-                title: '1) Add payment proof',
-                subtitle: 'Add the payment proof image for this turn',
+              Text(
+                'Attachment',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
@@ -249,7 +251,7 @@ class _SubmitForm extends ConsumerWidget {
                 ],
               ),
               if (submitState.image != null) ...[
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   submitState.image!.fileName,
                   style: Theme.of(context).textTheme.labelLarge,
@@ -264,23 +266,6 @@ class _SubmitForm extends ConsumerWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
-              ] else ...[
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  height: 180,
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: AppRadius.cardRounded,
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: Text(
-                    'No proof selected yet',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
               ],
             ],
           ),
@@ -290,35 +275,7 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(
-                title: '2) Payment details',
-                subtitle: 'Confirm amount, payment method, and optional note',
-              ),
-              KitDropdownField<GroupPaymentMethodModel>(
-                value: method,
-                label: 'Payment method',
-                items: const [
-                  DropdownMenuItem(
-                    value: GroupPaymentMethodModel.bank,
-                    child: Text('BANK'),
-                  ),
-                  DropdownMenuItem(
-                    value: GroupPaymentMethodModel.telebirr,
-                    child: Text('TELEBIRR'),
-                  ),
-                  DropdownMenuItem(
-                    value: GroupPaymentMethodModel.cashAck,
-                    child: Text('CASH_ACK'),
-                  ),
-                ],
-                onChanged: !isCycleOpen || submitState.isBusy
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          onMethodChanged(value);
-                        }
-                      },
-              ),
+              Text('Details', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.md),
               KitNumberField(
                 controller: amountController,
@@ -329,14 +286,14 @@ class _SubmitForm extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               KitTextField(
                 controller: paymentRefController,
-                label: 'Payment reference (optional)',
-                placeholder: 'Transaction ID',
+                label: 'Reference (optional)',
+                placeholder: 'Receipt note',
               ),
               const SizedBox(height: AppSpacing.md),
               KitTextArea(
                 controller: noteController,
                 label: 'Note (optional)',
-                placeholder: 'Any details for admins',
+                placeholder: 'Add a note',
               ),
             ],
           ),
@@ -346,10 +303,8 @@ class _SubmitForm extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const KitSectionHeader(
-                title: '3) Review & submit',
-                subtitle: 'Send the contribution and wait for the live update',
-              ),
+              Text('Submit', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.md),
               if (submitState.isBusy) ...[
                 LinearProgressIndicator(value: submitState.uploadProgress),
                 const SizedBox(height: AppSpacing.xs),
@@ -390,6 +345,14 @@ class _SubmitForm extends ConsumerWidget {
       ],
     );
   }
+}
+
+GroupPaymentMethodModel? _paymentMethodFromKey(String? value) {
+  return switch (value?.toLowerCase()) {
+    'manual' => GroupPaymentMethodModel.cashAck,
+    'telebirr' => GroupPaymentMethodModel.telebirr,
+    _ => null,
+  };
 }
 
 String _progressLabel(SubmitContributionStep step) {

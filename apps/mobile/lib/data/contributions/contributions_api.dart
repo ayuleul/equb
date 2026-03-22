@@ -24,6 +24,10 @@ abstract class ContributionsApi {
     String contributionId, {
     String? note,
   });
+  Future<Map<String, dynamic>> markContributionPaid(
+    String contributionId, {
+    String? note,
+  });
 
   Future<Map<String, dynamic>> evaluateCycleCollection(String cycleId);
 
@@ -96,6 +100,19 @@ class DioContributionsApi implements ContributionsApi {
   }) {
     return _apiClient.postMap(
       '/contributions/$contributionId/verify',
+      data: note == null || note.trim().isEmpty
+          ? <String, dynamic>{}
+          : <String, dynamic>{'note': note.trim()},
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> markContributionPaid(
+    String contributionId, {
+    String? note,
+  }) {
+    return _apiClient.postMap(
+      '/contributions/$contributionId/mark-paid',
       data: note == null || note.trim().isEmpty
           ? <String, dynamic>{}
           : <String, dynamic>{'note': note.trim()},

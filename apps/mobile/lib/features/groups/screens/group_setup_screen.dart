@@ -185,7 +185,16 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     _fineType = rules.fineType;
     _payoutMode = rules.payoutMode;
     _winnerSelectionTiming = rules.winnerSelectionTiming;
-    _paymentMethods = rules.paymentMethods.toSet();
+    _paymentMethods = rules.paymentMethods
+        .where(
+          (method) =>
+              method == GroupPaymentMethodModel.telebirr ||
+              method == GroupPaymentMethodModel.cashAck,
+        )
+        .toSet();
+    if (_paymentMethods.isEmpty) {
+      _paymentMethods = {GroupPaymentMethodModel.cashAck};
+    }
   }
 
   bool _validateBasicsStep() {
@@ -436,13 +445,13 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           if (description != null) ...[
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            description,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              description,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
           ],
           const SizedBox(height: AppSpacing.md),
           child,
@@ -766,19 +775,13 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
           ),
           const SizedBox(height: AppSpacing.xs),
           _PaymentMethodTile(
-            label: 'BANK',
-            value: GroupPaymentMethodModel.bank,
-            selectedMethods: _paymentMethods,
-            onChanged: _togglePaymentMethod,
-          ),
-          _PaymentMethodTile(
-            label: 'TELEBIRR',
+            label: 'Telebirr',
             value: GroupPaymentMethodModel.telebirr,
             selectedMethods: _paymentMethods,
             onChanged: _togglePaymentMethod,
           ),
           _PaymentMethodTile(
-            label: 'CASH_ACK',
+            label: 'Manual',
             value: GroupPaymentMethodModel.cashAck,
             selectedMethods: _paymentMethods,
             onChanged: _togglePaymentMethod,

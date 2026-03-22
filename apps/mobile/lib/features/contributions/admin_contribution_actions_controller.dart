@@ -125,6 +125,51 @@ class AdminContributionActionsController
     }
   }
 
+  Future<bool> markPaid(
+    String contributionId, {
+    String? note,
+    bool preferSocketSync = false,
+  }) async {
+    state = state.copyWith(
+      isLoading: true,
+      activeContributionId: contributionId,
+      clearError: true,
+    );
+
+    try {
+      await repository.markContributionPaid(contributionId, note: note);
+      if (preferSocketSync) {
+        unawaited(
+          _ref
+              .read(socketSyncPolicyProvider)
+              .waitForSocketOrFallback(
+                eventTypes: const {'contribution.updated'},
+                groupId: args.groupId,
+                turnId: args.cycleId,
+                entityId: contributionId,
+                fallback: _fallbackRefresh,
+              ),
+        );
+      } else {
+        await _fallbackRefresh();
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        clearActiveContributionId: true,
+        clearError: true,
+      );
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        isLoading: false,
+        clearActiveContributionId: true,
+        errorMessage: mapApiErrorToMessage(error),
+      );
+      return false;
+    }
+  }
+
   Future<bool> reject(
     String contributionId,
     String reason, {

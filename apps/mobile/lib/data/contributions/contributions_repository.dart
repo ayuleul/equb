@@ -53,6 +53,14 @@ class ContributionsRepository {
     return ContributionModel.fromJson(payload);
   }
 
+  Future<ContributionModel> markContributionPaid(
+    String contributionId, {
+    String? note,
+  }) async {
+    final payload = await _api.markContributionPaid(contributionId, note: note);
+    return ContributionModel.fromJson(payload);
+  }
+
   Future<ContributionModel> rejectContribution(
     String contributionId,
     String reason,

@@ -80,8 +80,18 @@ class AppRoutePaths {
       '/groups/$groupId/cycles/$cycleId';
   static String groupCycleContributions(String groupId, String cycleId) =>
       '/groups/$groupId/cycles/$cycleId/contributions';
-  static String groupCycleContributionsSubmit(String groupId, String cycleId) =>
-      '/groups/$groupId/cycles/$cycleId/contributions/submit';
+  static String groupCycleContributionsSubmit(
+    String groupId,
+    String cycleId, {
+    String? method,
+  }) {
+    final base = '/groups/$groupId/cycles/$cycleId/contributions/submit';
+    if (method == null || method.isEmpty) {
+      return base;
+    }
+    return '$base?method=$method';
+  }
+
   static String groupCycleContributionDisputes(
     String groupId,
     String cycleId,
@@ -256,9 +266,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                                         state.pathParameters['id'] ?? '';
                                     final cycleId =
                                         state.pathParameters['cycleId'] ?? '';
+                                    final method =
+                                        state.uri.queryParameters['method'];
                                     return SubmitContributionScreen(
                                       groupId: groupId,
                                       cycleId: cycleId,
+                                      initialMethodKey: method,
                                     );
                                   },
                                 ),

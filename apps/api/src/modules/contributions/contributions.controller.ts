@@ -140,6 +140,32 @@ export class ContributionsController {
     );
   }
 
+  @Post('contributions/:id/mark-paid')
+  @UseGuards(GroupAdminGuard)
+  @ApiOperation({
+    summary:
+        'Mark a member contribution as paid manually when CASH_ACK is allowed',
+  })
+  @ApiBody({ type: ConfirmContributionDto, required: false })
+  @ApiOkResponse({ type: ContributionResponseDto })
+  @ApiForbiddenResponse({ description: 'Active admin membership required' })
+  @ApiBadRequestResponse({
+    description:
+        'Only pending/late/rejected contributions can be marked paid and CASH_ACK must be allowed',
+  })
+  @ApiNotFoundResponse({ description: 'Contribution not found' })
+  markContributionPaid(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) contributionId: string,
+    @Body() dto: ConfirmContributionDto,
+  ): Promise<ContributionResponseDto> {
+    return this.contributionsService.markContributionPaid(
+      currentUser,
+      contributionId,
+      dto.note,
+    );
+  }
+
   @Patch('contributions/:id/confirm')
   @UseGuards(GroupAdminGuard)
   @ApiOperation({

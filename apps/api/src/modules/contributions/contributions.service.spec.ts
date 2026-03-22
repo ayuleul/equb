@@ -2,6 +2,7 @@ import {
   ContributionStatus,
   CycleState,
   CycleStatus,
+  GroupPaymentMethod,
   GroupRuleFineType,
 } from '@prisma/client';
 
@@ -302,6 +303,120 @@ describe('ContributionsService.verifyContribution realtime emissions', () => {
         entityId: 'cycle-1',
       }),
     );
+    expect(reputationService.applyEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'ON_TIME_PAYMENT_VERIFIED',
+        userId: 'user-member',
+      }),
+    );
+  });
+
+  it('marks pending contributions as paid only through CASH_ACK manual flow', async () => {
+    const contributionRecord = {
+      id: 'contribution-1',
+      groupId: 'group-1',
+      cycleId: 'cycle-1',
+      userId: 'user-member',
+      amount: 500,
+      status: ContributionStatus.VERIFIED,
+      paymentMethod: GroupPaymentMethod.CASH_ACK,
+      proofFileKey: null,
+      paymentRef: null,
+      note: 'Marked paid manually by admin.',
+      submittedAt: new Date('2026-03-09T00:00:00.000Z'),
+      confirmedAt: new Date('2026-03-09T00:00:00.000Z'),
+      confirmedByUserId: currentUser.id,
+      rejectedAt: null,
+      rejectedByUserId: null,
+      rejectReason: null,
+      lateMarkedAt: null,
+      createdAt: new Date('2026-03-09T00:00:00.000Z'),
+      user: {
+        id: 'user-member',
+        fullName: 'Member',
+        phone: '+251922222222',
+      },
+    };
+    const txMock = {
+      contribution: {
+        findUnique: jest.fn().mockResolvedValue({
+          ...contributionRecord,
+          status: ContributionStatus.PENDING,
+          paymentMethod: null,
+          confirmedAt: null,
+          confirmedByUserId: null,
+          submittedAt: null,
+          note: null,
+        }),
+        update: jest.fn().mockResolvedValue(contributionRecord),
+        count: jest.fn().mockResolvedValue(2),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'contribution-1', status: ContributionStatus.VERIFIED },
+          { id: 'contribution-2', status: ContributionStatus.VERIFIED },
+        ]),
+      },
+      ledgerEntry: {
+        create: jest.fn().mockResolvedValue({}),
+      },
+      contributionReceipt: {
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      equbCycle: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'cycle-1',
+          dueAt: new Date('3026-03-12T00:00:00.000Z'),
+          status: CycleStatus.OPEN,
+          state: CycleState.COLLECTING,
+          selectedWinnerUserId: null,
+          group: {
+            rules: {
+              graceDays: 0,
+              paymentMethods: [GroupPaymentMethod.CASH_ACK],
+              winnerSelectionTiming: 'AFTER_COLLECTION',
+            },
+          },
+          contributions: [
+            { status: ContributionStatus.VERIFIED },
+            { status: ContributionStatus.VERIFIED },
+          ],
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+    };
+    const prismaMock = {
+      $transaction: jest.fn(async (callback: (tx: typeof txMock) => unknown) =>
+        callback(txMock),
+      ),
+    } as unknown as PrismaService;
+    const realtimeService = {
+      emitTurnEvent: jest.fn(),
+    };
+    const reputationService = {
+      applyEvent: jest.fn(),
+    };
+    const service = new ContributionsService(
+      prismaMock,
+      { log: jest.fn() } as never,
+      {
+        notifyUser: jest.fn(),
+        notifyGroupAdmins: jest.fn(),
+      } as never,
+      reputationService as never,
+      realtimeService as never,
+    );
+
+    await service.markContributionPaid(currentUser, 'contribution-1');
+
+    expect(txMock.contribution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: ContributionStatus.VERIFIED,
+          paymentMethod: GroupPaymentMethod.CASH_ACK,
+        }),
+      }),
+    );
+    expect(realtimeService.emitTurnEvent).toHaveBeenCalled();
     expect(reputationService.applyEvent).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

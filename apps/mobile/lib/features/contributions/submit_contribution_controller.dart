@@ -191,52 +191,61 @@ class SubmitContributionController
     bool preferSocketSync = false,
   }) async {
     final image = state.image;
-    if (image == null) {
+    final isManualPayment = method == GroupPaymentMethodModel.cashAck;
+    if (!isManualPayment && image == null) {
       state = state.copyWith(
         step: SubmitContributionStep.error,
         errorMessage: 'Please attach a receipt image before submitting.',
       );
       return false;
     }
+    final shouldUploadReference = image != null;
 
     final normalizedPaymentRef = paymentRef?.trim();
     final normalizedNote = note?.trim();
 
     state = state.copyWith(
-      step: SubmitContributionStep.requestingUpload,
+      step: shouldUploadReference
+          ? SubmitContributionStep.requestingUpload
+          : SubmitContributionStep.submitting,
       clearError: true,
       clearProgress: true,
     );
 
     try {
-      final signedUpload = await _filesRepository.requestSignedUpload(
-        purpose: UploadPurposeModel.contributionProof,
-        groupId: args.groupId,
-        cycleId: args.cycleId,
-        fileName: image.fileName,
-        contentType: image.contentType,
-      );
+      String? uploadedReceiptKey;
+      if (shouldUploadReference) {
+        final signedUpload = await _filesRepository.requestSignedUpload(
+          purpose: UploadPurposeModel.contributionProof,
+          groupId: args.groupId,
+          cycleId: args.cycleId,
+          fileName: image.fileName,
+          contentType: image.contentType,
+        );
 
-      state = state.copyWith(
-        step: SubmitContributionStep.uploading,
-        uploadProgress: 0,
-      );
+        state = state.copyWith(
+          step: SubmitContributionStep.uploading,
+          uploadProgress: 0,
+        );
 
-      await _filesRepository.uploadToSignedUrl(
-        signedUpload.uploadUrl,
-        image.bytes,
-        image.contentType,
-        onProgress: (progress) {
-          state = state.copyWith(
-            step: SubmitContributionStep.uploading,
-            uploadProgress: progress.clamp(0, 1),
-          );
-        },
-      );
+        await _filesRepository.uploadToSignedUrl(
+          signedUpload.uploadUrl,
+          image.bytes,
+          image.contentType,
+          onProgress: (progress) {
+            state = state.copyWith(
+              step: SubmitContributionStep.uploading,
+              uploadProgress: progress.clamp(0, 1),
+            );
+          },
+        );
+
+        uploadedReceiptKey = signedUpload.key;
+      }
 
       state = state.copyWith(
         step: SubmitContributionStep.submitting,
-        uploadProgress: 1,
+        uploadProgress: shouldUploadReference ? 1 : null,
       );
 
       final contribution = await _contributionsRepository.submitContribution(
@@ -244,12 +253,12 @@ class SubmitContributionController
         SubmitContributionRequest(
           method: method,
           amount: amount,
-          receiptFileKey: signedUpload.key,
+          receiptFileKey: uploadedReceiptKey,
           reference:
               (normalizedPaymentRef == null || normalizedPaymentRef.isEmpty)
               ? null
               : normalizedPaymentRef,
-          proofFileKey: signedUpload.key,
+          proofFileKey: uploadedReceiptKey,
           paymentRef:
               (normalizedPaymentRef == null || normalizedPaymentRef.isEmpty)
               ? null
@@ -277,7 +286,7 @@ class SubmitContributionController
 
       state = state.copyWith(
         step: SubmitContributionStep.success,
-        uploadProgress: 1,
+        uploadProgress: shouldUploadReference ? 1 : null,
         clearError: true,
       );
       return true;
