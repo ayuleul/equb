@@ -124,7 +124,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
     return KitScaffold(
       appBar: const KitAppBar(title: 'Payout details'),
       child: groupAsync.when(
-        loading: () => const LoadingView(message: 'Loading payout...'),
+        loading: () => const LoadingView(message: 'Loading...'),
         error: (error, _) => ErrorView(
           message: mapFriendlyError(error),
           onRetry: () => ref
@@ -133,7 +133,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
         ),
         data: (_) {
           return cycleAsync.when(
-            loading: () => const LoadingView(message: 'Loading cycle...'),
+            loading: () => const LoadingView(message: 'Loading...'),
             error: (error, _) => ErrorView(
               message: mapFriendlyError(error),
               onRetry: () => ref.invalidate(
@@ -145,7 +145,7 @@ class _PayoutScreenState extends ConsumerState<PayoutScreen> {
             ),
             data: (cycleData) {
               return payoutAsync.when(
-                loading: () => const LoadingView(message: 'Loading payout...'),
+                loading: () => const LoadingView(message: 'Loading...'),
                 error: (error, _) => ErrorView(
                   message: mapFriendlyError(error),
                   onRetry: () =>
@@ -220,13 +220,11 @@ class _CycleHeaderCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text('Due date: ${formatFriendlyDate(cycle.dueDate)}'),
           const SizedBox(height: AppSpacing.xs),
-          Text('Selected winner: ${_selectedWinnerLabel(cycle)}'),
+          Text('Winner: ${_selectedWinnerLabel(cycle)}'),
           if (_selectedWinnerLabel(cycle) != _cycleRecipientLabel(cycle))
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text(
-                'Final recipient after auction: ${_cycleRecipientLabel(cycle)}',
-              ),
+              child: Text('Recipient: ${_cycleRecipientLabel(cycle)}'),
             ),
           const SizedBox(height: AppSpacing.xs),
           StatusPill.fromLabel(statusLabel),
@@ -341,25 +339,12 @@ class _PayoutTimelineCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
-          _TimelineRow(
-            label: 'Collection complete',
-            done: collectionComplete,
-            detail: collectionComplete ? 'Winner step unlocked' : 'Pending',
-          ),
-          _TimelineRow(
-            label: 'Winner selected',
-            done: winnerSelected,
-            detail: winnerSelected ? 'Winner set for cycle' : 'Pending',
-          ),
-          _TimelineRow(
-            label: 'Payout sent',
-            done: payoutSent,
-            detail: payoutSent ? 'Admin marked payout as sent' : 'Pending',
-          ),
+          _TimelineRow(label: 'Collection complete', done: collectionComplete),
+          _TimelineRow(label: 'Winner selected', done: winnerSelected),
+          _TimelineRow(label: 'Payout sent', done: payoutSent),
           _TimelineRow(
             label: 'Recipient confirmed receipt',
             done: receiptConfirmed,
-            detail: receiptConfirmed ? 'Turn completed' : 'Pending',
           ),
         ],
       ),
@@ -368,15 +353,10 @@ class _PayoutTimelineCard extends StatelessWidget {
 }
 
 class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({
-    required this.label,
-    required this.done,
-    required this.detail,
-  });
+  const _TimelineRow({required this.label, required this.done});
 
   final String label;
   final bool done;
-  final String detail;
 
   @override
   Widget build(BuildContext context) {
@@ -392,18 +372,7 @@ class _TimelineRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: Theme.of(context).textTheme.bodyMedium),
-                Text(
-                  detail,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),
@@ -452,8 +421,8 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
       return KitCard(
         child: Text(
           payout?.status == PayoutStatusModel.confirmed
-              ? 'Turn completed.'
-              : 'Waiting for the next payout action.',
+              ? 'Completed.'
+              : 'Waiting.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -477,8 +446,8 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
         child: Text(
           cycle.state == CycleStateModel.completed ||
                   payout?.status == PayoutStatusModel.confirmed
-              ? 'Turn completed.'
-              : 'This turn will unlock the next payout action automatically as it progresses.',
+              ? 'Completed.'
+              : 'Locked.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
@@ -601,8 +570,8 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     actionState.actionType == PayoutActionType.uploadingProof
-                        ? 'Uploading payout proof...'
-                        : 'Saving payout send...',
+                        ? 'Uploading proof...'
+                        : 'Saving...',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -656,11 +625,6 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                   'Confirm receipt',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Confirm that you received the payout. This completes the turn.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
                   label: 'Confirm receipt',
@@ -673,7 +637,7 @@ class _PhaseFiveActionsSection extends ConsumerWidget {
                           final shouldConfirm = await KitDialog.confirm(
                             context: context,
                             title: 'Confirm payout receipt?',
-                            message: 'This will mark the turn as completed.',
+                            message: 'This completes the turn.',
                             confirmLabel: 'Confirm receipt',
                           );
 
@@ -732,9 +696,7 @@ class _WinnerSelectionContent extends ConsumerWidget {
       cycle: cycle,
     );
     final eligibleMembers = members
-        .where(
-          (member) => isParticipatingMemberStatus(member.status),
-        )
+        .where((member) => isParticipatingMemberStatus(member.status))
         .where((member) => !currentRoundWinnerIds.contains(member.userId))
         .toList(growable: false);
 

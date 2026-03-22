@@ -17,20 +17,13 @@ class _TurnAction {
 }
 
 class _TurnFooter {
-  const _TurnFooter.action(this.action)
-    : message = null,
-      detail = null,
-      icon = null;
+  const _TurnFooter.action(this.action) : message = null, icon = null;
 
-  const _TurnFooter.status({
-    required this.message,
-    required this.detail,
-    required this.icon,
-  }) : action = null;
+  const _TurnFooter.status({required this.message, required this.icon})
+    : action = null;
 
   final _TurnAction? action;
   final String? message;
-  final String? detail;
   final IconData? icon;
 
   bool get isAction => action != null;
@@ -213,8 +206,7 @@ _TurnFooter? _resolveTurnFooter({
       cycle.state == CycleStateModel.payoutSent &&
       receiptConfirmerUserId != currentUserId) {
     return const _TurnFooter.status(
-      message: 'Waiting for payout receipt confirmation',
-      detail: 'The selected winner must confirm receipt to complete this turn.',
+      message: 'Waiting for receipt confirmation',
       icon: Icons.hourglass_bottom_rounded,
     );
   }
@@ -222,16 +214,14 @@ _TurnFooter? _resolveTurnFooter({
   if (cycle.state == CycleStateModel.completed ||
       cycle.status == CycleStatusModel.closed) {
     return const _TurnFooter.status(
-      message: 'Turn completed',
-      detail: 'This turn is finished and recorded in history.',
+      message: 'Completed',
       icon: Icons.task_alt_rounded,
     );
   }
 
   if (action?.kind == _TurnActionKind.waitingForVerification) {
     return const _TurnFooter.status(
-      message: 'Waiting for contribution verification',
-      detail: 'Your submitted payment is waiting for admin review.',
+      message: 'Waiting for verification',
       icon: Icons.hourglass_bottom_rounded,
     );
   }
@@ -239,41 +229,34 @@ _TurnFooter? _resolveTurnFooter({
   if (cycle.state == CycleStateModel.collecting && contribution == null) {
     return const _TurnFooter.status(
       message: 'Waiting for contribution',
-      detail: 'Submit your contribution to keep this turn moving.',
       icon: Icons.receipt_long_outlined,
     );
   }
 
   if (cycle.state == CycleStateModel.collecting) {
     return const _TurnFooter.status(
-      message: 'Collection is in progress',
-      detail:
-          'This turn will unlock the next step when collection requirements are met.',
+      message: 'Collecting',
       icon: Icons.sync_alt_rounded,
     );
   }
 
   if (cycle.state == CycleStateModel.readyForWinnerSelection) {
     return const _TurnFooter.status(
-      message: 'Waiting for winner selection',
-      detail: 'An admin needs to select the winner for this turn.',
+      message: 'Waiting for winner',
       icon: Icons.emoji_events_outlined,
     );
   }
 
   if (cycle.state == CycleStateModel.readyForPayout) {
     return const _TurnFooter.status(
-      message: 'Waiting for payout to be sent',
-      detail:
-          'The selected winner is set. The next step is payout disbursement.',
+      message: 'Waiting for payout',
       icon: Icons.account_balance_wallet_outlined,
     );
   }
 
   if (cycle.state == CycleStateModel.payoutSent) {
     return const _TurnFooter.status(
-      message: 'Payout has been sent',
-      detail: 'The turn will complete after the recipient confirms receipt.',
+      message: 'Payout sent',
       icon: Icons.payments_outlined,
     );
   }
@@ -357,14 +340,6 @@ Widget _buildTurnActionTray({
                                         .textTheme
                                         .titleSmall
                                         ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xxs),
-                                  Text(
-                                    footer.detail!,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
                                   ),
                                 ],
                               ),
@@ -547,7 +522,7 @@ Future<void> _handleConfirmReceiptAction({
   final shouldConfirm = await KitDialog.confirm(
     context: context,
     title: 'Confirm payout receipt?',
-    message: 'This will mark the turn as completed.',
+    message: 'This completes the turn.',
     confirmLabel: 'Confirm receipt',
   );
   if (shouldConfirm != true) {

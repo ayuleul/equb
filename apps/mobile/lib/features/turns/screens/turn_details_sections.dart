@@ -297,8 +297,7 @@ class _CollectionSection extends ConsumerWidget {
                 const KitEmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: 'No contributions yet',
-                  message:
-                      'Contribution rows will appear here as members start paying.',
+                  message: 'Nothing submitted yet.',
                 ),
               ],
             ),
@@ -961,7 +960,7 @@ String? _collectionStatusHintText({
   required bool isAdmin,
 }) {
   if (stats.total == 0) {
-    return 'No member payments have been submitted for this turn yet.';
+    return 'No payments yet.';
   }
 
   if (stats.late > 0) {
@@ -969,9 +968,7 @@ String? _collectionStatusHintText({
   }
 
   if (stats.verified == stats.total && stats.total > 0) {
-    return isAdmin
-        ? 'All member payments are verified for this turn.'
-        : 'All member payments are verified for this turn.';
+    return 'All payments verified.';
   }
 
   if (action != null && action.onPressed == null) {
@@ -1068,18 +1065,18 @@ String _winnerSelectionStateCopy(CycleModel cycle) {
 
 String _winnerPendingCopy(CycleModel cycle) {
   if (cycle.state == CycleStateModel.collecting) {
-    return 'Winner will be drawn after collection';
+    return 'Winner pending';
   }
   if (cycle.state == CycleStateModel.readyForWinnerSelection) {
     return 'Waiting for draw';
   }
   if (cycle.state == CycleStateModel.readyForPayout) {
-    return 'Winner selected. Ready for payout';
+    return 'Ready for payout';
   }
   if (cycle.state == CycleStateModel.payoutSent) {
-    return 'Payout sent. Waiting for receipt confirmation';
+    return 'Payout sent';
   }
-  return 'Winner will appear here once this turn progresses';
+  return 'Winner pending';
 }
 
 String _contributionStatusLabel(ContributionStatusModel status) {

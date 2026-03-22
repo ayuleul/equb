@@ -145,7 +145,7 @@ class _NotificationsBody extends StatelessWidget {
       return const KitEmptyState(
         icon: Icons.notifications_none,
         title: 'No notifications yet',
-        message: 'You will see member and payment updates here.',
+        message: 'Nothing new.',
       );
     }
 

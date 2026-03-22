@@ -358,10 +358,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
     final hideBottomCta = isKeyboardOpen || _isAnyRulesInputFocused;
 
     return KitScaffold(
-      appBar: const KitAppBar(
-        title: 'Group setup',
-        subtitle: 'Set everything once, then save',
-      ),
+      appBar: const KitAppBar(title: 'Group setup'),
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusScope.of(context).unfocus(),
@@ -476,8 +473,8 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               loading: () => const Padding(
                 padding: EdgeInsets.only(bottom: AppSpacing.md),
                 child: KitBanner(
-                  title: 'Checking hosting access',
-                  message: 'Loading your public Equb limits.',
+                  title: 'Checking access',
+                  message: 'Loading...',
                   tone: KitBadgeTone.info,
                   icon: Icons.shield_outlined,
                 ),
@@ -485,7 +482,7 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               error: (error, _) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: KitBanner(
-                  title: 'Unable to load hosting access',
+                  title: 'Access unavailable',
                   message: mapApiErrorToMessage(error),
                   tone: KitBadgeTone.warning,
                   icon: Icons.info_outline_rounded,
@@ -496,9 +493,8 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
                   : Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: KitBanner(
-                        title: 'Public hosting access',
-                        message:
-                            '${hostRestrictionMessage(profile)} Improve your score by completing Equbs and paying contributions on time.',
+                        title: 'Public access',
+                        message: hostRestrictionMessage(profile),
                         tone: profile.eligibility.hostTier == null
                             ? KitBadgeTone.warning
                             : KitBadgeTone.info,
@@ -552,9 +548,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
                 _errorMessage = null;
               });
             },
-            supportText: _visibility == GroupVisibilityModel.public
-                ? 'Visible to others. People can request to join.'
-                : 'Join by invite code only.',
           ),
           const SizedBox(height: AppSpacing.md),
           AppTextField(
@@ -564,14 +557,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             hint: '500',
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() => _errorMessage = null),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          KitBanner(
-            title: 'Identity summary',
-            message:
-                '${_groupNameController.text.trim().isEmpty ? 'This group' : _groupNameController.text.trim()} is ${_visibility == GroupVisibilityModel.public ? 'public' : 'private'} and collects ${_contributionAmountController.text.trim().isEmpty ? '0' : _contributionAmountController.text.trim()} ${_currencyController.text.trim().isEmpty ? 'ETB' : _currencyController.text.trim().toUpperCase()} per turn.',
-            tone: KitBadgeTone.info,
-            icon: Icons.info_outline_rounded,
           ),
         ],
         if (section == _RulesSection.timing) ...[
@@ -634,14 +619,6 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
               onChanged: (_) => setState(() => _errorMessage = null),
             ),
           ],
-          const SizedBox(height: AppSpacing.md),
-          const SizedBox(height: AppSpacing.sm),
-          KitBanner(
-            title: 'Timing summary',
-            message: _timingSummary(roundSize),
-            tone: KitBadgeTone.info,
-            icon: Icons.schedule_rounded,
-          ),
         ],
         if (section == _RulesSection.policy) ...[
           KitDropdownField<GroupRulePayoutModeModel>(
@@ -704,31 +681,15 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
                       _errorMessage = null;
                     });
                   },
+            supportText: _requiresAfterCollectionTiming(_payoutMode)
+                ? 'Required for this payout mode.'
+                : null,
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            _winnerSelectionTiming ==
-                    WinnerSelectionTimingModel.beforeCollection
-                ? 'Before collection: members know the winner early.'
-                : 'After collection: winner is chosen only after everyone pays.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          if (_requiresAfterCollectionTiming(_payoutMode)) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Auction and decision payout modes always pick the winner after collection.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
           const SizedBox(height: AppSpacing.md),
           AppTextField(
             controller: _graceDaysController,
             focusNode: _graceDaysFocusNode,
             label: 'Grace days',
-            labelTooltip:
-                'Days allowed after the due date before a contribution is marked late.',
             hint: '2',
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() => _errorMessage = null),
@@ -786,50 +747,9 @@ class _GroupSetupScreenState extends ConsumerState<GroupSetupScreen> {
             selectedMethods: _paymentMethods,
             onChanged: _togglePaymentMethod,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          const SizedBox(height: AppSpacing.md),
-          KitBanner(
-            title: 'Policy summary',
-            message: _policySummary(),
-            tone: KitBadgeTone.info,
-            icon: Icons.verified_user_outlined,
-          ),
         ],
       ],
     );
-  }
-
-  String _timingSummary(int roundSize) {
-    final frequencyLabel = switch (_frequency) {
-      GroupRuleFrequencyModel.weekly => 'Weekly',
-      GroupRuleFrequencyModel.monthly => 'Monthly',
-      GroupRuleFrequencyModel.customInterval =>
-        'Every ${_customIntervalDaysController.text.trim().isEmpty ? '?' : _customIntervalDaysController.text.trim()} days',
-      GroupRuleFrequencyModel.unknown => 'Custom',
-    };
-    return '$frequencyLabel cadence. Admins can start once $roundSize members are ready.';
-  }
-
-  String _policySummary() {
-    final payoutLabel = switch (_payoutMode) {
-      GroupRulePayoutModeModel.lottery => 'Lottery payout',
-      GroupRulePayoutModeModel.auction => 'Auction payout',
-      GroupRulePayoutModeModel.rotation => 'Rotation payout',
-      GroupRulePayoutModeModel.decision => 'Admin decision payout',
-      GroupRulePayoutModeModel.unknown => 'Custom payout',
-    };
-    final fineLabel = switch (_fineType) {
-      GroupRuleFineTypeModel.none => 'no late fine',
-      GroupRuleFineTypeModel.fixedAmount =>
-        'late fine ${_fineAmountController.text.trim().isEmpty ? '0' : _fineAmountController.text.trim()}',
-      GroupRuleFineTypeModel.unknown => 'custom fine policy',
-    };
-    final timingLabel = switch (_winnerSelectionTiming) {
-      WinnerSelectionTimingModel.beforeCollection => 'winner before collection',
-      WinnerSelectionTimingModel.afterCollection => 'winner after collection',
-      WinnerSelectionTimingModel.unknown => 'winner timing pending',
-    };
-    return '$payoutLabel, $timingLabel, ${_graceDaysController.text.trim().isEmpty ? '0' : _graceDaysController.text.trim()} grace days, $fineLabel.';
   }
 
   void _togglePaymentMethod(GroupPaymentMethodModel method, bool isSelected) {

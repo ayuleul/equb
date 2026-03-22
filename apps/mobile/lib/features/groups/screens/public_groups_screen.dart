@@ -14,10 +14,7 @@ class PublicGroupsScreen extends ConsumerWidget {
     final sectionsAsync = ref.watch(discoverSectionsProvider);
 
     return KitScaffold(
-      appBar: const KitAppBar(
-        title: 'Discover groups',
-        subtitle: 'Browse public Equbs that accept join requests',
-      ),
+      appBar: const KitAppBar(title: 'Discover groups'),
       child: RefreshIndicator(
         onRefresh: () =>
             ref.read(publicGroupsControllerProvider).refreshPublicGroups(),
@@ -35,8 +32,7 @@ class PublicGroupsScreen extends ConsumerWidget {
               return const KitEmptyState(
                 icon: Icons.groups_2_outlined,
                 title: 'No public groups yet',
-                message:
-                    'Public Equbs will appear here when admins make them discoverable.',
+                message: 'Nothing to join right now.',
               );
             }
 

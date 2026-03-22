@@ -90,13 +90,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back',
+                  'Sign in',
                   style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Enter your phone number to receive a one-time verification code.',
-                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 KitPhoneNumberField(
@@ -123,9 +118,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 KitPrimaryButton(
-                  label: authState.isRequestingOtp
-                      ? 'Sending code...'
-                      : 'Request OTP',
+                  label: authState.isRequestingOtp ? 'Sending...' : 'Send code',
                   onPressed: authState.isRequestingOtp ? null : _submit,
                   isLoading: authState.isRequestingOtp,
                 ),

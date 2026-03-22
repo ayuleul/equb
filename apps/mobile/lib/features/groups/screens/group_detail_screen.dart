@@ -70,7 +70,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     return KitScaffold(
       appBar: KitAppBar(
         title: group?.name ?? 'Group detail',
-        subtitle: group == null ? null : 'Tap for details',
         status: const RealtimeHeaderStatus(),
         onTitleTap: group == null
             ? null
@@ -95,7 +94,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
         children: [
           Expanded(
             child: groupAsync.when(
-              loading: () => const LoadingView(message: 'Loading group...'),
+              loading: () => const LoadingView(message: 'Loading...'),
               error: (error, _) => ErrorView(
                 message: mapFriendlyError(error),
                 onRetry: () => ref

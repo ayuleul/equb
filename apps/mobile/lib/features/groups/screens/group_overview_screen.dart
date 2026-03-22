@@ -764,10 +764,7 @@ class _GroupOverviewMenuButton extends StatelessWidget {
         context.push(AppRoutePaths.groupSetup(group.id));
         return;
       case _OverviewMenuAction.close:
-        KitToast.info(
-          context,
-          'Close group for "${group.name}" is coming soon.',
-        );
+        KitToast.info(context, 'Close group is not available yet.');
         return;
     }
   }

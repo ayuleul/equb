@@ -66,7 +66,7 @@ class SecuritySettingsScreen extends ConsumerWidget {
                       : null,
                   supportText: lockState.biometricEnabled
                       ? null
-                      : 'Enable biometric lock to configure timeout.',
+                      : 'Enable biometric lock first.',
                 ),
               ],
             ),

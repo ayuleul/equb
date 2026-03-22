@@ -74,13 +74,6 @@ class AccountSettingsScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Delete your account and associated app access.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                    ),
-                  ),
                   const SizedBox(height: AppSpacing.sm),
                   SettingsActionRow(
                     title: 'Delete account',
@@ -102,7 +95,7 @@ class AccountSettingsScreen extends ConsumerWidget {
     final shouldLogout = await KitDialog.confirm(
       context: context,
       title: 'Logout?',
-      message: 'You will need OTP verification again next time you sign in.',
+      message: 'You will sign in again next time.',
       confirmLabel: 'Logout',
       isDestructive: true,
     );
@@ -116,8 +109,7 @@ class AccountSettingsScreen extends ConsumerWidget {
     final shouldDelete = await KitDialog.confirm(
       context: context,
       title: 'Delete account?',
-      message:
-          'This will permanently remove your account once backend delete is enabled.',
+      message: 'This is not available yet.',
       confirmLabel: 'Delete account',
       isDestructive: true,
     );
@@ -127,11 +119,7 @@ class AccountSettingsScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Delete account request is not yet connected to backend.',
-        ),
-      ),
+      const SnackBar(content: Text('Delete account is not available yet.')),
     );
   }
 }

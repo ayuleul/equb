@@ -85,10 +85,8 @@ class AccountSummaryCard extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
           ] else if (profileComplete != null)
             KitBadge(
-              label: profileComplete! ? 'Complete' : 'Finish profile',
-              tone: profileComplete!
-                  ? KitBadgeTone.success
-                  : KitBadgeTone.warning,
+              label: 'Finish profile',
+              tone: KitBadgeTone.warning,
               compact: true,
             ),
           if (onTap != null) const Icon(Icons.chevron_right_rounded),
@@ -121,7 +119,7 @@ class TrustIdentityCard extends StatelessWidget {
                 child: Text(
                   hasEarnedLevel
                       ? 'Score ${profile.trustScore} • ${profile.displayLabel}'
-                      : 'Start building your reputation',
+                      : 'Trust score ${profile.trustScore}',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -136,16 +134,6 @@ class TrustIdentityCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          if (!hasEarnedLevel) ...[
-            KitBanner(
-              title: 'Reputation starts after participation',
-              message:
-                  'Complete your first Equb to start building your reputation.',
-              tone: KitBadgeTone.info,
-              icon: Icons.flag_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -173,8 +161,8 @@ class TrustIdentityCard extends StatelessWidget {
           if (hasEarnedLevel) ...[
             Text(
               progress.isMaxLevel
-                  ? 'Trust progress'
-                  : 'Trust progress • ${progress.currentLevel} to ${progress.nextLevel}',
+                  ? 'Progress'
+                  : 'Progress • ${progress.currentLevel} to ${progress.nextLevel}',
               style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -182,8 +170,8 @@ class TrustIdentityCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Text(
               progress.isMaxLevel
-                  ? 'You are already at the top trust level.'
-                  : 'Score: ${progress.currentScore} / ${progress.targetScore}',
+                  ? 'Max level'
+                  : '${progress.currentScore} / ${progress.targetScore}',
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -208,17 +196,6 @@ class TrustIdentityCard extends StatelessWidget {
                 ? KitBadgeTone.warning
                 : KitBadgeTone.info,
             icon: Icons.shield_outlined,
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => showModalBottomSheet<void>(
-                context: context,
-                showDragHandle: true,
-                builder: (context) => const HowTrustWorksSheet(),
-              ),
-              child: const Text('How trust score works'),
-            ),
           ),
         ],
       ),
@@ -279,7 +256,7 @@ class ReputationTimelineCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (items.isEmpty)
-            const Text('Your trust activity will appear here as you use Equb.')
+            const Text('No activity yet.')
           else
             for (var i = 0; i < items.length; i++) ...[
               TimelineRow(entry: items[i]),
@@ -347,40 +324,6 @@ class TimelineRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class HowTrustWorksSheet extends StatelessWidget {
-  const HowTrustWorksSheet({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          0,
-          AppSpacing.lg,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'How trust score works',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Your trust score reflects real Equb behavior over time. Completing Equbs, paying on time, and running healthy groups help. Late payments, removals, disputes, and long inactivity can reduce it. Good behavior can improve your score again.',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

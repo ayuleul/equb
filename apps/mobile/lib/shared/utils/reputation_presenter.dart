@@ -134,7 +134,7 @@ TrustProgressModel buildTrustProgress(int trustScore) {
 
 String formatOnTimeRate(double? value) {
   if (value == null) {
-    return 'No payment history yet';
+    return 'No history';
   }
   return '${value.round()}%';
 }
@@ -142,13 +142,13 @@ String formatOnTimeRate(double? value) {
 String hostRestrictionMessage(ReputationProfileModel profile) {
   final limits = profile.eligibility.allowedPublicEqubLimits;
   if (profile.eligibility.hostTier == null) {
-    return 'A trust score of 50 is required to create a public Equb. Your current score: ${profile.trustScore}.';
+    return 'Score 50 required. Current: ${profile.trustScore}.';
   }
   if (profile.eligibility.hostTier == 'starter') {
-    return 'Your score allows starter public Equbs only: up to ${limits.maxMembers ?? '-'} members, max ${limits.maxContributionAmount ?? '-'} contribution, and one active public Equb.';
+    return 'Starter only: ${limits.maxMembers ?? '-'} members, max ${limits.maxContributionAmount ?? '-'}, one active public Equb.';
   }
   if (profile.eligibility.hostTier == 'standard') {
-    return 'You can host standard public Equbs. Reach 75 to unlock high-value public Equbs.';
+    return 'Standard public hosting. Reach 75 for high-value.';
   }
-  return 'You can host high-value public Equbs with full marketplace visibility.';
+  return 'High-value public hosting enabled.';
 }

@@ -90,7 +90,7 @@ class _SubmitContributionScreenState
     return KitScaffold(
       appBar: KitAppBar(title: screenTitle),
       child: groupAsync.when(
-        loading: () => const LoadingView(message: 'Loading group...'),
+        loading: () => const LoadingView(message: 'Loading...'),
         error: (error, _) => ErrorView(
           message: mapFriendlyError(error),
           onRetry: () => ref
@@ -99,7 +99,7 @@ class _SubmitContributionScreenState
         ),
         data: (groupData) {
           return cycleAsync.when(
-            loading: () => const LoadingView(message: 'Loading cycle...'),
+            loading: () => const LoadingView(message: 'Loading...'),
             error: (error, _) => ErrorView(
               message: mapFriendlyError(error),
               onRetry: () => ref.invalidate(
@@ -145,8 +145,8 @@ class _TelebirrComingSoonView extends StatelessWidget {
         padding: EdgeInsets.all(AppSpacing.lg),
         child: KitEmptyState(
           icon: Icons.phone_android,
-          title: 'Telebirr coming soon',
-          message: 'Telebirr payment is not ready yet.',
+          title: 'Telebirr unavailable',
+          message: 'Not available yet.',
         ),
       ),
     );
@@ -215,7 +215,7 @@ class _ManualSubmitForm extends ConsumerWidget {
           const KitEmptyState(
             icon: Icons.lock_clock_outlined,
             title: 'Cycle is closed',
-            message: 'You cannot submit new contributions for a closed cycle.',
+            message: 'Submission is closed.',
           ),
         ],
         const SizedBox(height: AppSpacing.md),
@@ -358,10 +358,10 @@ GroupPaymentMethodModel? _paymentMethodFromKey(String? value) {
 String _progressLabel(SubmitContributionStep step) {
   return switch (step) {
     SubmitContributionStep.idle => 'Ready',
-    SubmitContributionStep.pickingImage => 'Picking receipt...',
-    SubmitContributionStep.requestingUpload => 'Preparing upload...',
-    SubmitContributionStep.uploading => 'Uploading receipt...',
-    SubmitContributionStep.submitting => 'Submitting contribution...',
+    SubmitContributionStep.pickingImage => 'Picking...',
+    SubmitContributionStep.requestingUpload => 'Preparing...',
+    SubmitContributionStep.uploading => 'Uploading...',
+    SubmitContributionStep.submitting => 'Submitting...',
     SubmitContributionStep.success => 'Done',
     SubmitContributionStep.error => 'Failed',
   };

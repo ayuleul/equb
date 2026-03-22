@@ -150,17 +150,10 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Select country code', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Choose the country for your phone number.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
             const SizedBox(height: AppSpacing.md),
             KitSearchBar(
               controller: _searchController,
-              hintText: 'Search country or code',
+              hintText: 'Search',
               onChanged: (value) => setState(() => _query = value),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -174,7 +167,7 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
                           child: Padding(
                             padding: const EdgeInsets.all(AppSpacing.lg),
                             child: Text(
-                              'No country codes matched "$_query".',
+                              'No matches.',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -206,7 +199,6 @@ class _CountryPickerSheetState extends State<CountryPickerSheet> {
                                 style: theme.textTheme.headlineSmall,
                               ),
                               title: Text(country.name),
-                              subtitle: Text(country.isoCode),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

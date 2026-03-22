@@ -152,7 +152,7 @@ class _ContributionsListScreenState
                             }
                             KitToast.success(
                               context,
-                              'Overdue ${evaluation.overdueCount}, newly late ${evaluation.lateMarkedCount}',
+                              'Overdue ${evaluation.overdueCount}, late ${evaluation.lateMarkedCount}',
                             );
                           },
                     icon: Icons.rule_outlined,
@@ -167,16 +167,6 @@ class _ContributionsListScreenState
                   onSelected: (value) => setState(() => _filter = value),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (isAdmin && contributionList.summary.late > 0) ...[
-                  KitBanner(
-                    title: 'Overdue ${contributionList.summary.late}',
-                    message:
-                        'Late contributions were detected after grace period. Open the Late filter for details.',
-                    tone: KitBadgeTone.warning,
-                    icon: Icons.warning_amber_rounded,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
                 if (canSubmit)
                   KitPrimaryButton(
                     onPressed: () => showContributionPaymentMethodSheet(
@@ -197,8 +187,7 @@ class _ContributionsListScreenState
                   const KitEmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'No contributions',
-                    message:
-                        'No contribution items match this filter for the selected cycle.',
+                    message: 'No matches.',
                   )
                 else
                   ...filteredItems.map(

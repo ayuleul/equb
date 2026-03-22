@@ -112,7 +112,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       canPop: false,
       child: KitScaffold(
         appBar: const KitAppBar(
-          title: 'Complete your profile',
+          title: 'Complete profile',
           showBackButton: false,
         ),
         child: LayoutBuilder(
@@ -131,16 +131,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Let's start with your name",
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
+                          const SizedBox(height: AppSpacing.xs),
                           KitTextField(
                             controller: _firstNameController,
                             focusNode: _firstNameFocusNode,
                             label: 'First Name',
-                            placeholder: 'Enter your first name',
+                            placeholder: 'First name',
                             errorText: _firstNameError,
                             onChanged: (_) {
                               if (_firstNameError != null) {
@@ -153,7 +149,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             controller: _middleNameController,
                             focusNode: _middleNameFocusNode,
                             label: "Father's Name",
-                            placeholder: "Enter your father's name",
+                            placeholder: "Father's name",
                             errorText: _middleNameError,
                             onChanged: (_) {
                               if (_middleNameError != null) {
@@ -166,8 +162,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             controller: _lastNameController,
                             focusNode: _lastNameFocusNode,
                             label: "Grandfather's Name (Optional)",
-                            placeholder:
-                                "Enter your grandfather's name.",
+                            placeholder: "Grandfather's name",
                             errorText: _lastNameError,
                             onChanged: (_) {
                               if (_lastNameError != null) {
@@ -177,7 +172,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           KitPrimaryButton(
-                            label: _isSaving ? 'Saving...' : 'Save Profile',
+                            label: _isSaving ? 'Saving...' : 'Save',
                             onPressed: _isSaving ? null : _saveProfile,
                             isLoading: _isSaving,
                           ),

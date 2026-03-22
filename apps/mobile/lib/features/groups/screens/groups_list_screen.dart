@@ -103,7 +103,6 @@ class _GroupsListScreenState extends ConsumerState<GroupsListScreen> {
         children: [
           KitSectionHeader(
             title: 'My Equbs',
-            subtitle: 'Manage active groups and create new ones.',
             searchConfig: KitSectionHeaderSearchConfig(
               controller: _searchController,
               focusNode: _searchFocusNode,
@@ -161,7 +160,7 @@ class _GroupsBody extends StatelessWidget {
       return KitEmptyState(
         icon: Icons.groups_2_outlined,
         title: 'No groups yet',
-        message: 'Create a group or join one with an invite code.',
+        message: 'Create or join one.',
         ctaLabel: 'Create group',
         onCtaPressed: () => context.push(AppRoutePaths.groupsCreate),
       );
@@ -180,7 +179,7 @@ class _GroupsBody extends StatelessWidget {
       return const KitEmptyState(
         icon: Icons.search_off_outlined,
         title: 'No matching groups',
-        message: 'Try a different name or clear the search.',
+        message: 'No matches.',
       );
     }
 

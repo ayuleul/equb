@@ -17,10 +17,8 @@ class DataPrivacySettingsScreen extends StatelessWidget {
               SettingsNavRow(
                 title: 'Download my data',
                 icon: Icons.download_rounded,
-                onTap: () => _showSnack(
-                  context,
-                  'Data export request was received. This flow will be connected to backend export.',
-                ),
+                onTap: () =>
+                    _showSnack(context, 'Data export is not available yet.'),
                 showDivider: false,
               ),
             ],
@@ -31,18 +29,14 @@ class DataPrivacySettingsScreen extends StatelessWidget {
               SettingsNavRow(
                 title: 'Terms',
                 icon: Icons.description_outlined,
-                onTap: () => _showSnack(
-                  context,
-                  'Terms will be available in a dedicated web view.',
-                ),
+                onTap: () =>
+                    _showSnack(context, 'Terms are not available yet.'),
               ),
               SettingsNavRow(
                 title: 'Privacy policy',
                 icon: Icons.privacy_tip_outlined,
-                onTap: () => _showSnack(
-                  context,
-                  'Privacy policy will be available in a dedicated web view.',
-                ),
+                onTap: () =>
+                    _showSnack(context, 'Privacy policy is not available yet.'),
                 showDivider: false,
               ),
             ],

@@ -34,10 +34,8 @@ class AboutSettingsScreen extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: LinearProgressIndicator(minHeight: 2),
               ),
-              error: (_, _) => const _ReadOnlyRow(
-                label: 'App version',
-                value: 'Unavailable',
-              ),
+              error: (_, _) =>
+                  const _ReadOnlyRow(label: 'App version', value: '-'),
             ),
           ),
         ],

@@ -116,11 +116,6 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                   'Group is locked',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'A cycle is currently open. You can join after it closes.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
                 const SizedBox(height: AppSpacing.lg),
                 KitPrimaryButton(
                   label: 'OK',
@@ -140,10 +135,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     }
 
     return KitScaffold(
-      appBar: const KitAppBar(
-        title: 'Join group',
-        subtitle: 'Use an invite code from your group admin',
-      ),
+      appBar: const KitAppBar(title: 'Join group'),
       child: ListView(
         children: [
           EqubCard(
@@ -153,7 +145,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                 AppTextField(
                   controller: _codeController,
                   label: 'Invite code',
-                  hint: 'A1B2C3D4',
+                  hint: 'Code',
                   onChanged: (_) => setState(() => _formError = null),
                 ),
                 if (_formError != null) ...[

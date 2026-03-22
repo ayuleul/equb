@@ -4,7 +4,7 @@ class CountryCallingCode {
     required this.name,
     required this.dialCode,
     required this.flagEmoji,
-    this.nationalExample = 'Enter your mobile number',
+    this.nationalExample = 'Phone number',
     this.supportText = '',
     this.minNationalLength = 4,
     this.maxNationalLength = 14,

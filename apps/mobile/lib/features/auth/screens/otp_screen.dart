@@ -143,8 +143,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         child: KitEmptyState(
           icon: Icons.sms_failed_outlined,
           title: 'Phone number missing',
-          message: 'Request a new OTP to continue.',
-          ctaLabel: 'Back to login',
+          message: 'Go back and request a code.',
+          ctaLabel: 'Back',
           onCtaPressed: () => context.go(AppRoutePaths.login),
         ),
       );
@@ -163,14 +163,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Enter verification code',
+                  'Enter code',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Code sent to $phone',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                Text(phone, style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: AppSpacing.md),
                 GestureDetector(
                   onTap: () => _otpFocusNode.requestFocus(),
@@ -209,9 +206,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 ],
                 const SizedBox(height: AppSpacing.md),
                 KitPrimaryButton(
-                  label: authState.isVerifyingOtp
-                      ? 'Verifying...'
-                      : 'Verify OTP',
+                  label: authState.isVerifyingOtp ? 'Verifying...' : 'Verify',
                   onPressed: authState.isVerifyingOtp
                       ? null
                       : () => _verify(phone),
@@ -221,15 +216,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 Row(
                   children: [
                     KitTertiaryButton(
-                      label: 'Resend OTP',
+                      label: 'Resend',
                       onPressed: canResend ? () => _resend(phone) : null,
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        canResend
-                            ? 'You can request a new code now.'
-                            : 'Retry in ${_remainingSeconds}s',
+                        canResend ? 'Ready' : '${_remainingSeconds}s',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),

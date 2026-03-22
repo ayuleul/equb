@@ -117,7 +117,7 @@ class _AccountProfileSettingsScreenState
                           ),
                           const SizedBox(height: AppSpacing.xxs),
                           Text(
-                            'Optional for now. Your legal name remains the main identity.',
+                            'Optional.',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -130,8 +130,8 @@ class _AccountProfileSettingsScreenState
                               _isPickingPhoto
                                   ? 'Selecting...'
                                   : (_profilePhotoBytes == null
-                                        ? 'Choose photo'
-                                        : 'Change photo'),
+                                        ? 'Add photo'
+                                        : 'Change'),
                             ),
                           ),
                         ],
@@ -143,7 +143,7 @@ class _AccountProfileSettingsScreenState
                 KitTextField(
                   controller: _firstNameController,
                   label: 'First Name',
-                  placeholder: 'Enter your first name',
+                  placeholder: 'First name',
                   errorText: _firstNameError,
                   onChanged: (_) => setState(() => _firstNameError = null),
                 ),
@@ -151,7 +151,7 @@ class _AccountProfileSettingsScreenState
                 KitTextField(
                   controller: _middleNameController,
                   label: "Father's Name",
-                  placeholder: "Enter your father's name",
+                  placeholder: "Father's name",
                   errorText: _middleNameError,
                   onChanged: (_) => setState(() => _middleNameError = null),
                 ),
@@ -159,7 +159,7 @@ class _AccountProfileSettingsScreenState
                 KitTextField(
                   controller: _lastNameController,
                   label: "Grandfather's Name (Optional)",
-                  placeholder: "Enter your grandfather's name.",
+                  placeholder: "Grandfather's name",
                   errorText: _lastNameError,
                   onChanged: (_) => setState(() => _lastNameError = null),
                 ),

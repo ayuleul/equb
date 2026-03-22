@@ -83,10 +83,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       if (!mounted) {
         return;
       }
-      AppSnackbars.success(
-        context,
-        'Group created. Complete setup before inviting members or starting cycles.',
-      );
+      AppSnackbars.success(context, 'Group created. Complete setup next.');
       if (context.canPop()) {
         context.pop();
       }
@@ -108,20 +105,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return KitScaffold(
-      appBar: const KitAppBar(
-        title: 'Create group',
-        subtitle: 'Start with identity and access',
-      ),
+      appBar: const KitAppBar(title: 'Create group'),
       child: ListView(
         children: [
-          KitBanner(
-            title: 'What happens next',
-            message:
-                'Create the group first, then finish timing, payout, and collection rules in one setup screen.',
-            tone: KitBadgeTone.info,
-            icon: Icons.route_outlined,
-          ),
-          const SizedBox(height: AppSpacing.md),
           EqubCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,25 +118,18 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Give the Equb a name, short context, and default currency.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.md),
                 AppTextField(
                   controller: _nameController,
                   label: 'Group name',
-                  hint: 'Family Equb',
+                  hint: 'Name',
                   onChanged: (_) => setState(() => _formError = null),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppTextField(
                   controller: _descriptionController,
                   label: 'Description',
-                  hint: 'What is this Equb for?',
+                  hint: 'Description',
                   onChanged: (_) => setState(() => _formError = null),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -172,13 +151,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   'Access',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Decide whether people join by invite only or can request access publicly.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -204,9 +176,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       _formError = null;
                     });
                   },
-                  supportText: _visibility == GroupVisibilityModel.public
-                      ? 'Visible to others. People request to join.'
-                      : 'Invite code only.',
                 ),
               ],
             ),

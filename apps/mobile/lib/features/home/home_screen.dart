@@ -63,8 +63,6 @@ class HomeScreen extends ConsumerWidget {
           children: [
             KitSectionHeader(
               title: 'Hi, $displayName',
-              subtitle: 'Your groups first, then public equbs worth joining.',
-
               titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
@@ -152,8 +150,7 @@ class _MyEqubsRail extends StatelessWidget {
       return KitEmptyState(
         icon: Icons.groups_2_outlined,
         title: 'No equbs yet',
-        message:
-            'Create a group or join one with an invite code to get started.',
+        message: 'Create one or join with a code.',
         ctaLabel: 'Create Equb',
         onCtaPressed: () => context.push(AppRoutePaths.groupsCreate),
       );
@@ -193,8 +190,7 @@ class _DiscoverPublicGroupsList extends StatelessWidget {
           return const KitEmptyState(
             icon: Icons.travel_explore_outlined,
             title: 'No public equbs yet',
-            message:
-                'Public Equbs will appear here when admins make them discoverable.',
+            message: 'Nothing to join right now.',
           );
         }
 

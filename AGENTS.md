@@ -30,6 +30,7 @@
 - Prefer small diffs and incremental commits.
 - No business logic in controllers: use services + use-cases.
 - Always create/extend DTOs, never accept `any`.
+- Product/UI output must remain minimal and clean: avoid unnecessary descriptions, summaries, helper copy, and extra explanatory text; show only what is essential for the user to understand state and take action, and remove non-critical UI elements or redundant content by default.
 - Every controller endpoint must include Swagger decorators at minimum:
   - `@ApiOperation`
   - success response decorator (`@ApiOkResponse`/equivalent)

@@ -41,7 +41,7 @@ class _RealtimeHeaderStatusState extends ConsumerState<RealtimeHeaderStatus> {
         RealtimeConnectionStatus.connecting => _HeaderStatusChip(
           key: const ValueKey('realtime-header-connecting'),
           icon: Icons.sync_rounded,
-          label: 'Connecting...',
+          label: 'Connecting',
           backgroundColor: context.semanticColors.infoContainer,
           foregroundColor: context.semanticColors.onInfoContainer,
           borderColor: context.semanticColors.info.withValues(alpha: 0.22),
@@ -143,7 +143,7 @@ class _RealtimeStatusBannerState extends ConsumerState<RealtimeStatusBanner> {
         RealtimeConnectionStatus.connecting => _BannerStrip(
           key: const ValueKey('realtime-connecting'),
           icon: Icons.sync_rounded,
-          message: 'Connecting...',
+          message: 'Connecting',
           backgroundColor: context.semanticColors.infoContainer,
           foregroundColor: context.semanticColors.onInfoContainer,
           borderColor: context.semanticColors.info.withValues(alpha: 0.22),

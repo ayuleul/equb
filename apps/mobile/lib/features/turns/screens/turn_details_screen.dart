@@ -82,7 +82,6 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
     final rulesAsync = ref.watch(groupRulesProvider(widget.groupId));
     final cycleAsync = ref.watch(cycleDetailProvider(args));
     final group = groupAsync.valueOrNull;
-    final cycle = cycleAsync.valueOrNull;
     final contributionsAsync = ref.watch(cycleContributionsProvider(args));
     final payoutAsync = ref.watch(cyclePayoutProvider(widget.turnId));
     final disputesAsync = ref.watch(
@@ -127,14 +126,13 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
     return KitScaffold(
       appBar: KitAppBar(
         title: group?.name ?? 'Turn',
-        subtitle: cycle == null ? null : 'Turn ${cycle.cycleNo}',
         status: const RealtimeHeaderStatus(),
       ),
       child: Column(
         children: [
           Expanded(
             child: groupAsync.when(
-              loading: () => const LoadingView(message: 'Loading turn...'),
+              loading: () => const LoadingView(message: 'Loading...'),
               error: (error, _) => ErrorView(
                 message: mapFriendlyError(error),
                 onRetry: () => ref
@@ -142,7 +140,7 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                     .refreshAll(widget.groupId),
               ),
               data: (group) => cycleAsync.when(
-                loading: () => const LoadingView(message: 'Loading turn...'),
+                loading: () => const LoadingView(message: 'Loading...'),
                 error: (error, _) => ErrorView(
                   message: mapFriendlyError(error),
                   onRetry: () => ref.invalidate(cycleDetailProvider(args)),
@@ -205,11 +203,7 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                               currentUserId: currentUserId,
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            const KitSectionHeader(
-                              title: 'Members',
-                              subtitle:
-                                  'Payment progress and per-member status',
-                            ),
+                            const KitSectionHeader(title: 'Members'),
                             _CollectionSection(
                               group: group,
                               cycle: cycle,
@@ -223,11 +217,7 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                                     AuctionStatusModel.none) !=
                                 AuctionStatusModel.none) ...[
                               const SizedBox(height: AppSpacing.md),
-                              const KitSectionHeader(
-                                title: 'Auction',
-                                subtitle:
-                                    'Bidding status and next auction action',
-                              ),
+                              const KitSectionHeader(title: 'Auction'),
                               _AuctionSection(
                                 groupId: widget.groupId,
                                 cycle: cycle,
@@ -241,8 +231,6 @@ class _TurnDetailsScreenState extends ConsumerState<TurnDetailsScreen> {
                               const SizedBox(height: AppSpacing.md),
                               const KitSectionHeader(
                                 title: 'Contribution Issues',
-                                subtitle:
-                                    'Open and resolved disputes tied to this turn',
                               ),
                               _DisputesSection(
                                 groupId: widget.groupId,

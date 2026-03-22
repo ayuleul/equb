@@ -64,7 +64,7 @@ class _ContributionDisputesScreenState
     return KitScaffold(
       appBar: const KitAppBar(title: 'Contribution issue'),
       child: disputesAsync.when(
-        loading: () => const LoadingView(message: 'Loading disputes...'),
+        loading: () => const LoadingView(message: 'Loading...'),
         error: (error, _) => ErrorView(
           message: mapFriendlyError(error),
           onRetry: () => ref.invalidate(
@@ -90,11 +90,6 @@ class _ContributionDisputesScreenState
                         'Issue timeline',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Report a mismatch, track mediation, and close the issue.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                     ],
                   ),
                 ),
@@ -108,8 +103,7 @@ class _ContributionDisputesScreenState
                 else
                   const KitBanner(
                     title: 'Dispute in progress',
-                    message:
-                        'Resolve the current open dispute before opening a new one.',
+                    message: 'Resolve it before opening another one.',
                     tone: KitBadgeTone.warning,
                     icon: Icons.info_outline,
                   ),
@@ -118,8 +112,7 @@ class _ContributionDisputesScreenState
                   const KitEmptyState(
                     icon: Icons.fact_check_outlined,
                     title: 'No disputes yet',
-                    message:
-                        'No mismatch has been reported for this contribution.',
+                    message: 'Nothing reported.',
                   )
                 else
                   ...disputes.map(

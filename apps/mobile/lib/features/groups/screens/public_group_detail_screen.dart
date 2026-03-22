@@ -33,7 +33,7 @@ class _PublicGroupDetailScreenState
       if (!mounted) {
         return;
       }
-      KitToast.success(context, 'Join request sent to the group admins.');
+      KitToast.success(context, 'Request sent.');
     } catch (error) {
       if (!mounted) {
         return;
@@ -52,7 +52,7 @@ class _PublicGroupDetailScreenState
     final requestAsync = ref.watch(myJoinRequestProvider(widget.groupId));
 
     return KitScaffold(
-      appBar: const KitAppBar(title: 'Public group'),
+      appBar: const KitAppBar(title: 'Group'),
       child: RefreshIndicator(
         onRefresh: () => ref
             .read(publicGroupsControllerProvider)
@@ -160,7 +160,7 @@ class _PublicGroupDetailScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Group trust summary',
+                          'Trust',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppSpacing.sm),
@@ -189,7 +189,7 @@ class _PublicGroupDetailScreenState
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       if (group.rules == null)
-                        const Text('This group has not published rules yet.')
+                        const Text('Rules not set.')
                       else ...[
                         _DetailRow(
                           label: 'Round size',
